@@ -1,0 +1,392 @@
+{
+  "semester": {
+    "name": "Semester 2",
+    "period": "Jan–May 2025",
+    "status": {
+      "text": "✓ No Clashes This Week",
+      "type": "success"
+    }
+  },
+  "currentDate": {
+    "day": 19,
+    "month": 2,
+    "year": 2025,
+    "dayName": "Wednesday"
+  },
+  "stats": [
+    {
+      "icon": "📅",
+      "num": "6",
+      "label": "Courses This Sem",
+      "color": "#60efff",
+      "onClick": "/courses"
+    },
+    {
+      "icon": "✏️",
+      "num": "3",
+      "label": "Exams Upcoming",
+      "sub": "Next in 8 days",
+      "color": "#f59e0b",
+      "onClick": "/exams"
+    },
+    {
+      "icon": "🏫",
+      "num": "24",
+      "label": "Classes This Week",
+      "color": "#a78bfa"
+    },
+    {
+      "icon": "✅",
+      "num": "92%",
+      "label": "Attendance",
+      "sub": "↑ Above threshold",
+      "color": "#22c55e"
+    }
+  ],
+  "weekDays": ["MON", "TUE", "WED", "THU", "FRI"],
+  "weekDates": [17, 18, 19, 20, 21],
+  "weeklySchedule": [
+    {
+      "time": "8:00",
+      "classes": [
+        null,
+        null,
+        {
+          "name": "Data Structures",
+          "location": "LHC-2",
+          "professor": "Dr. Mehta"
+        },
+        null,
+        {
+          "name": "Data Structures",
+          "location": "LHC-2",
+          "professor": "Dr. Mehta"
+        }
+      ]
+    },
+    {
+      "time": "9:00",
+      "classes": [
+        {
+          "name": "Networks Lab",
+          "location": "Lab-3",
+          "professor": "Dr. Rajan"
+        },
+        {
+          "name": "Digital Circuits",
+          "location": "LHC-5",
+          "professor": "Dr. Singh"
+        },
+        null,
+        {
+          "name": "Digital Circuits",
+          "location": "LHC-5",
+          "professor": "Dr. Singh"
+        },
+        null
+      ]
+    },
+    {
+      "time": "10:00",
+      "classes": [
+        null,
+        {
+          "name": "Signals & Systems",
+          "location": "A-301",
+          "professor": "Dr. Kumar"
+        },
+        {
+          "name": "Mathematics III",
+          "location": "LHC-1",
+          "professor": "Dr. Rao"
+        },
+        null,
+        {
+          "name": "Networks Lab",
+          "location": "Lab-3",
+          "professor": "Dr. Rajan"
+        }
+      ]
+    },
+    {
+      "time": "11:00",
+      "classes": [
+        {
+          "name": "Mathematics III",
+          "location": "LHC-1",
+          "professor": "Dr. Rao"
+        },
+        null,
+        null,
+        {
+          "name": "Signals & Systems",
+          "location": "A-301",
+          "professor": "Dr. Kumar"
+        },
+        {
+          "name": "Mathematics III",
+          "location": "LHC-1",
+          "professor": "Dr. Rao"
+        }
+      ]
+    },
+    {
+      "time": "14:00",
+      "classes": [
+        null,
+        {
+          "name": "VLSI Design",
+          "location": "F-102",
+          "professor": "Dr. Patel"
+        },
+        {
+          "name": "Rescheduled",
+          "location": "See notifications",
+          "professor": "",
+          "isRescheduled": true
+        },
+        null,
+        {
+          "name": "VLSI Design",
+          "location": "F-102",
+          "professor": "Dr. Patel"
+        }
+      ]
+    }
+  ],
+  "dailySchedules": {
+    "17": [
+      {
+        "time": "9:00 AM",
+        "class": {
+          "name": "Networks Lab",
+          "location": "Lab-3",
+          "professor": "Dr. Rajan",
+          "duration": "2 hrs"
+        }
+      },
+      {
+        "time": "11:00 AM",
+        "class": {
+          "name": "Mathematics III",
+          "location": "LHC-1",
+          "professor": "Dr. Rao",
+          "duration": "1 hr"
+        }
+      }
+    ],
+    "18": [
+      {
+        "time": "9:00 AM",
+        "class": {
+          "name": "Digital Circuits",
+          "location": "LHC-5",
+          "professor": "Dr. Singh",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "10:00 AM",
+        "class": {
+          "name": "Signals & Systems",
+          "location": "A-301",
+          "professor": "Dr. Kumar",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "2:00 PM",
+        "class": {
+          "name": "VLSI Design",
+          "location": "F-102",
+          "professor": "Dr. Patel",
+          "duration": "1 hr"
+        }
+      }
+    ],
+    "19": [
+      {
+        "time": "8:00 AM",
+        "class": {
+          "name": "Data Structures",
+          "location": "LHC-2",
+          "professor": "Dr. Mehta",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "10:00 AM",
+        "class": {
+          "name": "Mathematics III",
+          "location": "LHC-1",
+          "professor": "Dr. Rao",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "2:00 PM",
+        "class": {
+          "name": "Rescheduled Class",
+          "location": "See notifications",
+          "professor": "",
+          "duration": "1 hr",
+          "isRescheduled": true
+        }
+      }
+    ],
+    "20": [
+      {
+        "time": "9:00 AM",
+        "class": {
+          "name": "Digital Circuits",
+          "location": "LHC-5",
+          "professor": "Dr. Singh",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "11:00 AM",
+        "class": {
+          "name": "Signals & Systems",
+          "location": "A-301",
+          "professor": "Dr. Kumar",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "2:00 PM",
+        "class": {
+          "name": "VLSI Design",
+          "location": "F-102",
+          "professor": "Dr. Patel",
+          "duration": "1 hr"
+        }
+      }
+    ],
+    "21": [
+      {
+        "time": "8:00 AM",
+        "class": {
+          "name": "Data Structures",
+          "location": "LHC-2",
+          "professor": "Dr. Mehta",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "10:00 AM",
+        "class": {
+          "name": "Networks Lab",
+          "location": "Lab-3",
+          "professor": "Dr. Rajan",
+          "duration": "2 hrs"
+        }
+      },
+      {
+        "time": "11:00 AM",
+        "class": {
+          "name": "Mathematics III",
+          "location": "LHC-1",
+          "professor": "Dr. Rao",
+          "duration": "1 hr"
+        }
+      },
+      {
+        "time": "2:00 PM",
+        "class": {
+          "name": "VLSI Design",
+          "location": "F-102",
+          "professor": "Dr. Patel",
+          "duration": "1 hr"
+        }
+      }
+    ]
+  },
+  "todaysClasses": [
+    {
+      "time": "8:00 AM",
+      "duration": "75 min",
+      "subject": "Data Structures & Algorithms",
+      "location": "LHC-2 · Dr. Mehta · 45 students",
+      "status": "Done",
+      "statusColor": "#22c55e",
+      "dotColor": "#22c55e"
+    },
+    {
+      "time": "10:00 AM",
+      "duration": "75 min",
+      "subject": "Mathematics III",
+      "location": "LHC-1 · Dr. Rao · 60 students",
+      "status": "● Live Now",
+      "statusColor": "#22c55e",
+      "dotColor": "#22c55e",
+      "isLive": true
+    },
+    {
+      "time": "2:00 PM",
+      "duration": "75 min",
+      "subject": "VLSI Design ⚠",
+      "location": "Rescheduled — Friday 2:00 PM · F-102",
+      "status": "Moved",
+      "statusColor": "#ef4444",
+      "dotColor": "#ef4444"
+    }
+  ],
+  "quickActions": [
+    {
+      "icon": "📝",
+      "label": "Take Notes",
+      "onClick": "/notes"
+    },
+    {
+      "icon": "📅",
+      "label": "Add Event",
+      "onClick": "modal:addEvent"
+    },
+    {
+      "icon": "🔔",
+      "label": "Set Reminder",
+      "onClick": "/reminders"
+    },
+    {
+      "icon": "📊",
+      "label": "View Stats",
+      "onClick": "modal:stats"
+    }
+  ],
+  "upcomingEvents": [
+    {
+      "type": "exam",
+      "title": "Digital Circuits Exam",
+      "date": "Feb 27",
+      "color": "#ef4444"
+    },
+    {
+      "type": "assignment",
+      "title": "DSA Assignment Due",
+      "date": "Feb 25",
+      "color": "#f59e0b"
+    },
+    {
+      "type": "lab",
+      "title": "Networks Lab Practice",
+      "date": "Feb 24",
+      "color": "#3b82f6"
+    }
+  ],
+  "calendar": {
+    "monthDaysWithClasses": [3, 5, 8, 10, 12, 15, 17, 18, 19, 20, 21, 22, 24, 26, 29],
+    "timeSlots": [
+      "8:00 AM",
+      "9:00 AM",
+      "10:00 AM",
+      "11:00 AM",
+      "12:00 PM",
+      "1:00 PM",
+      "2:00 PM",
+      "3:00 PM",
+      "4:00 PM",
+      "5:00 PM"
+    ]
+  }
+}
