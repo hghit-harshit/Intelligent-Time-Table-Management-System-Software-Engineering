@@ -2,7 +2,7 @@ import { useState } from "react"
 import Layout from "../components/Layout"
 import timetableData from "../data/timetableData.json"
 
-export default function Dashboard() {
+export default function StudentPage() {
   const [selectedView, setSelectedView] = useState('week')
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null)
   const [showClassDetails, setShowClassDetails] = useState(false)
@@ -18,6 +18,38 @@ export default function Dashboard() {
   const handleDateClick = (day) => {
     setSelectedDate(day)
     setSelectedView('day') // Switch to day view when a date is clicked
+  }
+
+  // Navigate to previous month
+  const handlePrevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12)
+      setSelectedYear(selectedYear - 1)
+    } else {
+      setSelectedMonth(selectedMonth - 1)
+    }
+    setSelectedDate(1)
+  }
+
+  // Navigate to next month
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1)
+      setSelectedYear(selectedYear + 1)
+    } else {
+      setSelectedMonth(selectedMonth + 1)
+    }
+    setSelectedDate(1)
+  }
+
+  // Get number of days in the selected month
+  const getDaysInMonth = (month, year) => {
+    return new Date(year, month, 0).getDate()
+  }
+
+  // Get the day of the week the 1st of the month falls on (0=Sun, 6=Sat)
+  const getFirstDayOfMonth = (month, year) => {
+    return new Date(year, month - 1, 1).getDay()
   }
 
   // Function to get day name from date
@@ -221,7 +253,7 @@ export default function Dashboard() {
                 margin: 0,
                 fontFamily: "'Playfair Display', serif",
               }}>
-                February 2025
+                {getMonthName(selectedMonth)} {selectedYear}
               </h3>
               <div style={{
                 display: "flex",
@@ -237,7 +269,8 @@ export default function Dashboard() {
                   cursor: "pointer",
                   fontSize: "12px",
                   transition: "all 0.2s ease",
-                }} onMouseEnter={(e) => e.target.style.background = "rgba(96,239,255,0.2)"}
+                }} onClick={handlePrevMonth}
+                   onMouseEnter={(e) => e.target.style.background = "rgba(96,239,255,0.2)"}
                    onMouseLeave={(e) => e.target.style.background = "rgba(255,255,255,0.1)"}>‹</button>
                 <button style={{
                   background: "rgba(255,255,255,0.1)",
@@ -248,7 +281,8 @@ export default function Dashboard() {
                   cursor: "pointer",
                   fontSize: "12px",
                   transition: "all 0.2s ease",
-                }} onMouseEnter={(e) => e.target.style.background = "rgba(96,239,255,0.2)"}
+                }} onClick={handleNextMonth}
+                   onMouseEnter={(e) => e.target.style.background = "rgba(96,239,255,0.2)"}
                    onMouseLeave={(e) => e.target.style.background = "rgba(255,255,255,0.1)"}>›</button>
               </div>
               <div style={{
@@ -440,10 +474,14 @@ export default function Dashboard() {
                   gap: "1px",
                   background: "rgba(255,255,255,0.05)",
                 }}>
-                  {Array.from({ length: 42 }, (_, i) => {
-                    const dayNum = i - 6; // Adjust for month start
-                    const isCurrentMonth = dayNum >= 1 && dayNum <= 31;
-                    const isToday = dayNum === timetableData.currentDate.day;
+                  {(() => {
+                    const daysInMonth = getDaysInMonth(selectedMonth, selectedYear)
+                    const firstDay = getFirstDayOfMonth(selectedMonth, selectedYear)
+                    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7
+                    return Array.from({ length: totalCells }, (_, i) => {
+                    const dayNum = i - firstDay + 1
+                    const isCurrentMonth = dayNum >= 1 && dayNum <= daysInMonth
+                    const isToday = dayNum === timetableData.currentDate.day && selectedMonth === timetableData.currentDate.month && selectedYear === timetableData.currentDate.year
                     const isSelected = dayNum === selectedDate;
                     const hasClass = timetableData.calendar.monthDaysWithClasses.includes(dayNum);
                     
@@ -504,7 +542,8 @@ export default function Dashboard() {
                         )}
                       </div>
                     );
-                  })}
+                  })
+                  })()}
                 </div>
               </div>
             )}
