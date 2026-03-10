@@ -33,10 +33,12 @@ export default function Login() {
 
   const selected = roles.find((r) => r.id === role)
 
-  const handleLogin = () => {
+  const handleLogin = (role) => {
     setLoading(true)
     setTimeout(() => {
-      navigate("/dashboard")
+      if (role === "student") navigate("/StudentPage ")
+      else if (role === "faculty") navigate("/FacultyPage")
+      else if (role === "admin") navigate("/AdminPage")
       setLoading(false)
     }, 1200)
   }
@@ -281,7 +283,7 @@ export default function Login() {
         {/* Login button */}
         <button
           className="login-btn"
-          onClick={handleLogin}
+          onClick={() => handleLogin(selected.id)}
           disabled={loading}
           style={{
             width: "100%", padding: "15px",
