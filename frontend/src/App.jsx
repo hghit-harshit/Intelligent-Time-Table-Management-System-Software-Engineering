@@ -1,4 +1,17 @@
+/**
+ * App.jsx — Root Application Component
+ * 
+ * PURPOSE: Wraps the entire app with MUI's ThemeProvider so every
+ * component inherits our custom theme. Also sets up routing.
+ * 
+ * CssBaseline resets browser defaults and applies our theme's
+ * background color and font to the <body> element.
+ */
+
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { ThemeProvider } from "@mui/material/styles"
+import CssBaseline from "@mui/material/CssBaseline"
+import theme from "./styles/theme"
 import Login from "./pages/LoginPage"
 import StudentPage from "./pages/student/StudentPage"
 import FacultyPage from "./pages/FacultyPage"
@@ -9,17 +22,22 @@ import CourseEnrollment from "./pages/CourseEnrollment"
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/StudentPage" element={<StudentPage />} />
-        <Route path="/FacultyPage" element={<FacultyPage />} />
-        <Route path="/AdminPage" element={<AdminPage />} />
-        <Route path="/exams" element={<ExamSchedule />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/courses" element={<CourseEnrollment />} />
-      </Routes>
-    </BrowserRouter>
+    // ThemeProvider makes our custom theme available to ALL MUI components
+    <ThemeProvider theme={theme}>
+      {/* CssBaseline normalizes browser styles and applies theme background */}
+      <CssBaseline />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/StudentPage" element={<StudentPage />} />
+          <Route path="/FacultyPage" element={<FacultyPage />} />
+          <Route path="/AdminPage" element={<AdminPage />} />
+          <Route path="/exams" element={<ExamSchedule />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/courses" element={<CourseEnrollment />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
 

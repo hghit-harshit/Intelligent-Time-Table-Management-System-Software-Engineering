@@ -1,137 +1,170 @@
+/**
+ * WeekView.jsx — Weekly Timetable Grid
+ *
+ * PURPOSE: Displays a Mon–Fri time grid showing all classes for the
+ * current week. Color-coded by subject. Clicking a class opens the
+ * details modal.
+ */
+
+import { Fragment } from "react"
+import { Box, Typography } from "@mui/material"
+import { colors, fonts, radius } from "../../styles/tokens"
+
+// Maps subject names to token colors for consistent color coding
+const getClassColor = (classItem) => {
+  if (classItem.isRescheduled) return { bg: "rgba(245,158,11,0.15)", text: colors.warning.main }
+  const name = classItem.name || ""
+  if (name.includes("Data"))     return { bg: "rgba(45,212,191,0.15)",  text: colors.primary.main }
+  if (name.includes("Networks")) return { bg: colors.info.ghost,        text: colors.info.main }
+  if (name.includes("Digital"))  return { bg: colors.warning.ghost,     text: colors.warning.main }
+  if (name.includes("Signals"))  return { bg: colors.success.ghost,     text: colors.success.main }
+  if (name.includes("Math"))     return { bg: colors.secondary.ghost,   text: colors.secondary.main }
+  return { bg: "rgba(236,72,153,0.15)", text: "#ec4899" }
+}
+
 export default function WeekView({ timetableData, handleTimeSlotClick }) {
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "60px repeat(5, 1fr)",
-      minHeight: "400px",
-    }}>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "60px repeat(5, 1fr)",
+        minHeight: 400,
+      }}
+    >
       {/* Day Headers */}
-      <div></div>
-      {timetableData.weekDays.map((day, i) => (
-        <div key={day} style={{
-          textAlign: "center",
-          padding: "12px 4px",
-          borderBottom: "1px solid rgba(255,255,255,0.1)",
-          fontSize: "11px",
-        }}>
-          <div style={{
-            color: "rgba(255,255,255,0.6)",
-            fontSize: "10px",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            marginBottom: "4px",
-          }}>
-            {day}
-          </div>
-          <div style={{
-            fontSize: "18px",
-            fontWeight: "700",
-            color: timetableData.weekDates[i] === timetableData.currentDate.day ? "#60efff" : "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: timetableData.weekDates[i] === timetableData.currentDate.day ? "32px" : "auto",
-            height: timetableData.weekDates[i] === timetableData.currentDate.day ? "32px" : "auto",
-            borderRadius: timetableData.weekDates[i] === timetableData.currentDate.day ? "50%" : "0",
-            background: timetableData.weekDates[i] === timetableData.currentDate.day ? "rgba(96,239,255,0.2)" : "transparent",
-            margin: timetableData.weekDates[i] === timetableData.currentDate.day ? "0 auto" : 0,
-            border: timetableData.weekDates[i] === timetableData.currentDate.day ? "1px solid #60efff" : "none",
-          }}>
-            {timetableData.weekDates[i]}
-          </div>
-        </div>
-      ))}
+      <Box />
+      {timetableData.weekDays.map((day, i) => {
+        const isToday = timetableData.weekDates[i] === timetableData.currentDate.day
+        return (
+          <Box
+            key={day}
+            sx={{
+              textAlign: "center",
+              p: "12px 4px",
+              borderBottom: `1px solid ${colors.border.subtle}`,
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                color: colors.text.muted,
+                textTransform: "uppercase",
+                letterSpacing: fonts.letterSpacing.wide,
+                display: "block",
+                mb: 0.5,
+              }}
+            >
+              {day}
+            </Typography>
+            <Box
+              sx={{
+                fontSize: fonts.size.lg,
+                fontWeight: fonts.weight.bold,
+                color: isToday ? colors.primary.main : colors.text.primary,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: isToday ? 32 : "auto",
+                height: isToday ? 32 : "auto",
+                borderRadius: isToday ? "50%" : 0,
+                bgcolor: isToday ? colors.primary.ghost : "transparent",
+                border: isToday ? `1px solid ${colors.primary.main}` : "none",
+              }}
+            >
+              {timetableData.weekDates[i]}
+            </Box>
+          </Box>
+        )
+      })}
 
-      {/* Interactive Time Slots */}
+      {/* Time Slot Rows */}
       {timetableData.weeklySchedule.map((slot, slotIndex) => (
-        <>
-          <div key={`time-${slotIndex}`} style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "flex-end",
-            padding: "8px 12px 0 0",
-            fontSize: "10px",
-            color: "rgba(255,255,255,0.4)",
-            borderTop: "1px solid rgba(255,255,255,0.05)",
-            height: "60px",
-          }}>
+        <Fragment key={slotIndex}>
+          {/* Time label */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "flex-end",
+              p: "8px 12px 0 0",
+              fontSize: fonts.size.xs,
+              color: colors.text.muted,
+              borderTop: `1px solid ${colors.border.subtle}`,
+              height: 60,
+            }}
+          >
             {slot.time}
-          </div>
-          {slot.classes.map((classItem, dayIndex) => (
-            <div key={`class-${slotIndex}-${dayIndex}`} style={{
-              borderLeft: "1px solid rgba(255,255,255,0.05)",
-              borderTop: "1px solid rgba(255,255,255,0.05)",
-              height: "60px",
-              padding: "4px",
-              position: "relative",
-              cursor: classItem ? "pointer" : "default",
-            }}>
-              {classItem && (
-                <div
-                  onClick={() => handleTimeSlotClick({ ...classItem, time: slot.time, day: timetableData.weekDays[dayIndex] })}
-                  style={{
-                    borderRadius: "6px",
-                    padding: "6px 8px",
-                    fontSize: "10px",
-                    fontWeight: "600",
-                    height: "100%",
-                    background: classItem.isRescheduled
-                      ? "rgba(251,146,60,0.2)"
-                      : classItem.name?.includes('Data')
-                      ? "rgba(96,239,255,0.2)"
-                      : classItem.name?.includes('Networks')
-                      ? "rgba(59,130,246,0.2)"
-                      : classItem.name?.includes('Digital')
-                      ? "rgba(251,146,60,0.2)"
-                      : classItem.name?.includes('Signals')
-                      ? "rgba(34,197,94,0.2)"
-                      : classItem.name?.includes('Math')
-                      ? "rgba(167,139,250,0.2)"
-                      : "rgba(236,72,153,0.2)",
-                    color: classItem.isRescheduled
-                      ? "#fb923c"
-                      : classItem.name?.includes('Data')
-                      ? "#60efff"
-                      : classItem.name?.includes('Networks')
-                      ? "#3b82f6"
-                      : classItem.name?.includes('Digital')
-                      ? "#fb923c"
-                      : classItem.name?.includes('Signals')
-                      ? "#22c55e"
-                      : classItem.name?.includes('Math')
-                      ? "#a78bfa"
-                      : "#ec4899",
-                    border: classItem.isRescheduled ? "1px dashed #fb923c" : "1px solid rgba(255,255,255,0.1)",
-                    transition: "all 0.2s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = "scale(1.02)"
-                    e.target.style.filter = "brightness(1.1)"
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = "scale(1)"
-                    e.target.style.filter = "brightness(1)"
-                  }}
-                >
-                  <div style={{ fontWeight: "700", fontSize: "11px" }}>
-                    {classItem.name}
-                  </div>
-                  {!classItem.isRescheduled && (
-                    <div style={{
-                      fontWeight: "400",
-                      marginTop: "2px",
-                      opacity: 0.8,
-                      fontSize: "9px",
-                    }}>
-                      {classItem.location} · {classItem.professor}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </>
+          </Box>
+
+          {/* Class cells for each day */}
+          {slot.classes.map((classItem, dayIndex) => {
+            const classColor = classItem ? getClassColor(classItem) : null
+            return (
+              <Box
+                key={`${slotIndex}-${dayIndex}`}
+                sx={{
+                  borderLeft: `1px solid ${colors.border.subtle}`,
+                  borderTop: `1px solid ${colors.border.subtle}`,
+                  height: 60,
+                  p: 0.5,
+                  cursor: classItem ? "pointer" : "default",
+                }}
+              >
+                {classItem && (
+                  <Box
+                    onClick={() =>
+                      handleTimeSlotClick({
+                        ...classItem,
+                        time: slot.time,
+                        day: timetableData.weekDays[dayIndex],
+                      })
+                    }
+                    sx={{
+                      borderRadius: radius.sm,
+                      p: "6px 8px",
+                      fontSize: fonts.size.xs,
+                      fontWeight: fonts.weight.bold,
+                      height: "100%",
+                      bgcolor: classColor.bg,
+                      color: classColor.text,
+                      border: classItem.isRescheduled
+                        ? `1px dashed ${colors.warning.main}`
+                        : `1px solid ${colors.border.subtle}`,
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        transform: "scale(1.02)",
+                        filter: "brightness(1.15)",
+                      },
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontWeight: fonts.weight.bold,
+                        fontSize: fonts.size.xs,
+                        color: "inherit",
+                      }}
+                    >
+                      {classItem.name}
+                    </Typography>
+                    {!classItem.isRescheduled && (
+                      <Typography
+                        sx={{
+                          fontSize: "9px",
+                          mt: 0.25,
+                          opacity: 0.8,
+                          color: "inherit",
+                        }}
+                      >
+                        {classItem.location} · {classItem.professor}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            )
+          })}
+        </Fragment>
       ))}
-    </div>
+    </Box>
   )
 }

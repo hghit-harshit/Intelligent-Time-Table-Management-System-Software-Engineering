@@ -1,4 +1,54 @@
-* {
+/**
+ * index.css — Global Styles & CSS Animations
+ * 
+ * PURPOSE: Houses Tailwind import, CSS custom properties mapped from
+ * our design tokens, and keyframe animations used across the app.
+ * MUI handles component styling; this file handles global resets 
+ * and animations that CSS-in-JS can't easily do.
+ */
+
+@import "tailwindcss";
+
+/* ─── CSS CUSTOM PROPERTIES ─────────────────────────────────── */
+/* Mirrors tokens.js so Tailwind utilities can use them via var() */
+:root {
+  --bg-deep:    #0C0C0E;
+  --bg-base:    #111114;
+  --bg-raised:  #18181C;
+  --bg-overlay: #1E1E24;
+
+  --primary:       #2DD4BF;
+  --primary-light: #5EEAD4;
+  --primary-ghost: rgba(45, 212, 191, 0.08);
+  --primary-border: rgba(45, 212, 191, 0.25);
+  --primary-glow:  rgba(45, 212, 191, 0.4);
+
+  --secondary:       #A78BFA;
+  --secondary-ghost: rgba(167, 139, 250, 0.08);
+
+  --warning:    #F59E0B;
+  --error:      #EF4444;
+  --success:    #22C55E;
+  --info:       #3B82F6;
+
+  --text-primary:   #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted:     #64748B;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.12);
+
+  --font-heading: 'Instrument Serif', Georgia, serif;
+  --font-body:    'JetBrains Mono', 'Fira Code', monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* ─── BASE RESETS ───────────────────────────────────────────── */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -11,10 +61,88 @@ html, body, #root {
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background: #0a0a12; /* match app background to avoid white gaps */
-  color: #ffffff;
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Remove the default Vite #root constraints */
+#root {
+  max-width: none;
   margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* ─── KEYFRAME ANIMATIONS ───────────────────────────────────── */
+/* Used throughout components via animation token names */
+
+@keyframes fadeUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { 
+    opacity: 0; 
+    transform: translateX(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 var(--primary-glow); 
+  }
+  50% { 
+    box-shadow: 0 0 0 8px rgba(45, 212, 191, 0); 
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(15px, -20px) scale(1.02); }
+  66%      { transform: translate(-10px, 10px) scale(0.98); }
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ─── SCROLLBAR STYLING ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
