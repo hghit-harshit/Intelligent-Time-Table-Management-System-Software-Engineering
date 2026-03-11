@@ -8,7 +8,7 @@ export default function Layout({ children }) {
     { 
       section: "MAIN",
       items: [
-        { icon: "📅", label: "My Timetable", path: "/dashboard", badge: null },
+        { icon: "📅", label: "My Timetable", path: "/StudentPage", badge: null },
         { icon: "📋", label: "Exam Schedule", path: "/exams", badge: "3" },
         { icon: "🔔", label: "Notifications", path: "/notifications", badge: "3" },
         { icon: "📚", label: "Courses", path: "/courses", badge: null },
