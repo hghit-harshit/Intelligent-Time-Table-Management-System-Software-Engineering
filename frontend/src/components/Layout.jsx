@@ -35,10 +35,11 @@ export default function Layout({ children }) {
     {
       section: "MAIN",
       items: [
-        { label: "Dashboard", path: "/StudentPage", badge: null, icon: DashboardOutlined },
+        { label: "My Timetable", path: "/StudentPage", badge: null, icon: DashboardOutlined },
         { label: "Exam Schedule", path: "/exams", badge: "3", icon: EventNoteOutlined },
         { label: "Notifications", path: "/notifications", badge: "3", icon: NotificationsOutlined },
         { label: "Courses", path: "/courses", badge: null, icon: SchoolOutlined },
+        { label: "Google Classroom", path: "/google-classroom", badge: null, icon: SchoolOutlined },
       ],
     },
     {
