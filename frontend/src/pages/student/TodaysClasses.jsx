@@ -1,112 +1,121 @@
+/**
+ * TodaysClasses.jsx — Today's Class Schedule List
+ *
+ * PURPOSE: Shows a vertical list of today's classes with time,
+ * subject, location, and live/done/moved status badges.
+ */
+
+import { Box, Typography, Chip } from "@mui/material"
+import { colors, fonts, radius, glass } from "../../styles/tokens"
+
 export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSlotClick, setSelectedView }) {
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.04)",
-      backdropFilter: "blur(20px)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: "16px",
-      overflow: "hidden",
-    }}>
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "16px 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
-      }}>
-        <h3 style={{
-          fontSize: "14px",
-          fontWeight: "700",
-          color: "#fff",
-          margin: 0,
-        }}>
+    <Box sx={{ ...glass, overflow: "hidden" }}>
+      {/* Header */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: "16px 20px",
+          borderBottom: `1px solid ${colors.border.subtle}`,
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: fonts.size.md,
+            fontWeight: fonts.weight.bold,
+            color: colors.text.primary,
+            fontFamily: fonts.heading,
+          }}
+        >
           Today's Classes — {currentDate.dayName}, Feb {currentDate.day}
-        </h3>
-        <button
-          onClick={() => setSelectedView('day')}
-          style={{
-            marginLeft: "auto",
-            color: "#60efff",
-            fontSize: "12px",
-            fontWeight: "500",
+        </Typography>
+        <Box
+          component="button"
+          onClick={() => setSelectedView("day")}
+          sx={{
+            ml: "auto",
+            color: colors.primary.main,
+            fontSize: fonts.size.sm,
+            fontWeight: fonts.weight.medium,
             background: "none",
             border: "none",
             cursor: "pointer",
+            fontFamily: fonts.body,
             transition: "color 0.2s ease",
+            "&:hover": { color: colors.secondary.main },
           }}
-          onMouseEnter={(e) => e.target.style.color = "#a78bfa"}
-          onMouseLeave={(e) => e.target.style.color = "#60efff"}
         >
           View full day →
-        </button>
-      </div>
+        </Box>
+      </Box>
 
+      {/* Class list */}
       {todaysClasses.map((class_, i) => (
-        <div key={i} style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "14px 20px",
-          borderBottom: i < todaysClasses.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-          gap: "16px",
-          cursor: "pointer",
-          transition: "background 0.2s ease",
-        }}
-        onMouseEnter={(e) => e.target.style.background = "rgba(255,255,255,0.02)"}
-        onMouseLeave={(e) => e.target.style.background = "transparent"}
-        onClick={() => handleTimeSlotClick({ name: class_.subject, time: class_.time })}
+        <Box
+          key={i}
+          onClick={() => handleTimeSlotClick({ name: class_.subject, time: class_.time })}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            p: "14px 20px",
+            borderBottom: i < todaysClasses.length - 1 ? `1px solid ${colors.border.subtle}` : "none",
+            gap: 2,
+            cursor: "pointer",
+            transition: "background 0.2s ease",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.02)" },
+          }}
         >
-          <div style={{ width: "70px", textAlign: "left" }}>
-            <div style={{
-              fontSize: "12px",
-              fontWeight: "600",
-              color: "#fff",
-            }}>
+          {/* Time */}
+          <Box sx={{ width: 70, textAlign: "left" }}>
+            <Typography sx={{ fontSize: fonts.size.sm, fontWeight: fonts.weight.bold, color: colors.text.primary }}>
               {class_.time}
-            </div>
-            <div style={{
-              fontSize: "10px",
-              color: "rgba(255,255,255,0.4)",
-            }}>
+            </Typography>
+            <Typography variant="caption" sx={{ color: colors.text.muted }}>
               {class_.duration}
-            </div>
-          </div>
-          <div style={{
-            width: "10px", height: "10px",
-            borderRadius: "50%",
-            background: class_.dotColor,
-            flexShrink: 0,
-            boxShadow: class_.isLive ? `0 0 0 3px rgba(34,197,94,0.2)` : "none",
-          }} />
-          <div style={{ flex: 1 }}>
-            <div style={{
-              fontWeight: "600",
-              fontSize: "13px",
-              color: "#fff",
-              marginBottom: "2px",
-            }}>
+            </Typography>
+          </Box>
+
+          {/* Status dot */}
+          <Box
+            sx={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              bgcolor: class_.dotColor,
+              flexShrink: 0,
+              boxShadow: class_.isLive ? `0 0 0 3px ${colors.success.ghost}` : "none",
+            }}
+          />
+
+          {/* Subject and location */}
+          <Box sx={{ flex: 1 }}>
+            <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.base, color: colors.text.primary, mb: 0.25 }}>
               {class_.subject}
-            </div>
-            <div style={{
-              fontSize: "11px",
-              color: "rgba(255,255,255,0.4)",
-            }}>
+            </Typography>
+            <Typography variant="caption" sx={{ color: colors.text.muted }}>
               {class_.location}
-            </div>
-          </div>
-          <div style={{
-            padding: "4px 12px",
-            borderRadius: "6px",
-            fontSize: "11px",
-            fontWeight: "600",
-            background: class_.status === 'Done' ? "rgba(34,197,94,0.15)"
-                      : class_.status.includes('Live') ? "rgba(34,197,94,0.15)"
-                      : "rgba(239,68,68,0.15)",
-            color: class_.statusColor,
-            border: `1px solid ${class_.statusColor}30`,
-          }}>
-            {class_.status}
-          </div>
-        </div>
+            </Typography>
+          </Box>
+
+          {/* Status badge */}
+          <Chip
+            label={class_.status}
+            size="small"
+            sx={{
+              bgcolor: class_.status === "Done"
+                ? colors.success.ghost
+                : class_.status.includes("Live")
+                  ? colors.success.ghost
+                  : colors.error.ghost,
+              color: class_.statusColor,
+              border: `1px solid ${class_.statusColor}30`,
+              fontWeight: fonts.weight.bold,
+              fontSize: fonts.size.xs,
+            }}
+          />
+        </Box>
       ))}
-    </div>
+    </Box>
   )
 }

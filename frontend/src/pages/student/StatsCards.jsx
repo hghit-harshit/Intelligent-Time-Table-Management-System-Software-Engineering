@@ -1,69 +1,83 @@
+/**
+ * StatsCards.jsx — Dashboard Statistics Grid
+ *
+ * PURPOSE: Displays key metrics (courses, exams, classes, attendance)
+ * in a 4-column grid. Each card is clickable if it has an onClick URL.
+ */
+
+import { Box, Typography } from "@mui/material"
+import { colors, fonts, radius, shadows, glass } from "../../styles/tokens"
+
 export default function StatsCards({ stats }) {
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(4, 1fr)",
-      gap: "14px",
-      marginBottom: "20px",
-    }}>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: "14px",
+        mb: "20px",
+      }}
+    >
       {stats.map((stat, i) => (
-        <div key={i} style={{
-          background: "rgba(255,255,255,0.04)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "16px",
-          padding: "20px",
-          textAlign: "center",
-          cursor: stat.onClick ? "pointer" : "default",
-          transition: "all 0.25s ease",
-        }}
-        onClick={stat.onClick ? () => window.location.href = stat.onClick : undefined}
-        onMouseEnter={(e) => {
-          e.target.style.transform = "translateY(-2px)"
-          e.target.style.boxShadow = "0 12px 32px rgba(0,0,0,0.4)"
-          if (stat.onClick) {
-            e.target.style.borderColor = "rgba(96,239,255,0.2)"
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.transform = "translateY(0px)"
-          e.target.style.boxShadow = "none"
-          e.target.style.borderColor = "rgba(255,255,255,0.08)"
-        }}>
-          <div style={{
-            fontSize: "24px",
-            marginBottom: "12px",
-            filter: `drop-shadow(0 0 8px ${stat.color}30)`,
-          }}>
+        <Box
+          key={i}
+          onClick={stat.onClick ? () => (window.location.href = stat.onClick) : undefined}
+          sx={{
+            ...glass,
+            p: "20px",
+            textAlign: "center",
+            cursor: stat.onClick ? "pointer" : "default",
+            transition: "all 0.25s ease",
+            "&:hover": {
+              transform: stat.onClick ? "translateY(-2px)" : "none",
+              boxShadow: stat.onClick ? shadows.md : "none",
+              borderColor: stat.onClick ? colors.primary.border : colors.border.subtle,
+            },
+          }}
+        >
+          <Box
+            sx={{
+              fontSize: "24px",
+              mb: 1.5,
+              filter: `drop-shadow(0 0 8px ${stat.color}30)`,
+            }}
+          >
             {stat.icon}
-          </div>
-          <div style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            color: stat.color,
-            marginBottom: "4px",
-            fontFamily: "'Space Mono', monospace",
-          }}>
-            {stat.num}
-          </div>
-          <div style={{
-            fontSize: "11px",
-            color: "rgba(255,255,255,0.6)",
-            marginBottom: stat.sub ? "4px" : 0,
-          }}>
-            {stat.label}
-          </div>
-          {stat.sub && (
-            <div style={{
-              fontSize: "11px",
-              fontWeight: "600",
+          </Box>
+          <Typography
+            sx={{
+              fontSize: "28px",
+              fontWeight: fonts.weight.bold,
               color: stat.color,
-            }}>
+              mb: 0.5,
+              fontFamily: fonts.body,
+            }}
+          >
+            {stat.num}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: colors.text.secondary,
+              display: "block",
+              mb: stat.sub ? 0.5 : 0,
+            }}
+          >
+            {stat.label}
+          </Typography>
+          {stat.sub && (
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: fonts.weight.bold,
+                color: stat.color,
+              }}
+            >
               {stat.sub}
-            </div>
+            </Typography>
           )}
-        </div>
+        </Box>
       ))}
-    </div>
+    </Box>
   )
 }

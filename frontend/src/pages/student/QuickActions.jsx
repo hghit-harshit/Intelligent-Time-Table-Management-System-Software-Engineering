@@ -1,50 +1,61 @@
+/**
+ * QuickActions.jsx — Quick Action Button Grid
+ *
+ * PURPOSE: 2x2 grid of shortcut buttons (Take Notes, Add Event,
+ * Set Reminder, View Stats) in the right sidebar panel.
+ */
+
+import { Box, Typography } from "@mui/material"
+import { colors, fonts, radius, glass } from "../../styles/tokens"
+
 export default function QuickActions({ quickActions, handleQuickAction }) {
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.04)",
-      backdropFilter: "blur(20px)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: "16px",
-      padding: "16px",
-    }}>
-      <h4 style={{
-        fontSize: "13px",
-        fontWeight: "700",
-        color: "#fff",
-        marginBottom: "12px",
-        margin: "0 0 12px",
-      }}>
+    <Box sx={{ ...glass, p: 2 }}>
+      <Typography
+        sx={{
+          fontSize: fonts.size.base,
+          fontWeight: fonts.weight.bold,
+          color: colors.text.primary,
+          fontFamily: fonts.heading,
+          mb: 1.5,
+        }}
+      >
         Quick Actions
-      </h4>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+      </Typography>
+
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
         {quickActions.map((action, i) => (
-          <button key={i} onClick={() => handleQuickAction(action)} style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "8px",
-            padding: "12px 8px",
-            color: "rgba(255,255,255,0.8)",
-            fontSize: "11px",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "4px",
-            transition: "all 0.2s ease",
-          }} onMouseEnter={(e) => {
-            e.target.style.background = "rgba(96,239,255,0.1)";
-            e.target.style.borderColor = "rgba(96,239,255,0.2)";
-            e.target.style.transform = "translateY(-2px)";
-          }} onMouseLeave={(e) => {
-            e.target.style.background = "rgba(255,255,255,0.05)";
-            e.target.style.borderColor = "rgba(255,255,255,0.1)";
-            e.target.style.transform = "translateY(0px)";
-          }}>
+          <Box
+            key={i}
+            component="button"
+            onClick={() => handleQuickAction(action)}
+            sx={{
+              background: "rgba(255,255,255,0.04)",
+              border: `1px solid ${colors.border.subtle}`,
+              borderRadius: radius.md,
+              p: "12px 8px",
+              color: colors.text.secondary,
+              fontSize: fonts.size.xs,
+              fontFamily: fonts.body,
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 0.5,
+              transition: "all 0.2s ease",
+              "&:hover": {
+                bgcolor: colors.primary.ghost,
+                borderColor: colors.primary.border,
+                transform: "translateY(-2px)",
+                color: colors.primary.main,
+              },
+            }}
+          >
             <span style={{ fontSize: "16px" }}>{action.icon}</span>
             <span>{action.label}</span>
-          </button>
+          </Box>
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   )
 }

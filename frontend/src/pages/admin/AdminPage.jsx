@@ -1,9 +1,44 @@
+/**
+ * AdminPage.jsx — Admin Dashboard
+ *
+ * PURPOSE: Provides admin controls for managing time slots and
+ * semester configuration. Two side-by-side panels let the admin
+ * add/remove time slots and set semester metadata.
+ *
+ * WHY useState: Each piece of form state (timeSlots, semesterDetails,
+ * newSlot, activeTab) is independent local state — no prop drilling
+ * or global store needed for a single-page form.
+ */
+
 import { useState } from "react"
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  IconButton,
+  Chip,
+} from "@mui/material"
+import {
+  AccessTime as ClockIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Save as SaveIcon,
+  School as SchoolIcon,
+  CalendarMonth as CalendarIcon,
+} from "@mui/icons-material"
 import Layout from "../../components/Layout"
+import { colors, fonts, radius, glass, animations } from "../../styles/tokens"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 export default function AdminPage() {
+  // WHY separate useState calls: each state slice updates independently,
+  // avoiding unnecessary re-renders of unrelated UI sections.
   const [timeSlots, setTimeSlots] = useState([])
   const [semesterDetails, setSemesterDetails] = useState({
     name: "",
@@ -18,7 +53,6 @@ export default function AdminPage() {
     endTime: "",
     day: DAYS[0],
   })
-  const [activeTab, setActiveTab] = useState("slots")
 
   const handleSlotChange = (e) => {
     const { name, value } = e.target
@@ -41,11 +75,7 @@ export default function AdminPage() {
       },
     ])
 
-    setNewSlot({
-      startTime: "",
-      endTime: "",
-      day: DAYS[0],
-    })
+    setNewSlot({ startTime: "", endTime: "", day: DAYS[0] })
   }
 
   const handleRemoveSlot = (id) => {
@@ -71,441 +101,373 @@ export default function AdminPage() {
     alert("Time slots saved successfully!")
   }
 
+  /** Shared sx for glass-panel cards */
+  const panelSx = {
+    flex: 1,
+    p: 3,
+    ...glass,
+    borderRadius: radius.xl,
+  }
+
+  /** Shared sx for form labels */
+  const labelSx = {
+    fontSize: fonts.size.xs,
+    fontWeight: fonts.weight.medium,
+    color: colors.text.muted,
+    mb: 0.75,
+    textTransform: "uppercase",
+    letterSpacing: fonts.letterSpacing.wide,
+  }
+
   return (
     <Layout>
-      <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .input-field {
-          width: 100%;
-          padding: 10px 14px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 8px;
-          color: #fff;
-          font-size: 13px;
-          font-family: 'Space Mono', monospace;
-          transition: all 0.2s ease;
-        }
-        .input-field:focus {
-          outline: none;
-          border-color: #60efff;
-          background: rgba(255,255,255,0.08);
-        }
-        .input-field::placeholder {
-          color: rgba(255,255,255,0.3);
-        }
-        .btn-primary {
-          padding: 10px 20px;
-          background: linear-gradient(135deg, #60efff, #3b82f6);
-          color: #0a0a12;
-          border: none;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(96,239,255,0.3);
-        }
-        .btn-danger {
-          padding: 6px 12px;
-          background: rgba(239,68,68,0.2);
-          color: #ef4444;
-          border: 1px solid rgba(239,68,68,0.3);
-          border-radius: 6px;
-          font-size: 11px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .btn-danger:hover {
-          background: rgba(239,68,68,0.3);
-        }
-        .tab-btn {
-          padding: 10px 20px;
-          background: transparent;
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 8px;
-          color: rgba(255,255,255,0.6);
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .tab-btn.active {
-          background: rgba(96,239,255,0.15);
-          border-color: rgba(96,239,255,0.3);
-          color: #60efff;
-        }
-      `}</style>
-
-      {/* Top Bar */}
-      <div className="glass-card" style={{
-        margin: "16px 16px 0",
-        padding: "16px 24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        background: "rgba(255,255,255,0.04)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "16px",
-      }}>
-        <div>
-          <h2 style={{
-            fontSize: "20px",
-            fontWeight: "700",
-            color: "#fff",
-            margin: "0 0 4px",
-            fontFamily: "'Playfair Display', serif",
-          }}>
+      {/* ── Top Bar ─────────────────────────────────── */}
+      <Box
+        sx={{
+          m: "16px 16px 0",
+          p: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          ...glass,
+          borderRadius: radius.xl,
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h5"
+            sx={{
+              fontFamily: fonts.heading,
+              fontWeight: fonts.weight.bold,
+              color: colors.text.primary,
+              mb: 0.5,
+            }}
+          >
             Admin Dashboard
-          </h2>
-          <p style={{
-            fontSize: "12px",
-            color: "rgba(255,255,255,0.4)",
-            margin: 0,
-          }}>
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: colors.text.muted }}
+          >
             Manage Time Slots & Semester Configuration
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+        <Chip
+          icon={<SchoolIcon sx={{ fontSize: 14 }} />}
+          label="Admin"
+          size="small"
+          sx={{
+            bgcolor: colors.secondary.ghost,
+            color: colors.secondary.main,
+            border: `1px solid ${colors.secondary.border}`,
+            fontWeight: fonts.weight.bold,
+          }}
+        />
+      </Box>
 
-      {/* Content */}
-      <div style={{
-        margin: "16px",
-        display: "flex",
-        gap: "16px",
-        animation: "fadeUp 0.4s ease",
-      }}>
-        {/* Time Slots Panel */}
-        <div className="glass-card" style={{
-          flex: 1,
-          padding: "24px",
-          background: "rgba(255,255,255,0.04)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "16px",
-        }}>
-          <h3 style={{
-            fontSize: "16px",
-            fontWeight: "700",
-            color: "#fff",
-            marginBottom: "20px",
-            fontFamily: "'Playfair Display', serif",
-          }}>
-            Time Slots Configuration
-          </h3>
+      {/* ── Content — Two Panels ────────────────────── */}
+      <Box
+        sx={{
+          m: 2,
+          display: "flex",
+          gap: 2,
+          animation: animations.fadeUp,
+          // Stack on small screens
+          flexDirection: { xs: "column", md: "row" },
+        }}
+      >
+        {/* ── Time Slots Panel ──────────────────────── */}
+        <Box sx={panelSx}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+            <ClockIcon sx={{ fontSize: 18, color: colors.primary.main }} />
+            <Typography
+              variant="h6"
+              sx={{
+                fontFamily: fonts.heading,
+                fontWeight: fonts.weight.bold,
+                color: colors.text.primary,
+                fontSize: fonts.size.base,
+              }}
+            >
+              Time Slots Configuration
+            </Typography>
+          </Box>
 
-          {/* Add Slot Form */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr auto",
-            gap: "12px",
-            marginBottom: "24px",
-            alignItems: "end",
-          }}>
-            <div>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                Start Time
-              </label>
-              <input
+          {/* Add-slot form row */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr auto",
+              gap: 1.5,
+              mb: 3,
+              alignItems: "end",
+            }}
+          >
+            <Box>
+              <Typography sx={labelSx}>Start Time</Typography>
+              <TextField
                 type="time"
                 name="startTime"
                 value={newSlot.startTime}
                 onChange={handleSlotChange}
-                className="input-field"
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
               />
-            </div>
-            <div>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                End Time
-              </label>
-              <input
+            </Box>
+            <Box>
+              <Typography sx={labelSx}>End Time</Typography>
+              <TextField
                 type="time"
                 name="endTime"
                 value={newSlot.endTime}
                 onChange={handleSlotChange}
-                className="input-field"
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
               />
-            </div>
-            <div>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                Day
-              </label>
-              <select
+            </Box>
+            <FormControl size="small" fullWidth>
+              <Typography sx={labelSx}>Day</Typography>
+              <Select
                 name="day"
                 value={newSlot.day}
                 onChange={handleSlotChange}
-                className="input-field"
-                style={{ cursor: "pointer" }}
               >
                 {DAYS.map((day) => (
-                  <option key={day} value={day} style={{ background: "#0a0a12" }}>
+                  <MenuItem key={day} value={day}>
                     {day}
-                  </option>
+                  </MenuItem>
                 ))}
-              </select>
-            </div>
-            <button onClick={handleAddSlot} className="btn-primary">
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddSlot}
+              sx={{ minWidth: 110, height: 40 }}
+            >
               Add Slot
-            </button>
-          </div>
+            </Button>
+          </Box>
 
-          {/* Slots List */}
-          <div style={{
-            maxHeight: "300px",
-            overflowY: "auto",
-          }}>
+          {/* Slots list */}
+          <Box sx={{ maxHeight: 300, overflowY: "auto" }}>
             {timeSlots.length === 0 ? (
-              <div style={{
-                textAlign: "center",
-                padding: "40px 20px",
-                color: "rgba(255,255,255,0.3)",
-              }}>
-                <div style={{ fontSize: "32px", marginBottom: "12px" }}>🕐</div>
-                <div>No time slots added yet</div>
-              </div>
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: 5,
+                  color: colors.text.muted,
+                }}
+              >
+                <Typography sx={{ fontSize: 32, mb: 1.5 }}>🕐</Typography>
+                <Typography variant="body2" sx={{ color: colors.text.muted }}>
+                  No time slots added yet
+                </Typography>
+              </Box>
             ) : (
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {timeSlots.map((slot) => (
-                  <div
+                  <Box
                     key={slot.id}
-                    className="glass-card"
-                    style={{
+                    sx={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      padding: "12px 16px",
-                      background: "rgba(255,255,255,0.03)",
+                      p: "12px 16px",
+                      bgcolor: "rgba(255,255,255,0.03)",
+                      border: `1px solid ${colors.border.subtle}`,
+                      borderRadius: radius.lg,
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        borderColor: colors.primary.border,
+                        bgcolor: colors.primary.ghost,
+                      },
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                      <div style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        background: "#60efff",
-                      }} />
-                      <div>
-                        <div style={{
-                          fontSize: "13px",
-                          fontWeight: "600",
-                          color: "#fff",
-                        }}>
-                          {slot.startTime} - {slot.endTime}
-                        </div>
-                        <div style={{
-                          fontSize: "11px",
-                          color: "rgba(255,255,255,0.4)",
-                        }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      {/* Teal indicator dot */}
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          bgcolor: colors.primary.main,
+                        }}
+                      />
+                      <Box>
+                        <Typography
+                          sx={{
+                            fontSize: fonts.size.sm,
+                            fontWeight: fonts.weight.medium,
+                            color: colors.text.primary,
+                          }}
+                        >
+                          {slot.startTime} – {slot.endTime}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: colors.text.muted }}
+                        >
                           {slot.day}
-                        </div>
-                      </div>
-                    </div>
-                    <button
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <IconButton
+                      size="small"
                       onClick={() => handleRemoveSlot(slot.id)}
-                      className="btn-danger"
+                      sx={{
+                        color: colors.error.main,
+                        bgcolor: colors.error.ghost,
+                        border: `1px solid ${colors.error.border}`,
+                        "&:hover": { bgcolor: "rgba(239,68,68,0.2)" },
+                      }}
                     >
-                      Remove
-                    </button>
-                  </div>
+                      <DeleteIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
                 ))}
-              </div>
+              </Box>
             )}
-          </div>
+          </Box>
 
           {timeSlots.length > 0 && (
-            <button
+            <Button
+              variant="contained"
+              startIcon={<SaveIcon />}
               onClick={handleSaveSlots}
-              className="btn-primary"
-              style={{ marginTop: "16px", width: "100%" }}
+              fullWidth
+              sx={{ mt: 2 }}
             >
               Save All Slots
-            </button>
+            </Button>
           )}
-        </div>
+        </Box>
 
-        {/* Semester Details Panel */}
-        <div className="glass-card" style={{
-          flex: 1,
-          padding: "24px",
-          background: "rgba(255,255,255,0.04)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "16px",
-        }}>
-          <h3 style={{
-            fontSize: "16px",
-            fontWeight: "700",
-            color: "#fff",
-            marginBottom: "20px",
-            fontFamily: "'Playfair Display', serif",
-          }}>
-            Semester Configuration
-          </h3>
+        {/* ── Semester Details Panel ────────────────── */}
+        <Box sx={panelSx}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
+            <CalendarIcon sx={{ fontSize: 18, color: colors.secondary.main }} />
+            <Typography
+              variant="h6"
+              sx={{
+                fontFamily: fonts.heading,
+                fontWeight: fonts.weight.bold,
+                color: colors.text.primary,
+                fontSize: fonts.size.base,
+              }}
+            >
+              Semester Configuration
+            </Typography>
+          </Box>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <div style={{ gridColumn: "span 2" }}>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                Semester Name
-              </label>
-              <input
-                type="text"
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 2,
+            }}
+          >
+            {/* Semester Name — full width */}
+            <Box sx={{ gridColumn: "span 2" }}>
+              <Typography sx={labelSx}>Semester Name</Typography>
+              <TextField
                 name="name"
                 value={semesterDetails.name}
                 onChange={handleSemesterChange}
-                className="input-field"
                 placeholder="e.g., Spring Semester 2025"
+                size="small"
+                fullWidth
               />
-            </div>
+            </Box>
 
-            <div>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                Academic Year
-              </label>
-              <select
+            {/* Academic Year */}
+            <FormControl size="small" fullWidth>
+              <Typography sx={labelSx}>Academic Year</Typography>
+              <Select
                 name="year"
                 value={semesterDetails.year}
                 onChange={handleSemesterChange}
-                className="input-field"
-                style={{ cursor: "pointer" }}
+                displayEmpty
               >
-                <option value="" style={{ background: "#0a0a12" }}>Select Year</option>
-                <option value="1" style={{ background: "#0a0a12" }}>Year 1</option>
-                <option value="2" style={{ background: "#0a0a12" }}>Year 2</option>
-                <option value="3" style={{ background: "#0a0a12" }}>Year 3</option>
-                <option value="4" style={{ background: "#0a0a12" }}>Year 4</option>
-              </select>
-            </div>
+                <MenuItem value="" disabled>
+                  Select Year
+                </MenuItem>
+                {[1, 2, 3, 4].map((yr) => (
+                  <MenuItem key={yr} value={String(yr)}>
+                    Year {yr}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-            <div>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                Branch
-              </label>
-              <input
-                type="text"
+            {/* Branch */}
+            <Box>
+              <Typography sx={labelSx}>Branch</Typography>
+              <TextField
                 name="branch"
                 value={semesterDetails.branch}
                 onChange={handleSemesterChange}
-                className="input-field"
                 placeholder="e.g., ECE, CSE, ME"
+                size="small"
+                fullWidth
               />
-            </div>
+            </Box>
 
-            <div>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                Section
-              </label>
-              <input
-                type="text"
+            {/* Section */}
+            <Box>
+              <Typography sx={labelSx}>Section</Typography>
+              <TextField
                 name="section"
                 value={semesterDetails.section}
                 onChange={handleSemesterChange}
-                className="input-field"
                 placeholder="e.g., A, B, C"
+                size="small"
+                fullWidth
               />
-            </div>
+            </Box>
 
-            <div>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                Start Date
-              </label>
-              <input
+            {/* Start Date */}
+            <Box>
+              <Typography sx={labelSx}>Start Date</Typography>
+              <TextField
                 type="date"
                 name="startDate"
                 value={semesterDetails.startDate}
                 onChange={handleSemesterChange}
-                className="input-field"
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
               />
-            </div>
+            </Box>
 
-            <div style={{ gridColumn: "span 2" }}>
-              <label style={{
-                display: "block",
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.6)",
-                marginBottom: "6px",
-                fontWeight: "500",
-              }}>
-                End Date
-              </label>
-              <input
+            {/* End Date — full width */}
+            <Box sx={{ gridColumn: "span 2" }}>
+              <Typography sx={labelSx}>End Date</Typography>
+              <TextField
                 type="date"
                 name="endDate"
                 value={semesterDetails.endDate}
                 onChange={handleSemesterChange}
-                className="input-field"
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
               />
-            </div>
-          </div>
+            </Box>
+          </Box>
 
-          <button
+          <Button
+            variant="contained"
+            startIcon={<SaveIcon />}
             onClick={handleSaveSemester}
-            className="btn-primary"
-            style={{ marginTop: "24px", width: "100%" }}
+            fullWidth
+            sx={{ mt: 3 }}
           >
             Save Semester Details
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
     </Layout>
   )
 }
