@@ -1,8 +1,8 @@
 import { Routes, Route } from "react-router-dom"
 import FacultyLayout from "./components/layout/FacultyLayout"
 import FacultyDashboard from "./pages/FacultyDashboard"
-import ExamSchedule from "../ExamSchedule"
-import Notifications from "../Notifications"
+import ExamSchedule from "../student/pages/ExamSchedule"
+import Notifications from "../student/pages/Notifications"
 
 export default function FacultyPage() {
   return (

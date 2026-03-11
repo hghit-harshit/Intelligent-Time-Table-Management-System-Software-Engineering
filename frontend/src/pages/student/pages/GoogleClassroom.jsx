@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
-import { colors, fonts, radius, shadows } from "../styles/tokens"
-import { getAuthUrl, checkAuthStatus, logout, getAssignments, getClassroomLink } from "../services/classroomApi"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens"
+import { getAuthUrl, checkAuthStatus, logout, getAssignments, getClassroomLink } from "../../../services/classroomApi"
 
 export default function GoogleClassroom() {
   const [searchParams] = useSearchParams()

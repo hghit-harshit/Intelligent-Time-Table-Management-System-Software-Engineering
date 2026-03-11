@@ -1,12 +1,12 @@
 import { useState } from "react"
 import timetableData from "../../../data/timetableData.json"
-import TopBar from "../TopBar"
-import StatsCards from "../StatsCards"
-import CalendarCard from "../CalendarCard"
-import TodaysClasses from "../TodaysClasses"
-import QuickActions from "../QuickActions"
-import UpcomingEvents from "../UpcomingEvents"
-import ClassDetailsModal from "../ClassDetailsModal"
+import TopBar from "../components/TopBar"
+import StatsCards from "../components/StatsCards"
+import CalendarCard from "../components/CalendarCard"
+import TodaysClasses from "../components/TodaysClasses"
+import QuickActions from "../components/QuickActions"
+import UpcomingEvents from "../components/UpcomingEvents"
+import ClassDetailsModal from "../components/ClassDetailsModal"
 
 export default function StudentDashboard() {
   const [selectedView, setSelectedView] = useState('week')
