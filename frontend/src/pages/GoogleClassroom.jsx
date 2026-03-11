@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import Layout from '../components/Layout'
-import { getAuthUrl, checkAuthStatus, logout, getAssignments, getClassroomLink } from '../services/classroomApi'
+import { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
+import Layout from "../components/Layout"
+import { colors, fonts, radius, shadows } from "../styles/tokens"
+import { getAuthUrl, checkAuthStatus, logout, getAssignments, getClassroomLink } from "../services/classroomApi"
 
 export default function GoogleClassroom() {
   const [searchParams] = useSearchParams()
@@ -11,22 +12,27 @@ export default function GoogleClassroom() {
   const [assignments, setAssignments] = useState([])
   const [error, setError] = useState(null)
 
+  const card = { background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.lg, boxShadow: shadows.sm }
+  const cardInner = { background: colors.bg.raised, border: `1px solid ${colors.border.subtle}`, borderRadius: radius.md }
+  const heading = { fontFamily: fonts.heading, fontWeight: fonts.weight.semibold, color: colors.text.primary }
+  const muted = { fontSize: fonts.size.sm, color: colors.text.secondary }
+  const caption = { fontSize: fonts.size.xs, color: colors.text.muted }
+  const btn = { background: colors.primary.main, border: "none", borderRadius: radius.md, padding: "8px 16px", color: "#fff", fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }
+  const btnGhost = { background: colors.bg.raised, border: `1px solid ${colors.border.medium}`, borderRadius: radius.md, padding: "8px 16px", color: colors.text.primary, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }
+
   useEffect(() => {
     const initAuth = async () => {
-      const authStatus = searchParams.get('auth')
-      
-      if (authStatus === 'success') {
+      const authStatus = searchParams.get("auth")
+      if (authStatus === "success") {
         setAuthenticated(true)
         await fetchData()
-      } else if (authStatus === 'error') {
-        setError(searchParams.get('message') || 'Authentication failed')
+      } else if (authStatus === "error") {
+        setError(searchParams.get("message") || "Authentication failed")
         setLoading(false)
       } else {
         const isAuth = await checkAuthStatus()
         setAuthenticated(isAuth)
-        if (isAuth) {
-          await fetchData()
-        }
+        if (isAuth) await fetchData()
         setLoading(false)
       }
     }
@@ -40,7 +46,7 @@ export default function GoogleClassroom() {
       const data = await getAssignments()
       setAssignments(data || [])
     } catch (err) {
-      setError(err.message || 'Failed to fetch data')
+      setError(err.message || "Failed to fetch data")
     } finally {
       setFetchingData(false)
       setLoading(false)
@@ -52,13 +58,13 @@ export default function GoogleClassroom() {
       const authUrl = await getAuthUrl()
       window.location.href = authUrl
     } catch (err) {
-      setError(err.message || 'Failed to get auth URL')
+      setError(err.message || "Failed to get auth URL")
     }
   }
 
   const handleOpenClassroom = async () => {
     const url = await getClassroomLink()
-    window.open(url, '_blank')
+    window.open(url, "_blank")
   }
 
   const handleLogout = async () => {
@@ -67,37 +73,35 @@ export default function GoogleClassroom() {
     setAssignments([])
   }
 
+  const handleRefresh = () => window.location.reload()
+
   const formatDueDate = (dueDate) => {
-    if (!dueDate) return { date: 'No due date', time: '', isOverdue: false }
+    if (!dueDate) return { date: "No due date", time: "", isOverdue: false }
     const { year, month, day, hour, minute } = dueDate
     const date = new Date(year, month - 1, day, hour, minute)
     const now = new Date()
     const isOverdue = date < now
-    
-    const options = { month: 'short', day: 'numeric', year: 'numeric' }
-    const dateStr = date.toLocaleDateString('en-US', options)
-    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    
+    const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    const timeStr = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
     return { date: dateStr, time: timeStr, isOverdue }
   }
 
   const getCourseColor = (courseName) => {
-    const colors = [
-      { bg: 'rgba(96,239,255,0.15)', border: 'rgba(96,239,255,0.3)', text: '#60efff' },
-      { bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)', text: '#a78bfa' },
-      { bg: 'rgba(34,197,94,0.15)', border: 'rgba(34,197,94,0.3)', text: '#22c55e' },
-      { bg: 'rgba(251,146,60,0.15)', border: 'rgba(251,146,60,0.3)', text: '#fb923c' },
-      { bg: 'rgba(236,72,153,0.15)', border: 'rgba(236,72,153,0.3)', text: '#ec4899' },
-      { bg: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.3)', text: '#3b82f6' },
+    const palette = [
+      { main: colors.primary.main, ghost: colors.primary.ghost, border: colors.primary.border },
+      { main: "#7C3AED", ghost: "rgba(124, 58, 237, 0.06)", border: "rgba(124, 58, 237, 0.20)" },
+      { main: colors.success.main, ghost: colors.success.ghost, border: colors.success.border },
+      { main: colors.warning.main, ghost: colors.warning.ghost, border: colors.warning.border },
+      { main: colors.info.main, ghost: colors.info.ghost, border: "rgba(37, 99, 235, 0.20)" },
+      { main: colors.error.main, ghost: colors.error.ghost, border: colors.error.border },
     ]
-    const index = courseName.length % colors.length
-    return colors[index]
+    return palette[courseName.length % palette.length]
   }
 
   if (loading) {
     return (
       <Layout>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.6)' }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: colors.text.muted, fontFamily: fonts.body }}>
           Loading...
         </div>
       </Layout>
@@ -106,106 +110,191 @@ export default function GoogleClassroom() {
 
   return (
     <Layout>
-      {/* Header */}
-      <div style={{ margin: '16px 16px 0', padding: '16px 24px', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#fff', margin: '0 0 4px', fontFamily: "'Playfair Display', serif" }}>
-              📚 Google Classroom
-            </h2>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-              {authenticated ? `Connected • ${assignments.length} upcoming assignments` : 'Connect to view your assignments'}
-            </p>
+      {/* Top Bar */}
+      <div style={{ ...card, margin: "12px 12px 0", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ width: 3, height: 20, borderRadius: "2px", background: "#4285F4" }} />
+            <h2 style={{ ...heading, fontSize: "15px", margin: 0, fontWeight: 700 }}>Google Classroom</h2>
           </div>
-          {authenticated && (
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={handleOpenClassroom} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(96,239,255,0.3)', background: 'rgba(96,239,255,0.15)', color: '#60efff', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
-                🚀 Open Classroom
-              </button>
-              <button onClick={handleRefresh} disabled={fetchingData} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: '12px', fontWeight: '600', cursor: fetchingData ? 'not-allowed' : 'pointer' }}>
-                {fetchingData ? 'Refreshing...' : '🔄 Refresh'}
-              </button>
-              <button onClick={handleLogout} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.15)', color: '#ec4899', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
-                Disconnect
-              </button>
-            </div>
-          )}
+          <p style={{ ...caption, margin: "4px 0 0 11px" }}>
+            {authenticated ? `Connected · ${assignments.length} upcoming assignments` : "Connect to view your assignments"}
+          </p>
         </div>
+        {authenticated && (
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button onClick={handleOpenClassroom} style={btnGhost}>Open Classroom</button>
+            <button onClick={handleRefresh} disabled={fetchingData} style={{ ...btnGhost, cursor: fetchingData ? "not-allowed" : "pointer", opacity: fetchingData ? 0.5 : 1 }}>
+              {fetchingData ? "Refreshing..." : "Refresh"}
+            </button>
+            <button onClick={handleLogout} style={{ ...btnGhost, color: colors.error.main, borderColor: colors.error.border }}>Disconnect</button>
+          </div>
+        )}
       </div>
 
+      {/* Error Banner */}
       {error && (
-        <div style={{ margin: '16px', padding: '16px 20px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', color: '#ef4444', fontSize: '13px' }}>
-          ⚠️ {error}
-          <button onClick={() => setError(null)} style={{ marginLeft: '12px', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+        <div style={{ margin: "12px", padding: "10px 16px", background: colors.error.ghost, border: `1px solid ${colors.error.border}`, borderRadius: radius.md, color: colors.error.main, fontSize: fonts.size.sm, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>{error}</span>
+          <button onClick={() => setError(null)} style={{ background: "none", border: "none", color: colors.error.main, cursor: "pointer", fontSize: "16px", fontFamily: fonts.body }}>×</button>
         </div>
       )}
 
-      {/* Main Content */}
-      <div style={{ margin: '16px', flex: 1, overflowY: 'auto' }}>
+      {/* Content */}
+      <div style={{ flex: 1, display: "flex", margin: "12px", gap: "12px", overflow: "hidden" }}>
         {!authenticated ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '24px' }}>
-            <div style={{ fontSize: '64px', filter: 'drop-shadow(0 0 20px rgba(96,239,255,0.3))' }}>🎓</div>
-            <div style={{ textAlign: 'center' }}>
-              <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#fff', margin: '0 0 8px', fontFamily: "'Playfair Display', serif" }}>
-                Connect Your Google Classroom
-              </h3>
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', maxWidth: '400px', margin: '0 auto' }}>
-                Sign in with Google to view your assignments and deadlines.
+          /* Not Connected State */
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ ...card, padding: "40px", textAlign: "center", maxWidth: "420px", width: "100%", boxShadow: shadows.lg }}>
+              <div style={{ width: 56, height: 56, borderRadius: radius.xl, background: colors.primary.ghost, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", border: `1px solid ${colors.primary.border}` }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={colors.primary.main} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+              </div>
+              <h3 style={{ ...heading, fontSize: fonts.size.xl, margin: "0 0 8px" }}>Connect Google Classroom</h3>
+              <p style={{ ...muted, margin: "0 0 24px", lineHeight: 1.5 }}>
+                Sign in with your Google account to view upcoming assignments, deadlines, and coursework in one place.
               </p>
+              <button onClick={handleConnect} style={{ ...btn, padding: "10px 28px", fontSize: fonts.size.base }}>
+                Connect with Google
+              </button>
             </div>
-            <button onClick={handleConnect} style={{ padding: '14px 32px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #60efff 0%, #9333ea 100%)', color: '#0a0a12', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 20px rgba(96,239,255,0.3)' }}>
-              🔐 Connect with Google
-            </button>
-          </div>
-        ) : fetchingData && assignments.length === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: 'rgba(255,255,255,0.6)' }}>
-            Fetching your assignments...
-          </div>
-        ) : assignments.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: 'rgba(255,255,255,0.4)' }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📝</div>
-            <p>No upcoming assignments with deadlines</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
-            {assignments.map((assignment) => {
-              const dueInfo = formatDueDate(assignment.dueDate)
-              const colors = getCourseColor(assignment.courseName)
-              return (
-                <div key={assignment.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${colors.border}`, backdropFilter: 'blur(20px)', borderRadius: '16px', padding: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '10px', padding: '4px 10px', borderRadius: '12px', background: colors.bg, color: colors.text, fontWeight: '600' }}>
-                      {assignment.workType || 'Assignment'}
-                    </span>
-                    {dueInfo.isOverdue && (
-                      <span style={{ fontSize: '10px', padding: '4px 10px', borderRadius: '12px', background: 'rgba(239,68,68,0.2)', color: '#ef4444', fontWeight: '600' }}>Overdue</span>
-                    )}
+          /* Connected State */
+          <>
+            {/* Main Panel */}
+            <div style={{ flex: 1, overflowY: "auto", paddingRight: "8px" }}>
+              {/* Stats */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "12px" }}>
+                {[
+                  { num: assignments.length.toString(), label: "Total Assignments", color: colors.primary.main },
+                  { num: assignments.filter(a => { const d = a.dueDate; if (!d) return false; const due = new Date(d.year, d.month-1, d.day); const now = new Date(); const diff = Math.ceil((due - now) / (1000*60*60*24)); return diff <= 3 && diff >= 0 }).length.toString(), label: "Due Soon", color: colors.error.main },
+                  { num: assignments.filter(a => { const d = a.dueDate; if (!d) return false; return new Date(d.year, d.month-1, d.day) < new Date() }).length.toString(), label: "Overdue", color: colors.warning.main },
+                  { num: [...new Set(assignments.map(a => a.courseName))].length.toString(), label: "Courses", color: colors.success.main },
+                ].map((stat, i) => (
+                  <div key={i} style={{ ...card, padding: "12px", textAlign: "center" }}>
+                    <div style={{ fontSize: "20px", fontWeight: 600, color: stat.color, marginBottom: "2px", fontVariantNumeric: "tabular-nums", fontFamily: fonts.heading }}>{stat.num}</div>
+                    <div style={muted}>{stat.label}</div>
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#fff', margin: '0 0 8px', lineHeight: '1.4' }}>
-                    {assignment.title}
-                  </h3>
-                  <p style={{ fontSize: '12px', color: colors.text, margin: '0 0 12px' }}>
-                    {assignment.courseName}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: dueInfo.isOverdue ? '#ef4444' : 'rgba(255,255,255,0.5)' }}>
-                    <span>📅</span>
-                    <span style={dueInfo.isOverdue ? { fontWeight: '600' } : {}}>
-                      {dueInfo.date} · {dueInfo.time}
-                    </span>
+                ))}
+              </div>
+
+              {/* Assignments List */}
+              {fetchingData && assignments.length === 0 ? (
+                <div style={{ ...card, padding: "40px", textAlign: "center", color: colors.text.muted }}>
+                  Fetching your assignments...
+                </div>
+              ) : assignments.length === 0 ? (
+                <div style={{ ...card, padding: "40px", textAlign: "center", color: colors.text.muted }}>
+                  No upcoming assignments with deadlines
+                </div>
+              ) : (
+                <div style={{ ...card, overflow: "hidden" }}>
+                  <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
+                    <h3 style={{ ...heading, fontSize: "13px", margin: 0 }}>Upcoming Assignments</h3>
+                    <span style={{ marginLeft: "auto", ...muted }}>{assignments.length} total</span>
                   </div>
-                  {assignment.maxPoints && (
-                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
-                      Max Points: <span style={{ color: '#fff', fontWeight: '600' }}>{assignment.maxPoints}</span>
-                    </div>
+                  {assignments.map((assignment, i) => {
+                    const dueInfo = formatDueDate(assignment.dueDate)
+                    const courseColor = getCourseColor(assignment.courseName)
+                    return (
+                      <div key={assignment.id} style={{
+                        padding: "10px 16px",
+                        borderBottom: i < assignments.length - 1 ? `1px solid ${colors.border.subtle}` : "none",
+                        transition: "background 0.1s ease",
+                        cursor: "default",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = colors.bg.raised}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
+                          <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: courseColor.main, marginTop: "5px", flexShrink: 0 }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                              <div style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary }}>{assignment.title}</div>
+                              {assignment.workType && (
+                                <span style={{ background: courseColor.ghost, color: courseColor.main, fontSize: "9px", fontWeight: 600, padding: "2px 6px", borderRadius: "3px", textTransform: "uppercase" }}>{assignment.workType}</span>
+                              )}
+                              {dueInfo.isOverdue && (
+                                <span style={{ background: colors.error.ghost, color: colors.error.main, fontSize: "9px", fontWeight: 600, padding: "2px 6px", borderRadius: "3px", textTransform: "uppercase" }}>Overdue</span>
+                              )}
+                            </div>
+                            <div style={{ ...muted, marginBottom: "4px" }}>{assignment.courseName}</div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{ ...caption, color: dueInfo.isOverdue ? colors.error.main : colors.text.muted, fontWeight: dueInfo.isOverdue ? 500 : 400 }}>
+                                {dueInfo.date} · {dueInfo.time}
+                              </span>
+                              {assignment.maxPoints && (
+                                <span style={caption}>{assignment.maxPoints} pts</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right Panel */}
+            <div style={{ width: "260px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              {/* Courses Breakdown */}
+              <div style={{ ...card, padding: "12px" }}>
+                <h4 style={{ ...heading, fontSize: fonts.size.sm, margin: "0 0 8px" }}>Courses</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {[...new Set(assignments.map(a => a.courseName))].map((course, i) => {
+                    const courseColor = getCourseColor(course)
+                    const count = assignments.filter(a => a.courseName === course).length
+                    return (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", ...cardInner }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ width: 8, height: 8, borderRadius: "50%", background: courseColor.main, flexShrink: 0 }} />
+                          <span style={{ fontSize: fonts.size.sm, color: colors.text.secondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "140px" }}>{course}</span>
+                        </div>
+                        <span style={{ fontSize: fonts.size.sm, fontWeight: 600, color: courseColor.main }}>{count}</span>
+                      </div>
+                    )
+                  })}
+                  {assignments.length === 0 && (
+                    <div style={{ ...caption, padding: "8px 0", textAlign: "center" }}>No courses found</div>
                   )}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div style={{ ...card, padding: "12px" }}>
+                <h4 style={{ ...heading, fontSize: fonts.size.sm, margin: "0 0 8px" }}>Quick Actions</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {[
+                    { label: "Open Google Classroom", onClick: handleOpenClassroom },
+                    { label: "Refresh Assignments", onClick: handleRefresh },
+                    { label: "Disconnect Account", onClick: handleLogout },
+                  ].map((action, i) => (
+                    <button key={i} onClick={action.onClick} style={{
+                      ...cardInner, padding: "8px 10px", color: i === 2 ? colors.error.main : colors.text.secondary,
+                      fontSize: fonts.size.sm, cursor: "pointer", display: "flex", alignItems: "center",
+                      gap: "8px", textAlign: "left", transition: "background 0.1s ease", fontFamily: fonts.body,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = i === 2 ? colors.error.ghost : colors.primary.ghost; e.currentTarget.style.color = i === 2 ? colors.error.main : colors.primary.main }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = colors.bg.raised; e.currentTarget.style.color = i === 2 ? colors.error.main : colors.text.secondary }}>
+                      <span>{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Info */}
+              <div style={{ ...card, padding: "12px", flex: 1 }}>
+                <h4 style={{ ...heading, fontSize: fonts.size.sm, margin: "0 0 8px" }}>About</h4>
+                <div style={{ fontSize: fonts.size.sm, color: colors.text.secondary, lineHeight: 1.6 }}>
+                  <p style={{ margin: "0 0 4px" }}>Assignments are synced from your Google Classroom account.</p>
+                  <p style={{ margin: "0 0 4px" }}>Only future assignments with due dates are shown.</p>
+                  <p style={{ margin: 0 }}>Click Refresh to fetch the latest data.</p>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </Layout>
   )
 }
-
-function handleRefresh() { window.location.reload(); }
