@@ -1,24 +1,24 @@
 import { useState } from "react"
 import Layout from "../components/Layout"
-
-/* ── LIGHT-MODE STYLE HELPERS ──────────────────────────────── */
-const card = { background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "8px" }
-const cardInner = { background: "#F9FAFB", border: "1px solid #F3F4F6", borderRadius: "6px" }
-const heading = { fontFamily: "'Inter', sans-serif", fontWeight: "600", color: "#111827" }
-const muted = { fontSize: "12px", color: "#6B7280" }
-const caption = { fontSize: "11px", color: "#9CA3AF" }
-const btn = { background: "#006ADC", border: "none", borderRadius: "6px", padding: "8px 16px", color: "#fff", fontSize: "12px", fontWeight: "500", cursor: "pointer", fontFamily: "'Inter', sans-serif" }
-const btnGhost = { background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "6px", padding: "8px 16px", color: "#111827", fontSize: "12px", fontWeight: "500", cursor: "pointer", fontFamily: "'Inter', sans-serif" }
+import { colors, fonts, radius, shadows } from "../styles/tokens"
 
 export default function ExamSchedule() {
   const [selectedExam, setSelectedExam] = useState(null)
   const [filterSubject, setFilterSubject] = useState("all")
 
+  const card = { background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.lg, boxShadow: shadows.sm }
+  const cardInner = { background: colors.bg.raised, border: `1px solid ${colors.border.subtle}`, borderRadius: radius.md }
+  const heading = { fontFamily: fonts.heading, fontWeight: fonts.weight.semibold, color: colors.text.primary }
+  const muted = { fontSize: fonts.size.sm, color: colors.text.secondary }
+  const caption = { fontSize: fonts.size.xs, color: colors.text.muted }
+  const btn = { background: colors.primary.main, border: "none", borderRadius: radius.md, padding: "8px 16px", color: "#fff", fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }
+  const btnGhost = { background: colors.bg.raised, border: `1px solid ${colors.border.medium}`, borderRadius: radius.md, padding: "8px 16px", color: colors.text.primary, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }
+
   const exams = [
-    { id: 1, subject: "Digital Circuits", date: "Feb 27, 2025", time: "9:00 AM - 12:00 PM", duration: "3 hours", location: "Exam Hall A", room: "Row 4, Seat 12", invigilator: "Dr. Nair", syllabus: ["Boolean Algebra", "Logic Gates", "Sequential Circuits", "Combinational Circuits"], status: "upcoming", daysLeft: 8, color: "#DC2626" },
-    { id: 2, subject: "Mathematics III", date: "Mar 4, 2025", time: "2:00 PM - 5:00 PM", duration: "3 hours", location: "LHC-1", room: "Row 2, Seat 8", invigilator: "Dr. Kumar", syllabus: ["Fourier Series", "Laplace Transform", "Partial Differential Equations", "Vector Calculus"], status: "upcoming", daysLeft: 13, color: "#D97706" },
-    { id: 3, subject: "Data Structures & Algorithms", date: "Mar 11, 2025", time: "9:00 AM - 12:00 PM", duration: "3 hours", location: "Exam Hall B", room: "Row 6, Seat 15", invigilator: "Dr. Mehta", syllabus: ["Arrays & Linked Lists", "Stacks & Queues", "Trees & Graphs", "Searching & Sorting"], status: "upcoming", daysLeft: 20, color: "#16A34A" },
-    { id: 4, subject: "Signals & Systems", date: "Feb 20, 2025", time: "9:00 AM - 12:00 PM", duration: "3 hours", location: "Exam Hall C", room: "Row 1, Seat 5", invigilator: "Dr. Patel", syllabus: ["Signal Analysis", "System Properties", "Fourier Analysis", "Z-Transform"], status: "completed", daysLeft: 0, score: "85/100", grade: "A", color: "#006ADC" }
+    { id: 1, subject: "Digital Circuits", date: "Feb 27, 2025", time: "9:00 AM - 12:00 PM", duration: "3 hours", location: "Exam Hall A", room: "Row 4, Seat 12", invigilator: "Dr. Nair", syllabus: ["Boolean Algebra", "Logic Gates", "Sequential Circuits", "Combinational Circuits"], status: "upcoming", daysLeft: 8, color: colors.error.main },
+    { id: 2, subject: "Mathematics III", date: "Mar 4, 2025", time: "2:00 PM - 5:00 PM", duration: "3 hours", location: "LHC-1", room: "Row 2, Seat 8", invigilator: "Dr. Kumar", syllabus: ["Fourier Series", "Laplace Transform", "Partial Differential Equations", "Vector Calculus"], status: "upcoming", daysLeft: 13, color: colors.warning.main },
+    { id: 3, subject: "Data Structures & Algorithms", date: "Mar 11, 2025", time: "9:00 AM - 12:00 PM", duration: "3 hours", location: "Exam Hall B", room: "Row 6, Seat 15", invigilator: "Dr. Mehta", syllabus: ["Arrays & Linked Lists", "Stacks & Queues", "Trees & Graphs", "Searching & Sorting"], status: "upcoming", daysLeft: 20, color: colors.success.main },
+    { id: 4, subject: "Signals & Systems", date: "Feb 20, 2025", time: "9:00 AM - 12:00 PM", duration: "3 hours", location: "Exam Hall C", room: "Row 1, Seat 5", invigilator: "Dr. Patel", syllabus: ["Signal Analysis", "System Properties", "Fourier Analysis", "Z-Transform"], status: "completed", daysLeft: 0, score: "85/100", grade: "A", color: colors.primary.main }
   ]
 
   const upcomingExams = exams.filter(e => e.status === "upcoming")
@@ -29,18 +29,21 @@ export default function ExamSchedule() {
       {/* Top Bar */}
       <div style={{ ...card, margin: "12px 12px 0", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h2 style={{ ...heading, fontSize: "15px", margin: "0 0 2px" }}>Exam Schedule</h2>
-          <p style={{ ...caption, margin: 0 }}>{upcomingExams.length} upcoming exams · Next in {Math.min(...upcomingExams.map(e => e.daysLeft))} days</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ width: 3, height: 20, borderRadius: "2px", background: colors.error.main }} />
+            <h2 style={{ ...heading, fontSize: "15px", margin: 0, fontWeight: 700 }}>Exam Schedule</h2>
+          </div>
+          <p style={{ ...caption, margin: "4px 0 0 11px" }}>{upcomingExams.length} upcoming · Next in {Math.min(...upcomingExams.map(e => e.daysLeft))} days</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} style={{ ...cardInner, padding: "6px 12px", color: "#111827", fontSize: "12px", cursor: "pointer" }}>
+          <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} style={{ ...cardInner, padding: "6px 12px", color: colors.text.primary, fontSize: fonts.size.sm, cursor: "pointer", fontFamily: fonts.body }}>
             <option value="all">All Subjects</option>
             <option value="digital">Digital Circuits</option>
             <option value="math">Mathematics</option>
             <option value="data">Data Structures</option>
             <option value="signals">Signals & Systems</option>
           </select>
-          <button style={btn}>📥 Download Schedule</button>
+          <button style={btn}>Download Schedule</button>
         </div>
       </div>
 
@@ -51,14 +54,13 @@ export default function ExamSchedule() {
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "12px" }}>
             {[
-              { icon: "📅", num: upcomingExams.length.toString(), label: "Upcoming Exams", color: "#DC2626" },
-              { icon: "✅", num: completedExams.length.toString(), label: "Completed", color: "#16A34A" },
-              { icon: "⏰", num: `${Math.min(...upcomingExams.map(e => e.daysLeft))} days`, label: "Next Exam", color: "#D97706" },
-              { icon: "📊", num: "85%", label: "Average Score", color: "#006ADC" },
+              { num: upcomingExams.length.toString(), label: "Upcoming Exams", color: colors.error.main },
+              { num: completedExams.length.toString(), label: "Completed", color: colors.success.main },
+              { num: `${Math.min(...upcomingExams.map(e => e.daysLeft))} days`, label: "Next Exam", color: colors.warning.main },
+              { num: "85%", label: "Average Score", color: colors.primary.main },
             ].map((stat, i) => (
               <div key={i} style={{ ...card, padding: "12px", textAlign: "center" }}>
-                <div style={{ fontSize: "18px", marginBottom: "6px" }}>{stat.icon}</div>
-                <div style={{ fontSize: "20px", fontWeight: "600", color: stat.color, marginBottom: "2px", fontVariantNumeric: "tabular-nums" }}>{stat.num}</div>
+                <div style={{ fontSize: "20px", fontWeight: 600, color: stat.color, marginBottom: "2px", fontVariantNumeric: "tabular-nums", fontFamily: fonts.heading }}>{stat.num}</div>
                 <div style={muted}>{stat.label}</div>
               </div>
             ))}
@@ -66,26 +68,26 @@ export default function ExamSchedule() {
 
           {/* Upcoming Exams */}
           <div style={{ ...card, marginBottom: "12px", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #E5E7EB" }}>
+            <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
               <h3 style={{ ...heading, fontSize: "13px", margin: 0 }}>Upcoming Exams</h3>
-              <span style={{ marginLeft: "auto", background: "rgba(220,38,38,0.08)", color: "#DC2626", fontSize: "11px", fontWeight: "500", padding: "3px 10px", borderRadius: "4px" }}>{upcomingExams.length} pending</span>
+              <span style={{ marginLeft: "auto", background: colors.error.ghost, color: colors.error.main, fontSize: fonts.size.xs, fontWeight: 500, padding: "3px 10px", borderRadius: radius.sm }}>{upcomingExams.length} pending</span>
             </div>
             {upcomingExams.map((exam, i) => (
-              <div key={exam.id} onClick={() => setSelectedExam(exam)} style={{ padding: "10px 16px", borderBottom: i < upcomingExams.length - 1 ? "1px solid #F3F4F6" : "none", cursor: "pointer", transition: "background 0.1s ease" }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "#F9FAFB"}
+              <div key={exam.id} onClick={() => setSelectedExam(exam)} style={{ padding: "10px 16px", borderBottom: i < upcomingExams.length - 1 ? `1px solid ${colors.border.subtle}` : "none", cursor: "pointer", transition: "background 0.1s ease" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.bg.raised}
                 onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
                   <div style={{ textAlign: "center", minWidth: "50px" }}>
-                    <div style={{ fontSize: "18px", fontWeight: "700", color: exam.color, fontVariantNumeric: "tabular-nums" }}>{exam.date.split(' ')[1].replace(',', '')}</div>
+                    <div style={{ fontSize: "18px", fontWeight: 700, color: exam.color, fontVariantNumeric: "tabular-nums", fontFamily: fonts.heading }}>{exam.date.split(' ')[1].replace(',', '')}</div>
                     <div style={caption}>{exam.date.split(' ')[0]}</div>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "14px", fontWeight: "500", color: "#111827", marginBottom: "4px" }}>{exam.subject}</div>
-                    <div style={{ ...muted, marginBottom: "4px" }}>📍 {exam.location} · {exam.time}</div>
+                    <div style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary, marginBottom: "4px" }}>{exam.subject}</div>
+                    <div style={{ ...muted, marginBottom: "4px" }}>{exam.location} · {exam.time}</div>
                     <div style={caption}>Duration: {exam.duration} · Seat: {exam.room}</div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                    <div style={{ padding: "3px 10px", borderRadius: "4px", fontSize: "11px", fontWeight: "500", background: exam.daysLeft <= 10 ? "rgba(220,38,38,0.08)" : "rgba(217,119,6,0.08)", color: exam.daysLeft <= 10 ? "#DC2626" : "#D97706" }}>{exam.daysLeft} days</div>
+                    <div style={{ padding: "3px 10px", borderRadius: radius.sm, fontSize: fonts.size.xs, fontWeight: 500, background: exam.daysLeft <= 10 ? colors.error.ghost : colors.warning.ghost, color: exam.daysLeft <= 10 ? colors.error.main : colors.warning.main }}>{exam.daysLeft} days</div>
                     <div style={caption}>Click for details</div>
                   </div>
                 </div>
@@ -96,22 +98,22 @@ export default function ExamSchedule() {
           {/* Completed Exams */}
           {completedExams.length > 0 && (
             <div style={{ ...card, overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #E5E7EB" }}>
+              <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
                 <h3 style={{ ...heading, fontSize: "13px", margin: 0 }}>Completed Exams</h3>
-                <span style={{ marginLeft: "auto", background: "rgba(22,163,74,0.08)", color: "#16A34A", fontSize: "11px", fontWeight: "500", padding: "3px 10px", borderRadius: "4px" }}>✓ Completed</span>
+                <span style={{ marginLeft: "auto", background: colors.success.ghost, color: colors.success.main, fontSize: fonts.size.xs, fontWeight: 500, padding: "3px 10px", borderRadius: radius.sm }}>Completed</span>
               </div>
               {completedExams.map((exam, i) => (
-                <div key={exam.id} onClick={() => setSelectedExam(exam)} style={{ padding: "10px 16px", borderBottom: i < completedExams.length - 1 ? "1px solid #F3F4F6" : "none", cursor: "pointer", transition: "background 0.1s ease" }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "#F9FAFB"}
+                <div key={exam.id} onClick={() => setSelectedExam(exam)} style={{ padding: "10px 16px", borderBottom: i < completedExams.length - 1 ? `1px solid ${colors.border.subtle}` : "none", cursor: "pointer", transition: "background 0.1s ease" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = colors.bg.raised}
                   onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                   <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                    <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#16A34A" }} />
+                    <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: colors.success.main }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "14px", fontWeight: "500", color: "#111827", marginBottom: "2px" }}>{exam.subject}</div>
+                      <div style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary, marginBottom: "2px" }}>{exam.subject}</div>
                       <div style={caption}>{exam.date} · {exam.location}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "15px", fontWeight: "600", color: "#16A34A" }}>{exam.score}</div>
+                      <div style={{ fontSize: "15px", fontWeight: 600, color: colors.success.main, fontFamily: fonts.heading }}>{exam.score}</div>
                       <div style={caption}>Grade: {exam.grade}</div>
                     </div>
                   </div>
@@ -125,11 +127,11 @@ export default function ExamSchedule() {
         <div style={{ width: "260px", display: "flex", flexDirection: "column", gap: "10px" }}>
           {/* Study Suggestions */}
           <div style={{ ...card, padding: "12px" }}>
-            <h4 style={{ ...heading, fontSize: "12px", margin: "0 0 8px" }}>Study Suggestions</h4>
+            <h4 style={{ ...heading, fontSize: fonts.size.sm, margin: "0 0 8px" }}>Study Suggestions</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {upcomingExams.slice(0, 2).map((exam, i) => (
                 <div key={i} style={{ ...cardInner, padding: "10px 12px" }}>
-                  <div style={{ fontSize: "12px", fontWeight: "500", color: exam.color, marginBottom: "4px" }}>{exam.subject}</div>
+                  <div style={{ fontSize: fonts.size.sm, fontWeight: 500, color: exam.color, marginBottom: "4px" }}>{exam.subject}</div>
                   <div style={muted}>Suggested: 2-3 hours daily</div>
                   <div style={caption}>Focus: {exam.syllabus?.[0]}, {exam.syllabus?.[1]}</div>
                 </div>
@@ -139,18 +141,17 @@ export default function ExamSchedule() {
 
           {/* Exam Preparation */}
           <div style={{ ...card, padding: "12px" }}>
-            <h4 style={{ ...heading, fontSize: "12px", margin: "0 0 8px" }}>Exam Preparation</h4>
+            <h4 style={{ ...heading, fontSize: fonts.size.sm, margin: "0 0 8px" }}>Exam Preparation</h4>
             <div style={{ display: "grid", gap: "8px" }}>
               {[
-                { icon: "��", label: "Study Materials", onClick: () => alert('Opening study resources...') },
-                { icon: "📝", label: "Practice Tests", onClick: () => alert('Loading practice questions...') },
-                { icon: "⏰", label: "Study Timer", onClick: () => alert('Starting study timer...') },
-                { icon: "📍", label: "Exam Locations", onClick: () => alert('Showing exam hall locations...') },
+                { label: "Study Materials", onClick: () => alert('Opening study resources...') },
+                { label: "Practice Tests", onClick: () => alert('Loading practice questions...') },
+                { label: "Study Timer", onClick: () => alert('Starting study timer...') },
+                { label: "Exam Locations", onClick: () => alert('Showing exam hall locations...') },
               ].map((action, i) => (
-                <button key={i} onClick={action.onClick} style={{ ...cardInner, padding: "10px 12px", color: "#6B7280", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", textAlign: "left", transition: "background 0.1s ease" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,106,220,0.06)"; e.currentTarget.style.color = "#006ADC" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "#F9FAFB"; e.currentTarget.style.color = "#6B7280" }}>
-                  <span style={{ fontSize: "14px" }}>{action.icon}</span>
+                <button key={i} onClick={action.onClick} style={{ ...cardInner, padding: "10px 12px", color: colors.text.secondary, fontSize: fonts.size.sm, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", textAlign: "left", transition: "background 0.1s ease", fontFamily: fonts.body }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = colors.primary.ghost; e.currentTarget.style.color = colors.primary.main }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = colors.bg.raised; e.currentTarget.style.color = colors.text.secondary }}>
                   <span>{action.label}</span>
                 </button>
               ))}
@@ -159,14 +160,14 @@ export default function ExamSchedule() {
 
           {/* Exam Tips */}
           <div style={{ ...card, padding: "12px", flex: 1 }}>
-            <h4 style={{ ...heading, fontSize: "12px", margin: "0 0 8px" }}>Exam Day Tips</h4>
-            <div style={{ fontSize: "12px", color: "#6B7280", lineHeight: 1.6 }}>
-              <p style={{ margin: "0 0 4px" }}>• Arrive 30 minutes early</p>
-              <p style={{ margin: "0 0 4px" }}>• Bring valid ID and hall ticket</p>
-              <p style={{ margin: "0 0 4px" }}>• Use only blue/black pen</p>
-              <p style={{ margin: "0 0 4px" }}>• Read all questions carefully</p>
-              <p style={{ margin: "0 0 4px" }}>• Manage time effectively</p>
-              <p style={{ margin: 0 }}>• Stay calm and confident</p>
+            <h4 style={{ ...heading, fontSize: fonts.size.sm, margin: "0 0 8px" }}>Exam Day Tips</h4>
+            <div style={{ fontSize: fonts.size.sm, color: colors.text.secondary, lineHeight: 1.6 }}>
+              <p style={{ margin: "0 0 4px" }}>Arrive 30 minutes early</p>
+              <p style={{ margin: "0 0 4px" }}>Bring valid ID and hall ticket</p>
+              <p style={{ margin: "0 0 4px" }}>Use only blue/black pen</p>
+              <p style={{ margin: "0 0 4px" }}>Read all questions carefully</p>
+              <p style={{ margin: "0 0 4px" }}>Manage time effectively</p>
+              <p style={{ margin: 0 }}>Stay calm and confident</p>
             </div>
           </div>
         </div>
@@ -174,35 +175,67 @@ export default function ExamSchedule() {
 
       {/* Exam Details Modal */}
       {selectedExam && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setSelectedExam(null)}>
-          <div style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "8px", padding: "24px", maxWidth: "500px", width: "90%", maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h3 style={{ ...heading, fontSize: "16px", color: selectedExam.color, margin: 0 }}>{selectedExam.subject} Exam</h3>
-              <button onClick={() => setSelectedExam(null)} style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: "20px", cursor: "pointer" }}>×</button>
-            </div>
-            <div style={{ color: "#6B7280", lineHeight: 1.6, fontSize: "13px" }}>
-              <div style={{ marginBottom: "16px" }}>
-                <h4 style={{ ...heading, fontSize: "14px", marginBottom: "8px" }}>Exam Details</h4>
-                <p><strong style={{ color: "#111827" }}>📅 Date:</strong> {selectedExam.date}</p>
-                <p><strong style={{ color: "#111827" }}>⏰ Time:</strong> {selectedExam.time}</p>
-                <p><strong style={{ color: "#111827" }}>📍 Location:</strong> {selectedExam.location}</p>
-                <p><strong style={{ color: "#111827" }}>💺 Seat:</strong> {selectedExam.room}</p>
-                <p><strong style={{ color: "#111827" }}>👨‍🏫 Invigilator:</strong> {selectedExam.invigilator}</p>
-                <p><strong style={{ color: "#111827" }}>⏱️ Duration:</strong> {selectedExam.duration}</p>
-                {selectedExam.score && <p><strong style={{ color: "#111827" }}>📊 Score:</strong> {selectedExam.score} (Grade {selectedExam.grade})</p>}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setSelectedExam(null)}>
+          <div style={{ background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.xl, maxWidth: "460px", width: "90%", maxHeight: "80vh", overflowY: "auto", overflow: "hidden", boxShadow: shadows.xl }} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div style={{ padding: "16px 20px", borderBottom: `1px solid ${colors.border.subtle}`, display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ width: 4, height: 32, borderRadius: "2px", background: selectedExam.color, flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <h3 style={{ ...heading, fontSize: "15px", margin: 0 }}>{selectedExam.subject}</h3>
+                <p style={{ ...caption, margin: "2px 0 0" }}>
+                  {selectedExam.status === "completed" ? "Completed" : `${selectedExam.daysLeft} days remaining`}
+                </p>
               </div>
+              <button onClick={() => setSelectedExam(null)} style={{ background: colors.bg.raised, border: `1px solid ${colors.border.subtle}`, width: "28px", height: "28px", borderRadius: radius.md, color: colors.text.secondary, fontSize: "15px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.1s ease" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.border.medium}
+                onMouseLeave={(e) => e.currentTarget.style.background = colors.bg.raised}>×</button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: "16px 20px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+                {[
+                  { label: "Date", value: selectedExam.date },
+                  { label: "Time", value: selectedExam.time },
+                  { label: "Location", value: selectedExam.location },
+                  { label: "Seat", value: selectedExam.room },
+                  { label: "Invigilator", value: selectedExam.invigilator },
+                  { label: "Duration", value: selectedExam.duration },
+                ].map((item, i) => (
+                  <div key={i} style={{ ...cardInner, padding: "10px 12px" }}>
+                    <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "4px" }}>{item.label}</div>
+                    <div style={{ fontSize: "13px", fontWeight: 500, color: colors.text.primary }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedExam.score && (
+                <div style={{ ...cardInner, padding: "10px 12px", marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "4px" }}>Score</div>
+                    <div style={{ fontSize: "13px", fontWeight: 500, color: colors.text.primary }}>{selectedExam.score}</div>
+                  </div>
+                  <div style={{ background: colors.success.ghost, color: colors.success.main, fontSize: fonts.size.sm, fontWeight: 600, padding: "4px 10px", borderRadius: radius.sm }}>Grade {selectedExam.grade}</div>
+                </div>
+              )}
+
+              {/* Syllabus */}
               <div>
-                <h4 style={{ ...heading, fontSize: "14px", marginBottom: "8px" }}>Syllabus Coverage</h4>
-                <ul style={{ paddingLeft: "16px", margin: 0, color: "#6B7280" }}>
-                  {selectedExam.syllabus?.map((topic, i) => <li key={i} style={{ marginBottom: "4px" }}>{topic}</li>)}
-                </ul>
+                <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "8px", fontWeight: 500 }}>Syllabus Coverage</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {selectedExam.syllabus?.map((topic, i) => (
+                    <span key={i} style={{ ...cardInner, padding: "5px 10px", fontSize: fonts.size.sm, color: colors.text.secondary, fontWeight: 400 }}>{topic}</span>
+                  ))}
+                </div>
               </div>
             </div>
+
+            {/* Modal Footer */}
             {selectedExam.status === "upcoming" && (
-              <div style={{ marginTop: "20px", display: "flex", gap: "8px" }}>
-                <button style={{ ...btn, background: selectedExam.color }}>📚 Study Plan</button>
-                <button style={btnGhost}>🔔 Set Reminder</button>
-                <button style={btnGhost}>📍 View Location</button>
+              <div style={{ padding: "12px 20px", borderTop: `1px solid ${colors.border.subtle}`, display: "flex", gap: "8px" }}>
+                <button style={{ ...btn, flex: 1, background: selectedExam.color, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>Study Plan</button>
+                <button style={{ ...btnGhost, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>Reminder</button>
+                <button style={{ ...btnGhost, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>Location</button>
               </div>
             )}
           </div>

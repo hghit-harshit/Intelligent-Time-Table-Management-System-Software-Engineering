@@ -4,8 +4,8 @@
  * PURPOSE: Tailwind import, CSS custom properties mapped from tokens,
  * keyframe animations, and the "Cron Grid" timetable system.
  *
- * AESTHETIC: Notion Calendar — clean 1px grid lines, airy whitespace,
- * event cards with 3px left-border accents.
+ * AESTHETIC: Notion/Linear — clean 1px grid lines, airy whitespace,
+ * event cards with 3px left-border accents. DM Sans typeface.
  */
 
 @import "tailwindcss";
@@ -13,18 +13,18 @@
 /* ─── CSS CUSTOM PROPERTIES ─────────────────────────────────── */
 /* Mirrors tokens.js so Tailwind utilities and raw CSS can use var() */
 :root {
-  --bg-deep:    #FFFFFF;
+  --bg-deep:    #FAFAFA;
   --bg-base:    #FFFFFF;
-  --bg-raised:  #F9FAFB;
+  --bg-raised:  #F4F4F5;
   --bg-overlay: #FFFFFF;
 
-  --primary:       #006ADC;
-  --primary-light: #0081F1;
-  --primary-ghost: rgba(0, 106, 220, 0.08);
-  --primary-border: rgba(0, 106, 220, 0.30);
+  --primary:       #1E3A5F;
+  --primary-light: #2B4F7E;
+  --primary-ghost: rgba(30, 58, 95, 0.06);
+  --primary-border: rgba(30, 58, 95, 0.25);
 
-  --secondary:       #6B7280;
-  --secondary-ghost: rgba(107, 114, 128, 0.08);
+  --secondary:       #64748B;
+  --secondary-ghost: rgba(100, 116, 139, 0.06);
 
   --warning:    #D97706;
   --error:      #DC2626;
@@ -32,20 +32,20 @@
   --info:       #2563EB;
 
   --text-primary:   #111827;
-  --text-secondary: #6B7280;
-  --text-muted:     #9CA3AF;
+  --text-secondary: #4B5563;
+  --text-muted:     #94A3B8;
 
-  --border-subtle: #F3F4F6;
-  --border-medium: #E5E7EB;
-  --border-strong: #D1D5DB;
+  --border-subtle: #F0F0F1;
+  --border-medium: #E2E4E9;
+  --border-strong: #CBD5E1;
 
-  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
 }
 
 /* ─── BASE RESETS ───────────────────────────────────────────── */
@@ -175,8 +175,8 @@ body {
 }
 
 /* Color variants — accent left bar + 10% opacity background */
-.event-card--blue    { background: rgba(0, 106, 220, 0.10); color: #006ADC; }
-.event-card--blue::before    { background: #006ADC; }
+.event-card--blue    { background: rgba(30, 58, 95, 0.08); color: #1E3A5F; }
+.event-card--blue::before    { background: #1E3A5F; }
 
 .event-card--green   { background: rgba(22, 163, 74, 0.10); color: #16A34A; }
 .event-card--green::before   { background: #16A34A; }
@@ -190,8 +190,8 @@ body {
 .event-card--purple  { background: rgba(124, 58, 237, 0.10); color: #6D28D9; }
 .event-card--purple::before  { background: #7C3AED; }
 
-.event-card--grey    { background: rgba(107, 114, 128, 0.08); color: #4B5563; }
-.event-card--grey::before    { background: #6B7280; }
+.event-card--grey    { background: rgba(100, 116, 139, 0.08); color: #4B5563; }
+.event-card--grey::before    { background: #64748B; }
 
 .event-card:hover {
   filter: brightness(0.97);

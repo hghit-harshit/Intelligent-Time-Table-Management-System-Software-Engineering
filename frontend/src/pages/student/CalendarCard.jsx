@@ -6,7 +6,11 @@
  */
 
 import { Box, Typography, Button } from "@mui/material"
-import { colors, fonts, radius, glass } from "../../styles/tokens"
+import {
+  ChevronLeftOutlined,
+  ChevronRightOutlined,
+} from "@mui/icons-material"
+import { colors, fonts, radius, shadows } from "../../styles/tokens"
 import WeekView from "./WeekView"
 import MonthView from "./MonthView"
 import DayView from "./DayView"
@@ -32,7 +36,10 @@ export default function CalendarCard({
   return (
     <Box
       sx={{
-        ...glass,
+        bgcolor: colors.bg.base,
+        border: `1px solid ${colors.border.medium}`,
+        borderRadius: radius.lg,
+        boxShadow: shadows.sm,
         mb: "12px",
         overflow: "hidden",
       }}
@@ -53,38 +60,54 @@ export default function CalendarCard({
           {getMonthName(selectedMonth)} {selectedYear}
         </Typography>
 
-        {/* Month navigation arrows */}
+        {/* Month navigation arrows — MUI icons */}
         <Box sx={{ display: "flex", gap: 0.5, ml: 2 }}>
-          {[
-            { label: "‹", handler: handlePrevMonth },
-            { label: "›", handler: handleNextMonth },
-          ].map((btn) => (
-            <Box
-              key={btn.label}
-              component="button"
-              onClick={btn.handler}
-              sx={{
-                background: colors.bg.raised,
-                border: `1px solid ${colors.border.medium}`,
-                borderRadius: radius.sm,
-                width: 28,
-                height: 28,
-                color: colors.text.primary,
-                cursor: "pointer",
-                fontSize: fonts.size.sm,
-                transition: "all 0.2s ease",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                "&:hover": {
-                  bgcolor: colors.primary.ghost,
-                  borderColor: colors.primary.border,
-                },
-              }}
-            >
-              {btn.label}
-            </Box>
-          ))}
+          <Box
+            component="button"
+            onClick={handlePrevMonth}
+            sx={{
+              background: colors.bg.raised,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.sm,
+              width: 28,
+              height: 28,
+              color: colors.text.primary,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                bgcolor: colors.primary.ghost,
+                borderColor: colors.primary.border,
+              },
+            }}
+          >
+            <ChevronLeftOutlined sx={{ fontSize: 18 }} />
+          </Box>
+          <Box
+            component="button"
+            onClick={handleNextMonth}
+            sx={{
+              background: colors.bg.raised,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.sm,
+              width: 28,
+              height: 28,
+              color: colors.text.primary,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                bgcolor: colors.primary.ghost,
+                borderColor: colors.primary.border,
+              },
+            }}
+          >
+            <ChevronRightOutlined sx={{ fontSize: 18 }} />
+          </Box>
         </Box>
 
         {/* View switcher buttons */}
@@ -105,18 +128,18 @@ export default function CalendarCard({
                     : colors.bg.raised,
                 color:
                   selectedView === view.toLowerCase()
-                    ? colors.bg.deep
+                    ? "#FFFFFF"
                     : colors.text.primary,
                 fontSize: fonts.size.xs,
                 fontWeight: fonts.weight.medium,
                 textTransform: "none",
                 minWidth: "auto",
-                transition: "all 0.2s ease",
+                transition: "all 0.15s ease",
                 "&:hover": {
                   bgcolor:
                     selectedView === view.toLowerCase()
                       ? colors.primary.light
-                      : `${colors.border.subtle}`,
+                      : colors.bg.deep,
                 },
               }}
             >

@@ -2,45 +2,58 @@
  * Layout.jsx — Shared Sidebar + Main Content Shell
  *
  * PURPOSE: Wraps every authenticated page (Student, Faculty, Admin).
- * Provides the sidebar navigation, user card, and scrollable content.
+ * Provides the sidebar navigation with MUI icons, user card, and scrollable content.
  *
- * AESTHETIC: Notion Calendar — clean sidebar with 1px right border,
- * no shadows, no floating orbs, no glassmorphism. Whitespace is king.
+ * AESTHETIC: Notion/Linear — clean sidebar with 1px right border,
+ * subtle shadows, DM Sans typeface. MUI icons for every nav item.
+ *
+ * BRAND: Smart Timetable (DISHA)
  */
 
 import { useNavigate, useLocation } from "react-router-dom"
 import { Box, Typography, Chip } from "@mui/material"
-import { colors, fonts, radius, animations } from "../styles/tokens"
+import {
+  DashboardOutlined,
+  EventNoteOutlined,
+  NotificationsOutlined,
+  SchoolOutlined,
+  StickyNote2Outlined,
+  ChecklistOutlined,
+  AlarmOutlined,
+  SmartToyOutlined,
+  ExtensionOutlined,
+  SettingsOutlined,
+  LogoutOutlined,
+} from "@mui/icons-material"
+import { colors, fonts, radius, shadows, animations } from "../styles/tokens"
 
 export default function Layout({ children }) {
-  // WHY useNavigate: programmatic route changes on sidebar click
   const navigate = useNavigate()
-  // WHY useLocation: highlight the currently active nav item
   const location = useLocation()
 
   const navigationItems = [
     {
       section: "MAIN",
       items: [
-        { icon: "📅", label: "My Timetable", path: "/StudentPage", badge: null },
-        { icon: "📋", label: "Exam Schedule", path: "/exams", badge: "3" },
-        { icon: "🔔", label: "Notifications", path: "/notifications", badge: "3" },
-        { icon: "📚", label: "Courses", path: "/courses", badge: null },
+        { label: "Dashboard", path: "/StudentPage", badge: null, icon: DashboardOutlined },
+        { label: "Exam Schedule", path: "/exams", badge: "3", icon: EventNoteOutlined },
+        { label: "Notifications", path: "/notifications", badge: "3", icon: NotificationsOutlined },
+        { label: "Courses", path: "/courses", badge: null, icon: SchoolOutlined },
       ],
     },
     {
       section: "WORKSPACE",
       items: [
-        { icon: "📝", label: "My Notes", path: "/notes", badge: null },
-        { icon: "✅", label: "Tasks", path: "/tasks", badge: null },
-        { icon: "⏰", label: "Reminders", path: "/reminders", badge: null },
+        { label: "My Notes", path: "/notes", badge: null, icon: StickyNote2Outlined },
+        { label: "Tasks", path: "/tasks", badge: null, icon: ChecklistOutlined },
+        { label: "Reminders", path: "/reminders", badge: null, icon: AlarmOutlined },
       ],
     },
     {
       section: "TOOLS",
       items: [
-        { icon: "🤖", label: "AI Assistant", path: "/ai", badge: null },
-        { icon: "🔗", label: "Integrations", path: "/integrations", badge: null },
+        { label: "AI Assistant", path: "/ai", badge: null, icon: SmartToyOutlined },
+        { label: "Integrations", path: "/integrations", badge: null, icon: ExtensionOutlined },
       ],
     },
   ]
@@ -71,30 +84,45 @@ export default function Layout({ children }) {
           animation: animations.fadeUp,
         }}
       >
-        {/* Logo / Brand */}
+        {/* Brand — Smart Timetable / DISHA */}
         <Box sx={{ mb: 2, px: 0.5 }}>
-          <Typography
-            sx={{
-              fontFamily: fonts.heading,
-              fontSize: fonts.size.lg,
-              fontWeight: fonts.weight.semibold,
-              color: colors.text.primary,
-              mb: 0.25,
-            }}
-          >
-            SmartTimetable
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              color: colors.text.muted,
-              letterSpacing: fonts.letterSpacing.wider,
-              textTransform: "uppercase",
-              fontSize: fonts.size.xs,
-            }}
-          >
-            ITMS • Student Portal
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Logo badge — gradient square with "S" */}
+            <Box sx={{
+              width: 28, height: 28,
+              borderRadius: radius.md,
+              background: `linear-gradient(135deg, ${colors.primary.main}, ${colors.primary.light})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: '14px', fontWeight: 700,
+              flexShrink: 0,
+              boxShadow: shadows.sm,
+            }}>S</Box>
+            <Box>
+              <Typography
+                sx={{
+                  fontFamily: fonts.heading,
+                  fontSize: fonts.size.md,
+                  fontWeight: fonts.weight.bold,
+                  color: colors.text.primary,
+                  lineHeight: 1.2,
+                  letterSpacing: fonts.letterSpacing.tight,
+                }}
+              >
+                Smart Timetable
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '9px',
+                  color: colors.text.muted,
+                  letterSpacing: fonts.letterSpacing.widest,
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                }}
+              >
+                DISHA
+              </Typography>
+            </Box>
+          </Box>
         </Box>
 
         {/* User Card */}
@@ -105,9 +133,10 @@ export default function Layout({ children }) {
             display: "flex",
             alignItems: "center",
             gap: 1.5,
-            border: `1px solid ${colors.border.subtle}`,
+            border: `1px solid ${colors.border.medium}`,
             borderRadius: radius.md,
             bgcolor: colors.bg.base,
+            boxShadow: shadows.sm,
           }}
         >
           {/* Avatar */}
@@ -180,6 +209,7 @@ export default function Layout({ children }) {
               </Typography>
               {section.items.map((item) => {
                 const isActive = location.pathname === item.path
+                const IconComponent = item.icon
                 return (
                   <Box
                     key={item.path}
@@ -188,7 +218,7 @@ export default function Layout({ children }) {
                       display: "flex",
                       alignItems: "center",
                       gap: 1.5,
-                      p: "6px 10px",
+                      p: "7px 10px",
                       borderRadius: radius.md,
                       cursor: "pointer",
                       fontSize: fonts.size.sm,
@@ -203,9 +233,8 @@ export default function Layout({ children }) {
                       },
                     }}
                   >
-                    <Box component="span" sx={{ fontSize: "14px", lineHeight: 1 }}>
-                      {item.icon}
-                    </Box>
+                    {/* MUI Icon — 18px for visual balance */}
+                    <IconComponent sx={{ fontSize: 18, flexShrink: 0, opacity: isActive ? 1 : 0.7 }} />
                     <Box component="span" sx={{ flex: 1 }}>
                       {item.label}
                     </Box>
@@ -245,7 +274,7 @@ export default function Layout({ children }) {
               display: "flex",
               alignItems: "center",
               gap: 1.5,
-              p: "6px 10px",
+              p: "7px 10px",
               borderRadius: radius.md,
               cursor: "pointer",
               fontSize: fonts.size.sm,
@@ -257,7 +286,7 @@ export default function Layout({ children }) {
               },
             }}
           >
-            <span style={{ fontSize: 14 }}>⚙️</span>
+            <SettingsOutlined sx={{ fontSize: 18, opacity: 0.7 }} />
             <span>Settings</span>
           </Box>
           <Box
@@ -266,7 +295,7 @@ export default function Layout({ children }) {
               display: "flex",
               alignItems: "center",
               gap: 1.5,
-              p: "6px 10px",
+              p: "7px 10px",
               borderRadius: radius.md,
               cursor: "pointer",
               fontSize: fonts.size.sm,
@@ -278,7 +307,7 @@ export default function Layout({ children }) {
               },
             }}
           >
-            <span style={{ fontSize: 14 }}>↩️</span>
+            <LogoutOutlined sx={{ fontSize: 18, opacity: 0.7 }} />
             <span>Log out</span>
           </Box>
         </Box>

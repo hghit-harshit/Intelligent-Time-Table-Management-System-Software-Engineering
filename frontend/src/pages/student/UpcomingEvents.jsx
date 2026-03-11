@@ -6,11 +6,18 @@
  */
 
 import { Box, Typography } from "@mui/material"
-import { colors, fonts, radius, glass } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../styles/tokens"
 
 export default function UpcomingEvents({ upcomingEvents }) {
   return (
-    <Box sx={{ ...glass, p: 1.5, flex: 1 }}>
+    <Box sx={{
+      bgcolor: colors.bg.base,
+      border: `1px solid ${colors.border.medium}`,
+      borderRadius: radius.lg,
+      boxShadow: shadows.sm,
+      p: 1.5,
+      flex: 1,
+    }}>
       <Typography
         sx={{
           fontSize: fonts.size.sm,
@@ -34,12 +41,13 @@ export default function UpcomingEvents({ upcomingEvents }) {
               p: "8px 12px",
               borderRadius: radius.md,
               bgcolor: colors.bg.raised,
-              border: `1px solid ${event.color}20`,
+              border: `1px solid ${colors.border.subtle}`,
               cursor: "pointer",
-              transition: "all 0.2s ease",
+              transition: "all 0.15s ease",
               "&:hover": {
                 bgcolor: `${event.color}10`,
                 borderColor: `${event.color}40`,
+                transform: "translateX(2px)",
               },
             }}
           >
@@ -56,7 +64,7 @@ export default function UpcomingEvents({ upcomingEvents }) {
               <Typography
                 sx={{
                   fontSize: fonts.size.sm,
-                  fontWeight: fonts.weight.bold,
+                  fontWeight: fonts.weight.semibold,
                   color: colors.text.primary,
                 }}
               >
