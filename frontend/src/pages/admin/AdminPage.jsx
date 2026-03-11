@@ -134,22 +134,25 @@ export default function AdminPage() {
         }}
       >
         <Box>
-          <Typography
-            variant="h5"
-            sx={{
-              fontFamily: fonts.heading,
-              fontWeight: fonts.weight.bold,
-              color: colors.text.primary,
-              mb: 0.5,
-            }}
-          >
-            Admin Dashboard
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 3, height: 20, borderRadius: '2px', bgcolor: colors.warning.main }} />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: fonts.heading,
+                fontWeight: fonts.weight.bold,
+                color: colors.text.primary,
+                fontSize: '15px',
+              }}
+            >
+              Admin Dashboard
+            </Typography>
+          </Box>
           <Typography
             variant="caption"
-            sx={{ color: colors.text.muted }}
+            sx={{ color: colors.text.muted, ml: '11px', mt: 0.25, display: 'block' }}
           >
-            Manage Time Slots & Semester Configuration
+            Slots & semester configuration
           </Typography>
         </Box>
         <Chip
@@ -261,7 +264,6 @@ export default function AdminPage() {
                   color: colors.text.muted,
                 }}
               >
-                <Typography sx={{ fontSize: 24, mb: 1 }}>🕐</Typography>
                 <Typography variant="body2" sx={{ color: colors.text.muted }}>
                   No time slots added yet
                 </Typography>

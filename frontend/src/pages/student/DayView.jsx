@@ -68,7 +68,6 @@ export default function DayView({
             className="flex flex-col items-center justify-center text-center"
             sx={{ minHeight: 300, color: colors.text.muted, p: 4 }}
           >
-            <Box sx={{ fontSize: "48px", mb: 2 }}>📅</Box>
             <Typography sx={{ fontSize: fonts.size.lg, fontWeight: fonts.weight.bold, mb: 1, fontFamily: fonts.heading, color: colors.text.secondary }}>
               No Classes Scheduled
             </Typography>
@@ -158,7 +157,7 @@ export default function DayView({
                       </Box>
                       {!slot.class.isRescheduled && (
                         <Typography sx={{ fontSize: fonts.size.xs, opacity: 0.8, color: "inherit" }}>
-                          📍 {slot.class.location} • 👨‍🏫 {slot.class.professor}
+                          {slot.class.location} · {slot.class.professor}
                         </Typography>
                       )}
                     </Box>

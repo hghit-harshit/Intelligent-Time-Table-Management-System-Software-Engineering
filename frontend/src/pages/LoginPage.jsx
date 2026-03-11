@@ -4,8 +4,7 @@
  * PURPOSE: Entry point for the app. Users pick their role (Student,
  * Faculty, or Admin) and are routed to the appropriate dashboard.
  *
- * AESTHETIC: Notion Calendar — clean white canvas, centered card with
- * a thin border, no shadows, no orbs, no gradients. Clinical clarity.
+ * BRAND: Smart Timetable (DISHA)
  */
 
 import { useState } from "react"
@@ -16,9 +15,8 @@ import {
   Button,
   CircularProgress,
 } from "@mui/material"
-import { colors, fonts, radius, animations } from "../styles/tokens"
+import { colors, fonts, radius, shadows, animations } from "../styles/tokens"
 
-// ─── ROLE DEFINITIONS ────────────────────────────────────────
 const roles = [
   {
     id: "student",
@@ -41,7 +39,6 @@ const roles = [
 ]
 
 export default function Login() {
-  // WHY useState: local UI state — which role is picked, hover target, loading
   const [role, setRole] = useState("student")
   const [hoveredRole, setHoveredRole] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -69,42 +66,65 @@ export default function Login() {
         bgcolor: colors.bg.raised,
       }}
     >
-      {/* ── LOGIN CARD ───────────────────────────────────────── */}
       <Box
         sx={{
           width: 400,
           bgcolor: colors.bg.base,
           border: `1px solid ${colors.border.medium}`,
-          borderRadius: radius.lg,
+          borderRadius: radius.xl,
           p: "40px 36px 36px",
+          boxShadow: shadows.lg,
           animation: animations.fadeUp,
         }}
       >
-        {/* ── HEADER ───────────────────────────────────────── */}
+        {/* Header — Smart Timetable / DISHA */}
         <Box sx={{ mb: 4 }}>
-          <Typography
-            sx={{
-              fontFamily: fonts.heading,
-              fontSize: fonts.size["2xl"],
-              fontWeight: fonts.weight.semibold,
-              color: colors.text.primary,
-              mb: 0.5,
-              lineHeight: 1.2,
-            }}
-          >
-            SmartTimetable
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+            <Box sx={{
+              width: 36, height: 36,
+              borderRadius: radius.md,
+              background: `linear-gradient(135deg, ${colors.primary.main}, ${colors.primary.light})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: '17px', fontWeight: 700,
+              flexShrink: 0,
+              boxShadow: shadows.sm,
+            }}>S</Box>
+            <Box>
+              <Typography
+                sx={{
+                  fontFamily: fonts.heading,
+                  fontSize: fonts.size['2xl'],
+                  fontWeight: fonts.weight.bold,
+                  color: colors.text.primary,
+                  lineHeight: 1.2,
+                  letterSpacing: fonts.letterSpacing.tight,
+                }}
+              >
+                Smart Timetable
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '10px',
+                  color: colors.text.muted,
+                  letterSpacing: fonts.letterSpacing.widest,
+                  textTransform: 'uppercase',
+                }}
+              >
+                DISHA
+              </Typography>
+            </Box>
+          </Box>
           <Typography
             sx={{
               fontSize: fonts.size.sm,
               color: colors.text.secondary,
             }}
           >
-            Select your access level to continue
+            Intelligent Timetable Management · Select your role to continue
           </Typography>
         </Box>
 
-        {/* ── ROLE SELECTOR CARDS ──────────────────────────── */}
+        {/* Role Selector Cards */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: "8px", mb: "24px" }}>
           {roles.map((r) => {
             const isSelected = role === r.id
@@ -123,7 +143,7 @@ export default function Login() {
                   p: "12px 14px",
                   borderRadius: radius.md,
                   border: isSelected
-                    ? `1px solid ${r.color}`
+                    ? `1.5px solid ${r.color}`
                     : `1px solid ${colors.border.medium}`,
                   bgcolor: isSelected
                     ? `${r.color}0A`
@@ -131,7 +151,8 @@ export default function Login() {
                       ? colors.bg.raised
                       : colors.bg.base,
                   cursor: "pointer",
-                  transition: "all 0.1s ease",
+                  transition: "all 0.15s ease",
+                  boxShadow: isSelected ? shadows.sm : 'none',
                 }}
               >
                 {/* Left accent bar */}
@@ -141,11 +162,10 @@ export default function Login() {
                     height: 28,
                     borderRadius: "2px",
                     bgcolor: isSelected ? r.color : colors.border.medium,
-                    transition: "background 0.1s ease",
+                    transition: "background 0.15s ease",
                   }}
                 />
 
-                {/* Role label + description */}
                 <Box sx={{ flex: 1 }}>
                   <Typography
                     sx={{
@@ -167,7 +187,6 @@ export default function Login() {
                   </Typography>
                 </Box>
 
-                {/* Selection indicator */}
                 {isSelected && (
                   <Box
                     sx={{
@@ -184,38 +203,38 @@ export default function Login() {
           })}
         </Box>
 
-        {/* ── LOGIN BUTTON ─────────────────────────────────── */}
+        {/* Login Button */}
         <Button
           fullWidth
           variant="contained"
           onClick={() => handleLogin(selected.id)}
           disabled={loading}
           sx={{
-            p: "8px 16px",
+            p: "10px 16px",
             borderRadius: radius.md,
             bgcolor: loading ? colors.bg.raised : colors.primary.main,
             color: loading ? colors.text.muted : "#FFFFFF",
             fontSize: fonts.size.sm,
             fontWeight: fonts.weight.medium,
             textTransform: "none",
-            boxShadow: "none",
+            boxShadow: shadows.sm,
             "&:hover:not(:disabled)": {
               bgcolor: colors.primary.dark,
-              boxShadow: "none",
+              boxShadow: shadows.md,
             },
           }}
         >
           {loading ? (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CircularProgress size={14} sx={{ color: colors.text.muted }} />
-              <span>Signing in…</span>
+              <span>Signing in...</span>
             </Box>
           ) : (
             `Continue as ${selected.label}`
           )}
         </Button>
 
-        {/* ── FOOTER ───────────────────────────────────────── */}
+        {/* Footer */}
         <Typography
           sx={{
             display: "block",
@@ -225,7 +244,7 @@ export default function Login() {
             color: colors.text.muted,
           }}
         >
-          Academic Management System · v0.1
+          Smart Timetable · Intelligent Timetable Management
         </Typography>
       </Box>
     </Box>

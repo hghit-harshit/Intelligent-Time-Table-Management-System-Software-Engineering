@@ -6,11 +6,17 @@
  */
 
 import { Box, Typography, Chip } from "@mui/material"
-import { colors, fonts, radius, glass } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../styles/tokens"
 
 export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSlotClick, setSelectedView }) {
   return (
-    <Box sx={{ ...glass, overflow: "hidden" }}>
+    <Box sx={{
+      bgcolor: colors.bg.base,
+      border: `1px solid ${colors.border.medium}`,
+      borderRadius: radius.lg,
+      boxShadow: shadows.sm,
+      overflow: "hidden",
+    }}>
       {/* Header */}
       <Box
         sx={{
@@ -42,11 +48,11 @@ export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSl
             border: "none",
             cursor: "pointer",
             fontFamily: fonts.body,
-            transition: "color 0.2s ease",
-            "&:hover": { color: colors.secondary.main },
+            transition: "color 0.15s ease",
+            "&:hover": { color: colors.primary.light },
           }}
         >
-          View full day →
+          View full day
         </Box>
       </Box>
 
@@ -62,7 +68,7 @@ export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSl
             borderBottom: i < todaysClasses.length - 1 ? `1px solid ${colors.border.subtle}` : "none",
             gap: 2,
             cursor: "pointer",
-            transition: "background 0.2s ease",
+            transition: "background 0.15s ease",
             "&:hover": { bgcolor: colors.bg.raised },
           }}
         >
@@ -90,7 +96,7 @@ export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSl
 
           {/* Subject and location */}
           <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.base, color: colors.text.primary, mb: 0.25 }}>
+            <Typography sx={{ fontWeight: fonts.weight.semibold, fontSize: fonts.size.base, color: colors.text.primary, mb: 0.25 }}>
               {class_.subject}
             </Typography>
             <Typography variant="caption" sx={{ color: colors.text.muted }}>
@@ -110,7 +116,7 @@ export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSl
                   : colors.error.ghost,
               color: class_.statusColor,
               border: `1px solid ${class_.statusColor}30`,
-              fontWeight: fonts.weight.bold,
+              fontWeight: fonts.weight.semibold,
               fontSize: fonts.size.xs,
             }}
           />

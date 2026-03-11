@@ -1,13 +1,14 @@
 /**
  * theme.js — MUI Theme Configuration
  *
- * PURPOSE: Creates a Material UI theme that maps our design tokens
- * into MUI's theming system. Every MUI component (Button, TextField,
- * Card, etc.) automatically inherits this visual language.
+ * PURPOSE: Maps design tokens into MUI's theming system.
+ * Every MUI component inherits this visual language automatically.
  *
- * AESTHETIC: "Notion Calendar / Cron" — Clinical, airy, borderline
- * obsessively clean. No shadows, no rounded-pill buttons, no ripple.
- * Depth is communicated with 1px borders, not elevation.
+ * AESTHETIC: Clean Notion-inspired light theme with DM Sans typeface
+ * and deep slate (#1E3A5F) accent color. Subtle shadows replace
+ * flat borders for key interactive elements.
+ *
+ * BRAND: Smart Timetable (DISHA)
  */
 
 import { createTheme } from '@mui/material/styles'
@@ -18,7 +19,7 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main:  colors.primary.main,
+      main:  colors.primary.main,   // #1E3A5F — deep slate blue
       light: colors.primary.light,
       dark:  colors.primary.dark,
     },
@@ -26,69 +27,60 @@ const theme = createTheme({
       main:  colors.secondary.main,
       light: colors.secondary.light,
     },
-    warning: {
-      main:  colors.warning.main,
-      light: colors.warning.light,
-    },
-    error: {
-      main:  colors.error.main,
-      light: colors.error.light,
-    },
-    success: {
-      main:  colors.success.main,
-      light: colors.success.light,
-    },
+    warning: { main: colors.warning.main, light: colors.warning.light },
+    error:   { main: colors.error.main,   light: colors.error.light },
+    success: { main: colors.success.main, light: colors.success.light },
     background: {
-      default: colors.bg.deep,
-      paper:   colors.bg.base,
+      default: colors.bg.deep,     // #FAFAFA — warm off-white canvas
+      paper:   colors.bg.base,     // #FFFFFF — cards
     },
     text: {
-      primary:   colors.text.primary,
-      secondary: colors.text.secondary,
+      primary:   colors.text.primary,    // #111827 — dark ink
+      secondary: colors.text.secondary,  // #4B5563 — body
       disabled:  colors.text.disabled,
     },
     divider: colors.border.medium,
   },
 
   // ─── TYPOGRAPHY ──────────────────────────────────────────────
+  // DM Sans: geometric warmth, excellent at small sizes
   typography: {
     fontFamily: fonts.body,
-    // Enable tabular-nums globally for perfect column alignment
     fontVariantNumeric: 'tabular-nums',
 
     h1: {
       fontFamily: fonts.heading,
-      fontSize:   fonts.size['3xl'],
-      fontWeight: fonts.weight.semibold,
+      fontSize:   fonts.size['3xl'],   // 28px — hero text
+      fontWeight: fonts.weight.bold,   // 700 for commanding presence
       lineHeight: 1.2,
       letterSpacing: fonts.letterSpacing.tight,
       color: colors.text.primary,
     },
     h2: {
       fontFamily: fonts.heading,
-      fontSize:   fonts.size['2xl'],
-      fontWeight: fonts.weight.semibold,
+      fontSize:   fonts.size['2xl'],   // 24px — page titles
+      fontWeight: fonts.weight.bold,
       lineHeight: 1.25,
       letterSpacing: fonts.letterSpacing.tight,
       color: colors.text.primary,
     },
     h3: {
       fontFamily: fonts.heading,
-      fontSize:   fonts.size.xl,
+      fontSize:   fonts.size.xl,       // 20px — section headings
       fontWeight: fonts.weight.semibold,
       lineHeight: 1.3,
       color: colors.text.primary,
     },
     h4: {
       fontFamily: fonts.heading,
-      fontSize:   fonts.size.lg,
-      fontWeight: fonts.weight.medium,
+      fontSize:   fonts.size.lg,       // 16px — card headings
+      fontWeight: fonts.weight.semibold,
       lineHeight: 1.4,
       color: colors.text.primary,
     },
     h5: {
       fontFamily: fonts.body,
-      fontSize:   fonts.size.md,
+      fontSize:   fonts.size.md,       // 14px — sub-labels
       fontWeight: fonts.weight.medium,
       letterSpacing: fonts.letterSpacing.wide,
       color: colors.text.secondary,
@@ -98,26 +90,26 @@ const theme = createTheme({
       fontSize:   fonts.size.sm,
       fontWeight: fonts.weight.medium,
       letterSpacing: fonts.letterSpacing.wider,
-      textTransform: 'uppercase',
+      textTransform: 'uppercase',      // section category labels
       color: colors.text.muted,
     },
     body1: {
       fontFamily: fonts.body,
-      fontSize:   fonts.size.base,
+      fontSize:   fonts.size.base,     // 13px
       fontWeight: fonts.weight.regular,
       lineHeight: 1.6,
       color: colors.text.primary,
     },
     body2: {
       fontFamily: fonts.body,
-      fontSize:   fonts.size.sm,
+      fontSize:   fonts.size.sm,       // 12px
       fontWeight: fonts.weight.regular,
       lineHeight: 1.5,
       color: colors.text.secondary,
     },
     caption: {
       fontFamily: fonts.body,
-      fontSize:   fonts.size.xs,
+      fontSize:   fonts.size.xs,       // 11px
       fontWeight: fonts.weight.regular,
       letterSpacing: fonts.letterSpacing.wide,
       color: colors.text.muted,
@@ -127,19 +119,19 @@ const theme = createTheme({
       fontSize:      fonts.size.sm,
       fontWeight:    fonts.weight.medium,
       letterSpacing: fonts.letterSpacing.normal,
-      textTransform: 'none',          // Notion never uppercases buttons
+      textTransform: 'none',           // no uppercase buttons
     },
   },
 
   // ─── SHAPE ───────────────────────────────────────────────────
   shape: {
-    borderRadius: parseInt(radius.md),
+    borderRadius: parseInt(radius.md),  // 8px default
   },
 
   // ─── COMPONENT OVERRIDES ─────────────────────────────────────
   components: {
 
-    // ── Global CSS baseline ──
+    // ── Global baseline ──
     MuiCssBaseline: {
       styleOverrides: {
         body: {
@@ -149,15 +141,12 @@ const theme = createTheme({
           fontVariantNumeric: 'tabular-nums',
           '-webkit-font-smoothing': 'antialiased',
           '-moz-osx-font-smoothing': 'grayscale',
-          '&::-webkit-scrollbar':       { width: '6px' },
-          '&::-webkit-scrollbar-track': { background: colors.bg.raised },
-          '&::-webkit-scrollbar-thumb': { background: colors.border.strong, borderRadius: '3px' },
-          '&::-webkit-scrollbar-thumb:hover': { background: colors.text.muted },
         },
       },
     },
 
-    // ── BUTTON — tight, flat, no ripple ──
+    // ── BUTTON ──
+    // Solid fill for primary, ghost/outline for secondary
     MuiButton: {
       defaultProps: {
         disableElevation: true,
@@ -166,13 +155,13 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: radius.md,
-          padding: '4px 12px',
+          padding: '6px 16px',
           transition: transitions.fast,
           fontFamily: fonts.body,
           fontSize: fonts.size.sm,
           fontWeight: fonts.weight.medium,
           textTransform: 'none',
-          minHeight: 32,
+          minHeight: 34,
           boxShadow: 'none',
           '&:hover':  { boxShadow: 'none' },
           '&:active': { transform: 'scale(0.98)' },
@@ -181,7 +170,7 @@ const theme = createTheme({
           backgroundColor: colors.primary.main,
           color: '#FFFFFF',
           '&:hover': {
-            backgroundColor: colors.primary.dark,
+            backgroundColor: colors.primary.light,
           },
         },
         outlined: {
@@ -201,17 +190,17 @@ const theme = createTheme({
       },
     },
 
-    // ── CARD — flat, bordered ──
+    // ── CARD ──
     MuiCard: {
       styleOverrides: {
         root: {
           background: colors.bg.base,
-          border: `1px solid ${colors.border.subtle}`,
-          borderRadius: radius.md,
-          boxShadow: 'none',
+          border: `1px solid ${colors.border.medium}`,
+          borderRadius: radius.lg,
+          boxShadow: shadows.sm,       // very subtle shadow for depth
           transition: transitions.fast,
           '&:hover': {
-            borderColor: colors.border.medium,
+            boxShadow: shadows.md,
           },
         },
       },
@@ -226,7 +215,7 @@ const theme = createTheme({
       },
     },
 
-    // ── PAPER — no elevation, borders only ──
+    // ── PAPER ──
     MuiPaper: {
       defaultProps: { elevation: 0 },
       styleOverrides: {
@@ -238,7 +227,7 @@ const theme = createTheme({
       },
     },
 
-    // ── TEXT FIELD — light grey bg, thin borders ──
+    // ── TEXT FIELD ──
     MuiTextField: {
       defaultProps: { variant: 'outlined', size: 'small' },
       styleOverrides: {
@@ -248,7 +237,7 @@ const theme = createTheme({
             fontSize: fonts.size.base,
             fontVariantNumeric: 'tabular-nums',
             borderRadius: radius.md,
-            backgroundColor: colors.bg.raised,
+            backgroundColor: colors.bg.base,
             transition: transitions.fast,
             '& fieldset': {
               borderColor: colors.border.medium,
@@ -259,11 +248,7 @@ const theme = createTheme({
             },
             '&.Mui-focused fieldset': {
               borderColor: colors.primary.main,
-              borderWidth: '1px',
-              boxShadow: 'none',      // NO focus glow
-            },
-            '&.Mui-focused': {
-              backgroundColor: '#FFFFFF',
+              borderWidth: '1.5px',
             },
           },
           '& .MuiInputLabel-root': {
@@ -275,31 +260,25 @@ const theme = createTheme({
       },
     },
 
-    // ── OUTLINED INPUT (standalone) ──
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          backgroundColor: colors.bg.raised,
+          backgroundColor: colors.bg.base,
           borderRadius: radius.md,
           '& .MuiOutlinedInput-notchedOutline': {
             borderColor: colors.border.medium,
-            borderWidth: '1px',
           },
           '&:hover .MuiOutlinedInput-notchedOutline': {
             borderColor: colors.border.strong,
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
             borderColor: colors.primary.main,
-            borderWidth: '1px',
-          },
-          '&.Mui-focused': {
-            backgroundColor: '#FFFFFF',
+            borderWidth: '1.5px',
           },
         },
       },
     },
 
-    // ── SELECT ──
     MuiSelect: {
       styleOverrides: {
         root: {
@@ -310,19 +289,18 @@ const theme = createTheme({
       },
     },
 
-    // ── TABLE CELL — Notion/Cron density ──
     MuiTableCell: {
       styleOverrides: {
         root: {
           fontFamily: fonts.body,
           fontSize: fonts.size.base,
           fontVariantNumeric: 'tabular-nums',
-          padding: '8px 12px',
+          padding: '10px 14px',
           borderBottom: `1px solid ${colors.border.subtle}`,
           color: colors.text.primary,
         },
         head: {
-          fontWeight: fonts.weight.medium,
+          fontWeight: fonts.weight.semibold,
           color: colors.text.secondary,
           fontSize: fonts.size.xs,
           textTransform: 'uppercase',
@@ -331,7 +309,6 @@ const theme = createTheme({
       },
     },
 
-    // ── CHIP — small, rounded, flat ──
     MuiChip: {
       styleOverrides: {
         root: {
@@ -344,7 +321,6 @@ const theme = createTheme({
       },
     },
 
-    // ── TOOLTIP — clean, no heavy shadow ──
     MuiTooltip: {
       styleOverrides: {
         tooltip: {
@@ -354,24 +330,22 @@ const theme = createTheme({
           fontSize: fonts.size.xs,
           borderRadius: radius.sm,
           boxShadow: shadows.lg,
-          padding: '4px 8px',
+          padding: '6px 10px',
         },
       },
     },
 
-    // ── DIALOG / MODAL — flat, bordered ──
     MuiDialog: {
       styleOverrides: {
         paper: {
           backgroundColor: colors.bg.base,
           border: `1px solid ${colors.border.medium}`,
-          borderRadius: radius.lg,
+          borderRadius: radius.xl,
           boxShadow: shadows.xl,
         },
       },
     },
 
-    // ── DRAWER / APP BAR — zero elevation, border edge ──
     MuiDrawer: {
       styleOverrides: {
         paper: {
@@ -394,7 +368,6 @@ const theme = createTheme({
       },
     },
 
-    // ── ICON BUTTON ──
     MuiIconButton: {
       defaultProps: { disableRipple: true },
       styleOverrides: {
@@ -402,7 +375,7 @@ const theme = createTheme({
           transition: transitions.fast,
           borderRadius: radius.md,
           '&:hover': {
-            backgroundColor: colors.bg.raised,
+            backgroundColor: colors.secondary.ghost,
           },
         },
       },
