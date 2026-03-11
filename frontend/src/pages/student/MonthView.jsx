@@ -58,7 +58,7 @@ export default function MonthView({
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
           gap: "1px",
-          bgcolor: "rgba(255,255,255,0.03)",
+          bgcolor: colors.bg.raised,
         }}
       >
         {Array.from({ length: totalCells }, (_, i) => {
@@ -79,7 +79,7 @@ export default function MonthView({
               sx={{
                 minHeight: 60,
                 p: 0.5,
-                bgcolor: isSelected ? colors.primary.ghost : "rgba(255,255,255,0.01)",
+                bgcolor: isSelected ? colors.primary.ghost : colors.bg.base,
                 border: isSelected
                   ? `1px solid ${colors.primary.main}`
                   : `1px solid ${colors.border.subtle}`,
@@ -124,7 +124,7 @@ export default function MonthView({
                         left: 4,
                         right: 4,
                         height: 3,
-                        background: `linear-gradient(90deg, ${colors.primary.main}, ${colors.secondary.main})`,
+                        background: colors.primary.main,
                         borderRadius: "2px",
                       }}
                     />

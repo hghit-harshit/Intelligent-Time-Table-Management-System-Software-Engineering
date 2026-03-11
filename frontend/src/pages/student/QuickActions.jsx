@@ -10,14 +10,14 @@ import { colors, fonts, radius, glass } from "../../styles/tokens"
 
 export default function QuickActions({ quickActions, handleQuickAction }) {
   return (
-    <Box sx={{ ...glass, p: 2 }}>
+    <Box sx={{ ...glass, p: 1.5 }}>
       <Typography
         sx={{
-          fontSize: fonts.size.base,
+          fontSize: fonts.size.sm,
           fontWeight: fonts.weight.bold,
           color: colors.text.primary,
           fontFamily: fonts.heading,
-          mb: 1.5,
+          mb: 1,
         }}
       >
         Quick Actions
@@ -30,10 +30,10 @@ export default function QuickActions({ quickActions, handleQuickAction }) {
             component="button"
             onClick={() => handleQuickAction(action)}
             sx={{
-              background: "rgba(255,255,255,0.04)",
+              background: colors.bg.raised,
               border: `1px solid ${colors.border.subtle}`,
               borderRadius: radius.md,
-              p: "12px 8px",
+              p: "8px 6px",
               color: colors.text.secondary,
               fontSize: fonts.size.xs,
               fontFamily: fonts.body,

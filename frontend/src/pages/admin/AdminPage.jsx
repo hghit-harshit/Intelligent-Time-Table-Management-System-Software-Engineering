@@ -104,7 +104,7 @@ export default function AdminPage() {
   /** Shared sx for glass-panel cards */
   const panelSx = {
     flex: 1,
-    p: 3,
+    p: 2,
     ...glass,
     borderRadius: radius.xl,
   }
@@ -124,8 +124,8 @@ export default function AdminPage() {
       {/* ── Top Bar ─────────────────────────────────── */}
       <Box
         sx={{
-          m: "16px 16px 0",
-          p: "16px 24px",
+          m: "12px 12px 0",
+          p: "10px 16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -168,9 +168,9 @@ export default function AdminPage() {
       {/* ── Content — Two Panels ────────────────────── */}
       <Box
         sx={{
-          m: 2,
+          m: 1.5,
           display: "flex",
-          gap: 2,
+          gap: 1.5,
           animation: animations.fadeUp,
           // Stack on small screens
           flexDirection: { xs: "column", md: "row" },
@@ -178,8 +178,8 @@ export default function AdminPage() {
       >
         {/* ── Time Slots Panel ──────────────────────── */}
         <Box sx={panelSx}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
-            <ClockIcon sx={{ fontSize: 18, color: colors.primary.main }} />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+            <ClockIcon sx={{ fontSize: 16, color: colors.primary.main }} />
             <Typography
               variant="h6"
               sx={{
@@ -199,7 +199,7 @@ export default function AdminPage() {
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr auto",
               gap: 1.5,
-              mb: 3,
+              mb: 2,
               alignItems: "end",
             }}
           >
@@ -257,11 +257,11 @@ export default function AdminPage() {
               <Box
                 sx={{
                   textAlign: "center",
-                  py: 5,
+                  py: 3,
                   color: colors.text.muted,
                 }}
               >
-                <Typography sx={{ fontSize: 32, mb: 1.5 }}>🕐</Typography>
+                <Typography sx={{ fontSize: 24, mb: 1 }}>🕐</Typography>
                 <Typography variant="body2" sx={{ color: colors.text.muted }}>
                   No time slots added yet
                 </Typography>
@@ -276,7 +276,7 @@ export default function AdminPage() {
                       alignItems: "center",
                       justifyContent: "space-between",
                       p: "12px 16px",
-                      bgcolor: "rgba(255,255,255,0.03)",
+                      bgcolor: colors.bg.raised,
                       border: `1px solid ${colors.border.subtle}`,
                       borderRadius: radius.lg,
                       transition: "all 0.2s ease",
@@ -347,8 +347,8 @@ export default function AdminPage() {
 
         {/* ── Semester Details Panel ────────────────── */}
         <Box sx={panelSx}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
-            <CalendarIcon sx={{ fontSize: 18, color: colors.secondary.main }} />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+            <CalendarIcon sx={{ fontSize: 16, color: colors.secondary.main }} />
             <Typography
               variant="h6"
               sx={{

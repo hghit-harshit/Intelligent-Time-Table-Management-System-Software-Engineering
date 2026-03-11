@@ -12,14 +12,14 @@ import { colors, fonts, radius } from "../../styles/tokens"
 
 // Maps subject names to token colors for consistent color coding
 const getClassColor = (classItem) => {
-  if (classItem.isRescheduled) return { bg: "rgba(245,158,11,0.15)", text: colors.warning.main }
+  if (classItem.isRescheduled) return { bg: colors.warning.ghost, text: colors.warning.main }
   const name = classItem.name || ""
-  if (name.includes("Data"))     return { bg: "rgba(45,212,191,0.15)",  text: colors.primary.main }
+  if (name.includes("Data"))     return { bg: colors.primary.ghost,  text: colors.primary.main }
   if (name.includes("Networks")) return { bg: colors.info.ghost,        text: colors.info.main }
   if (name.includes("Digital"))  return { bg: colors.warning.ghost,     text: colors.warning.main }
   if (name.includes("Signals"))  return { bg: colors.success.ghost,     text: colors.success.main }
   if (name.includes("Math"))     return { bg: colors.secondary.ghost,   text: colors.secondary.main }
-  return { bg: "rgba(236,72,153,0.15)", text: "#ec4899" }
+  return { bg: "rgba(236,72,153,0.08)", text: "#ec4899" }
 }
 
 export default function WeekView({ timetableData, handleTimeSlotClick }) {
@@ -40,7 +40,7 @@ export default function WeekView({ timetableData, handleTimeSlotClick }) {
             key={day}
             sx={{
               textAlign: "center",
-              p: "12px 4px",
+              p: "8px 4px",
               borderBottom: `1px solid ${colors.border.subtle}`,
             }}
           >

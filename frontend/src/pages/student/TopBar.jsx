@@ -12,8 +12,8 @@ export default function TopBar({ semester }) {
   return (
     <Box
       sx={{
-        m: "16px 16px 0",
-        p: "16px 24px",
+        m: "12px 12px 0",
+        p: "10px 16px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",

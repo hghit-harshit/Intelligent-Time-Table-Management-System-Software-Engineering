@@ -11,12 +11,12 @@ import { colors, fonts, radius } from "../../styles/tokens"
 
 // Maps subject names to token colors — same logic as WeekView
 const getClassColor = (classItem) => {
-  if (classItem.isRescheduled) return { bg: "rgba(245,158,11,0.15)", text: colors.warning.main }
+  if (classItem.isRescheduled) return { bg: colors.warning.ghost, text: colors.warning.main }
   const name = classItem.name || ""
-  if (name.includes("Data"))     return { bg: "rgba(45,212,191,0.15)",  text: colors.primary.main }
+  if (name.includes("Data"))     return { bg: colors.primary.ghost,  text: colors.primary.main }
   if (name.includes("Math"))     return { bg: colors.secondary.ghost,   text: colors.secondary.main }
   if (name.includes("Signals"))  return { bg: colors.success.ghost,     text: colors.success.main }
-  return { bg: "rgba(45,212,191,0.12)", text: colors.primary.light }
+  return { bg: colors.primary.ghost, text: colors.primary.main }
 }
 
 export default function DayView({
