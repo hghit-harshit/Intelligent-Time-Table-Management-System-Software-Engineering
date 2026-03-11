@@ -1,7 +1,7 @@
 import { useState } from "react"
-import Layout from "../components/Layout"
-import CalendarView from "../components/CalendarView"
-import { colors, fonts, radius, shadows } from "../styles/tokens"
+import Layout from "../../components/Layout"
+import CalendarView from "../../components/CalendarView"
+import { colors, fonts, radius, shadows } from "../../styles/tokens"
 
 export default function FacultyPage() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
