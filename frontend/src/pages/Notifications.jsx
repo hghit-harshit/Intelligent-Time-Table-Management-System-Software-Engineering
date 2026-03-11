@@ -1,5 +1,4 @@
 import { useState } from "react"
-import Layout from "../components/Layout"
 import { colors, fonts, radius, shadows } from "../styles/tokens"
 
 export default function Notifications() {
@@ -36,9 +35,9 @@ export default function Notifications() {
   }
 
   return (
-    <Layout>
+    <>
       {/* Top Bar */}
-      <div style={{ ...card, margin: "12px 12px 0", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ ...card, marginBottom: "12px", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ width: 3, height: 20, borderRadius: "2px", background: colors.warning.main }} />
@@ -212,6 +211,6 @@ export default function Notifications() {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   )
 }

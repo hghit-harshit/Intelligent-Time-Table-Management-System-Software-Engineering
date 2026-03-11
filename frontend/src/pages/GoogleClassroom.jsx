@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
-import Layout from "../components/Layout"
 import { colors, fonts, radius, shadows } from "../styles/tokens"
 import { getAuthUrl, checkAuthStatus, logout, getAssignments, getClassroomLink } from "../services/classroomApi"
 
@@ -100,18 +99,16 @@ export default function GoogleClassroom() {
 
   if (loading) {
     return (
-      <Layout>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: colors.text.muted, fontFamily: fonts.body }}>
-          Loading...
-        </div>
-      </Layout>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: colors.text.muted, fontFamily: fonts.body }}>
+        Loading...
+      </div>
     )
   }
 
   return (
-    <Layout>
+    <>
       {/* Top Bar */}
-      <div style={{ ...card, margin: "12px 12px 0", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ ...card, marginBottom: "12px", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ width: 3, height: 20, borderRadius: "2px", background: "#4285F4" }} />
@@ -295,6 +292,6 @@ export default function GoogleClassroom() {
           </>
         )}
       </div>
-    </Layout>
+    </>
   )
 }
