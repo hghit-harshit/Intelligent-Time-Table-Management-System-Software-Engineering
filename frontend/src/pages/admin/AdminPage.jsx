@@ -34,6 +34,7 @@ export default function AdminPage() {
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Routes>
+      
     </AdminLayout>
   );
 }

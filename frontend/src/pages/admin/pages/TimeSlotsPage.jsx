@@ -10,24 +10,8 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import csvRaw from "../../../data/timetableSlots.csv?raw";
 
-/* ── Parse CSV — columns: label, startTime, endTime, day ───────── */
-function parseCSV(raw) {
-  const lines = raw.trim().split("\n");
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const cells = line.split(",").map((c) => c.trim());
-    const obj = {};
-    headers.forEach((h, idx) => { obj[h] = cells[idx] || ""; });
-    rows.push({ ...obj, id: i });
-  }
-  return rows;
-}
+const API_BASE = "http://localhost:5000/api";
 
 /* ── Warm distinct colors ──────────────────────────────────────── */
 const SLOT_COLORS = [
@@ -118,8 +102,28 @@ export default function TimeSlotsPage() {
   const [editingSlot, setEditingSlot] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => { setSlots(parseCSV(csvRaw)); }, []);
+  // Fetch slots from API
+  const fetchSlots = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/slots`);
+      if (res.ok) {
+        const data = await res.json();
+        setSlots(data);
+      }
+    } catch (err) {
+      setError("Failed to fetch slots");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSlots();
+  }, []);
 
   /* ── Modal helpers ───────────────────────────────────────────── */
   const openAdd = () => { setEditingSlot(null); setForm({ ...EMPTY_FORM }); setModalOpen(true); };
@@ -130,20 +134,56 @@ export default function TimeSlotsPage() {
   };
   const closeModal = () => { setModalOpen(false); setEditingSlot(null); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.label.trim() || !form.startTime || !form.endTime || !form.day) return;
-    if (editingSlot) {
-      setSlots((prev) => prev.map((s) => (s.id === editingSlot.id ? { ...s, ...form } : s)));
-    } else {
-      const newId = slots.length ? Math.max(...slots.map((s) => s.id)) + 1 : 1;
-      setSlots((prev) => [...prev, { ...form, id: newId }]);
+    
+    try {
+      const options = {
+        method: editingSlot ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      };
+      
+      const url = editingSlot 
+        ? `${API_BASE}/slots/${editingSlot._id}`
+        : `${API_BASE}/slots`;
+      
+      const res = await fetch(url, options);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        if (res.status === 409) {
+          alert(`Conflict: ${data.message}`);
+          return;
+        }
+        throw new Error(data.message || "Failed to save slot");
+      }
+      
+      await fetchSlots();
+      closeModal();
+    } catch (err) {
+      alert(err.message);
     }
-    closeModal();
   };
 
-  const handleDelete = (slot) => {
-    setSlots((prev) => prev.filter((s) => s.id !== slot.id));
-    setDeleteConfirm(null);
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/slots/${deleteConfirm._id}`, {
+        method: "DELETE",
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to delete slot");
+      }
+      
+      await fetchSlots();
+      setDeleteConfirm(null);
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   /* ── Stable color map: same label → same color everywhere ────── */
@@ -461,11 +501,18 @@ export default function TimeSlotsPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "22px" }}>
-            <Button variant="secondary" size="sm" onClick={closeModal}>Cancel</Button>
-            <Button variant="primary" size="sm" onClick={handleSave}>
-              {editingSlot ? "Save Changes" : "Add Slot"}
-            </Button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "22px" }}>
+            {editingSlot && (
+              <Button variant="danger" size="sm" icon={<TrashIcon />} onClick={() => { setDeleteConfirm(editingSlot); setModalOpen(false); }}>
+                Delete
+              </Button>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginLeft: editingSlot ? "auto" : "0" }}>
+              <Button variant="secondary" size="sm" onClick={closeModal}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={handleSave}>
+                {editingSlot ? "Save Changes" : "Add Slot"}
+              </Button>
+            </div>
           </div>
         </Modal>
       )}
