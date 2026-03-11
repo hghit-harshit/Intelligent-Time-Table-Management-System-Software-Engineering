@@ -6,7 +6,6 @@
 import {
   dashboardMetrics,
   systemAlerts,
-  rescheduleRequests,
   activityFeed,
   conflicts,
   courses,
@@ -18,6 +17,7 @@ import {
   timetableVersions,
   analyticsData,
 } from "../../../data/adminMockData";
+import { getRequests, updateStatus } from "../../../data/rescheduleStore";
 
 // Simulate network delay
 const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,11 +25,12 @@ const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
 // ─── Dashboard ──────────────────────────────────────────────
 export async function fetchDashboard() {
   await delay(200);
+  const allRequests = getRequests();
   return {
     metrics: dashboardMetrics,
     alerts: systemAlerts,
     recentActivity: activityFeed,
-    pendingRequests: rescheduleRequests.filter((r) => r.status === "pending"),
+    pendingRequests: allRequests.filter((r) => r.status === "pending"),
   };
 }
 
@@ -47,11 +48,12 @@ export async function resolveConflict(conflictId, action) {
 // ─── Reschedule Requests ────────────────────────────────────
 export async function fetchRescheduleRequests() {
   await delay(200);
-  return [...rescheduleRequests];
+  return getRequests();
 }
 
 export async function updateRequestStatus(requestId, status) {
   await delay(400);
+  updateStatus(requestId, status);
   return { success: true, requestId, status };
 }
 
