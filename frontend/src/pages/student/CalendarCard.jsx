@@ -1,3 +1,16 @@
+/**
+ * CalendarCard.jsx — Calendar Container with View Switcher
+ *
+ * PURPOSE: Houses the Month/Week/Day toggle buttons and renders
+ * the appropriate view component based on the selected mode.
+ */
+
+import { Box, Typography, Button } from "@mui/material"
+import {
+  ChevronLeftOutlined,
+  ChevronRightOutlined,
+} from "@mui/icons-material"
+import { colors, fonts, radius, shadows } from "../../styles/tokens"
 import WeekView from "./WeekView"
 import MonthView from "./MonthView"
 import DayView from "./DayView"
@@ -21,91 +34,129 @@ export default function CalendarCard({
   timetableData,
 }) {
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.04)",
-      backdropFilter: "blur(20px)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: "16px",
-      marginBottom: "20px",
-      overflow: "hidden",
-    }}>
+    <Box
+      sx={{
+        bgcolor: colors.bg.base,
+        border: `1px solid ${colors.border.medium}`,
+        borderRadius: radius.lg,
+        boxShadow: shadows.sm,
+        mb: "12px",
+        overflow: "hidden",
+      }}
+    >
       {/* Calendar Header */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "16px 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
-      }}>
-        <h3 style={{
-          fontSize: "16px",
-          fontWeight: "700",
-          color: "#fff",
-          margin: 0,
-          fontFamily: "'Playfair Display', serif",
-        }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: "10px 16px",
+          borderBottom: `1px solid ${colors.border.subtle}`,
+        }}
+      >
+        <Typography
+          variant="h4"
+          sx={{ fontFamily: fonts.heading, m: 0, fontSize: fonts.size.lg }}
+        >
           {getMonthName(selectedMonth)} {selectedYear}
-        </h3>
-        <div style={{
-          display: "flex",
-          gap: "4px",
-          marginLeft: "16px",
-        }}>
-          <button style={{
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "6px",
-            width: "28px", height: "28px",
-            color: "#fff",
-            cursor: "pointer",
-            fontSize: "12px",
-            transition: "all 0.2s ease",
-          }} onClick={handlePrevMonth}
-             onMouseEnter={(e) => e.target.style.background = "rgba(96,239,255,0.2)"}
-             onMouseLeave={(e) => e.target.style.background = "rgba(255,255,255,0.1)"}>‹</button>
-          <button style={{
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "6px",
-            width: "28px", height: "28px",
-            color: "#fff",
-            cursor: "pointer",
-            fontSize: "12px",
-            transition: "all 0.2s ease",
-          }} onClick={handleNextMonth}
-             onMouseEnter={(e) => e.target.style.background = "rgba(96,239,255,0.2)"}
-             onMouseLeave={(e) => e.target.style.background = "rgba(255,255,255,0.1)"}>›</button>
-        </div>
-        <div style={{
-          marginLeft: "auto",
-          display: "flex",
-          gap: "4px",
-        }}>
-          {['Month', 'Week', 'Day'].map((view) => (
-            <button key={view} onClick={() => setSelectedView(view.toLowerCase())} style={{
-              padding: "6px 12px",
-              borderRadius: "6px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: selectedView === view.toLowerCase() ? "#60efff" : "rgba(255,255,255,0.1)",
-              color: selectedView === view.toLowerCase() ? "#0a0a12" : "#fff",
-              fontSize: "11px",
-              cursor: "pointer",
-              fontWeight: "500",
-              transition: "all 0.2s ease",
-            }}>
-              {view}
-            </button>
-          ))}
-        </div>
-      </div>
+        </Typography>
 
-      {selectedView === 'week' && (
+        {/* Month navigation arrows — MUI icons */}
+        <Box sx={{ display: "flex", gap: 0.5, ml: 2 }}>
+          <Box
+            component="button"
+            onClick={handlePrevMonth}
+            sx={{
+              background: colors.bg.raised,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.sm,
+              width: 28,
+              height: 28,
+              color: colors.text.primary,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                bgcolor: colors.primary.ghost,
+                borderColor: colors.primary.border,
+              },
+            }}
+          >
+            <ChevronLeftOutlined sx={{ fontSize: 18 }} />
+          </Box>
+          <Box
+            component="button"
+            onClick={handleNextMonth}
+            sx={{
+              background: colors.bg.raised,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.sm,
+              width: 28,
+              height: 28,
+              color: colors.text.primary,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                bgcolor: colors.primary.ghost,
+                borderColor: colors.primary.border,
+              },
+            }}
+          >
+            <ChevronRightOutlined sx={{ fontSize: 18 }} />
+          </Box>
+        </Box>
+
+        {/* View switcher buttons */}
+        <Box sx={{ ml: "auto", display: "flex", gap: 0.5 }}>
+          {["Month", "Week", "Day"].map((view) => (
+            <Button
+              key={view}
+              size="small"
+              onClick={() => setSelectedView(view.toLowerCase())}
+              sx={{
+                px: 1.5,
+                py: 0.75,
+                borderRadius: radius.sm,
+                border: `1px solid ${colors.border.medium}`,
+                bgcolor:
+                  selectedView === view.toLowerCase()
+                    ? colors.primary.main
+                    : colors.bg.raised,
+                color:
+                  selectedView === view.toLowerCase()
+                    ? "#FFFFFF"
+                    : colors.text.primary,
+                fontSize: fonts.size.xs,
+                fontWeight: fonts.weight.medium,
+                textTransform: "none",
+                minWidth: "auto",
+                transition: "all 0.15s ease",
+                "&:hover": {
+                  bgcolor:
+                    selectedView === view.toLowerCase()
+                      ? colors.primary.light
+                      : colors.bg.deep,
+                },
+              }}
+            >
+              {view}
+            </Button>
+          ))}
+        </Box>
+      </Box>
+
+      {/* View content */}
+      {selectedView === "week" && (
         <WeekView
           timetableData={timetableData}
           handleTimeSlotClick={handleTimeSlotClick}
         />
       )}
-
-      {selectedView === 'month' && (
+      {selectedView === "month" && (
         <MonthView
           selectedMonth={selectedMonth}
           selectedYear={selectedYear}
@@ -116,8 +167,7 @@ export default function CalendarCard({
           timetableData={timetableData}
         />
       )}
-
-      {selectedView === 'day' && (
+      {selectedView === "day" && (
         <DayView
           selectedDate={selectedDate}
           selectedMonth={selectedMonth}
@@ -130,6 +180,6 @@ export default function CalendarCard({
           timetableData={timetableData}
         />
       )}
-    </div>
+    </Box>
   )
 }

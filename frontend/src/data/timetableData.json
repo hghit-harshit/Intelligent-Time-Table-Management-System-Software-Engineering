@@ -3,7 +3,7 @@
     "name": "Semester 2",
     "period": "Jan–May 2025",
     "status": {
-      "text": "✓ No Clashes This Week",
+      "text": "No Clashes This Week",
       "type": "success"
     }
   },
@@ -15,14 +15,12 @@
   },
   "stats": [
     {
-      "icon": "📅",
       "num": "6",
       "label": "Courses This Sem",
       "color": "#60efff",
       "onClick": "/courses"
     },
     {
-      "icon": "✏️",
       "num": "3",
       "label": "Exams Upcoming",
       "sub": "Next in 8 days",
@@ -30,13 +28,11 @@
       "onClick": "/exams"
     },
     {
-      "icon": "🏫",
       "num": "24",
       "label": "Classes This Week",
       "color": "#a78bfa"
     },
     {
-      "icon": "✅",
       "num": "92%",
       "label": "Attendance",
       "sub": "↑ Above threshold",
@@ -325,7 +321,7 @@
     {
       "time": "2:00 PM",
       "duration": "75 min",
-      "subject": "VLSI Design ⚠",
+      "subject": "VLSI Design",
       "location": "Rescheduled — Friday 2:00 PM · F-102",
       "status": "Moved",
       "statusColor": "#ef4444",
@@ -334,22 +330,18 @@
   ],
   "quickActions": [
     {
-      "icon": "📝",
       "label": "Take Notes",
       "onClick": "/notes"
     },
     {
-      "icon": "📅",
       "label": "Add Event",
       "onClick": "modal:addEvent"
     },
     {
-      "icon": "🔔",
       "label": "Set Reminder",
       "onClick": "/reminders"
     },
     {
-      "icon": "📊",
       "label": "View Stats",
       "onClick": "modal:stats"
     }

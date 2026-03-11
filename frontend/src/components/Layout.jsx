@@ -1,283 +1,329 @@
+/**
+ * Layout.jsx — Shared Sidebar + Main Content Shell
+ *
+ * PURPOSE: Wraps every authenticated page (Student, Faculty, Admin).
+ * Provides the sidebar navigation with MUI icons, user card, and scrollable content.
+ *
+ * AESTHETIC: Notion/Linear — clean sidebar with 1px right border,
+ * subtle shadows, DM Sans typeface. MUI icons for every nav item.
+ *
+ * BRAND: Smart Timetable (DISHA)
+ */
+
 import { useNavigate, useLocation } from "react-router-dom"
+import { Box, Typography, Chip } from "@mui/material"
+import {
+  DashboardOutlined,
+  EventNoteOutlined,
+  NotificationsOutlined,
+  SchoolOutlined,
+  StickyNote2Outlined,
+  ChecklistOutlined,
+  AlarmOutlined,
+  SmartToyOutlined,
+  ExtensionOutlined,
+  SettingsOutlined,
+  LogoutOutlined,
+} from "@mui/icons-material"
+import { colors, fonts, radius, shadows, animations } from "../styles/tokens"
 
 export default function Layout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
 
   const navigationItems = [
-    { 
+    {
       section: "MAIN",
       items: [
-        { icon: "📅", label: "My Timetable", path: "/StudentPage", badge: null },
-        { icon: "📋", label: "Exam Schedule", path: "/exams", badge: "3" },
-        { icon: "🔔", label: "Notifications", path: "/notifications", badge: "3" },
-        { icon: "📚", label: "Courses", path: "/courses", badge: null },
-        //{ icon: "📁", label: "Resources", path: "/resources", badge: null },
-      ]
+        { label: "My Timetable", path: "/StudentPage", badge: null, icon: DashboardOutlined },
+        { label: "Exam Schedule", path: "/exams", badge: "3", icon: EventNoteOutlined },
+        { label: "Notifications", path: "/notifications", badge: "3", icon: NotificationsOutlined },
+        { label: "Courses", path: "/courses", badge: null, icon: SchoolOutlined },
+        { label: "Google Classroom", path: "/google-classroom", badge: null, icon: SchoolOutlined },
+      ],
     },
     {
-      section: "WORKSPACE", 
+      section: "WORKSPACE",
       items: [
-        { icon: "📝", label: "My Notes", path: "/notes", badge: null },
-        { icon: "✅", label: "Tasks", path: "/tasks", badge: null },
-        { icon: "⏰", label: "Reminders", path: "/reminders", badge: null },
-      ]
+        { label: "My Notes", path: "/notes", badge: null, icon: StickyNote2Outlined },
+        { label: "Tasks", path: "/tasks", badge: null, icon: ChecklistOutlined },
+        { label: "Reminders", path: "/reminders", badge: null, icon: AlarmOutlined },
+      ],
     },
     {
       section: "TOOLS",
       items: [
-        { icon: "🤖", label: "AI Assistant", path: "/ai", badge: null },
-        { icon: "🔗", label: "Integrations", path: "/integrations", badge: null },
-      ]
-    }
+        { label: "AI Assistant", path: "/ai", badge: null, icon: SmartToyOutlined },
+        { label: "Integrations", path: "/integrations", badge: null, icon: ExtensionOutlined },
+      ],
+    },
   ]
 
-  const handleNavClick = (path) => {
-    navigate(path)
-  }
-
-  const handleLogout = () => {
-    navigate("/")
-  }
+  const handleNavClick = (path) => navigate(path)
+  const handleLogout = () => navigate("/")
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#0a0a12",
-      fontFamily: "'Space Mono', monospace",
-      color: "#fff",
-      display: "flex",
-      overflow: "hidden",
-    }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
-        
-        @keyframes float1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(20px, -30px) scale(1.02); }
-          66% { transform: translate(-15px, 15px) scale(0.98); }
-        }
-        @keyframes float2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          50% { transform: translate(-25px, 20px) scale(1.05); }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse-glow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(96, 239, 255, 0.3); }
-          50% { box-shadow: 0 0 0 8px rgba(96, 239, 255, 0); }
-        }
-        @keyframes shimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        .glass-card {
-          background: rgba(255,255,255,0.04);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 16px;
-          transition: all 0.25s ease;
-        }
-        .glass-card:hover {
-          background: rgba(255,255,255,0.06);
-          border-color: rgba(96,239,255,0.2);
-        }
-        .nav-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 12px;
-          border-radius: 10px;
-          cursor: pointer;
-          fontSize: 13px;
-          marginBottom: 4px;
-          color: rgba(255,255,255,0.6);
-          transition: all 0.2s ease;
-          border: 1px solid transparent;
-        }
-        .nav-item:hover {
-          background: rgba(96,239,255,0.1);
-          color: #60efff;
-          transform: translateX(4px);
-        }
-        .nav-item.active {
-          background: rgba(96,239,255,0.15);
-          color: #60efff;
-          border-color: rgba(96,239,255,0.2);
-        }
-      `}</style>
-
-      {/* Floating Background Orbs */}
-      <div style={{
-        position: "absolute", width: "400px", height: "400px",
-        borderRadius: "50%", top: "-100px", left: "-100px",
-        background: "radial-gradient(circle, rgba(96,239,255,0.08) 0%, transparent 70%)",
-        animation: "float1 12s ease-in-out infinite",
-        pointerEvents: "none", zIndex: 1,
-      }} />
-      <div style={{
-        position: "absolute", width: "350px", height: "350px",
-        borderRadius: "50%", bottom: "-80px", right: "-60px",
-        background: "radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 70%)",
-        animation: "float2 15s ease-in-out infinite",
-        pointerEvents: "none", zIndex: 1,
-      }} />
-
-      {/* Grid Overlay */}
-      <div style={{
-        position: "absolute", inset: 0,
-        backgroundImage: `
-          linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px)
-        `,
-        backgroundSize: "40px 40px",
-        pointerEvents: "none", zIndex: 1,
-      }} />
-
-      {/* Sidebar */}
-      <div className="glass-card" style={{
-        width: "280px",
-        margin: "16px",
-        padding: "24px 20px",
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: colors.bg.deep,
+        fontFamily: fonts.body,
+        color: colors.text.primary,
         display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        zIndex: 10,
-        animation: "fadeUp 0.6s ease",
-      }}>
-        {/* Logo */}
-        <div style={{ marginBottom: "24px" }}>
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "24px", fontWeight: "700",
-            margin: "0 0 4px",
-            background: "linear-gradient(90deg, #60efff, #a78bfa)",
-            backgroundSize: "200% auto",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            animation: "shimmer 3s linear infinite",
-          }}>
-            SmartTimetable
-          </h1>
-          <p style={{
-            color: "rgba(255,255,255,0.4)",
-            fontSize: "10px",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            margin: 0,
-          }}>
-            ITMS • Student Portal
-          </p>
-        </div>
+        overflow: "hidden",
+      }}
+    >
+      {/* ── SIDEBAR ─────────────────────────────────────── */}
+      <Box
+        sx={{
+          width: 240,
+          p: "16px 12px",
+          display: "flex",
+          flexDirection: "column",
+          bgcolor: colors.bg.raised,
+          borderRight: `1px solid ${colors.border.medium}`,
+          animation: animations.fadeUp,
+        }}
+      >
+        {/* Brand — Smart Timetable / DISHA */}
+        <Box sx={{ mb: 2, px: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Logo badge — gradient square with "S" */}
+            <Box sx={{
+              width: 28, height: 28,
+              borderRadius: radius.md,
+              background: `linear-gradient(135deg, ${colors.primary.main}, ${colors.primary.light})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: '14px', fontWeight: 700,
+              flexShrink: 0,
+              boxShadow: shadows.sm,
+            }}>S</Box>
+            <Box>
+              <Typography
+                sx={{
+                  fontFamily: fonts.heading,
+                  fontSize: fonts.size.md,
+                  fontWeight: fonts.weight.bold,
+                  color: colors.text.primary,
+                  lineHeight: 1.2,
+                  letterSpacing: fonts.letterSpacing.tight,
+                }}
+              >
+                Smart Timetable
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: '9px',
+                  color: colors.text.muted,
+                  letterSpacing: fonts.letterSpacing.widest,
+                  textTransform: 'uppercase',
+                  lineHeight: 1,
+                }}
+              >
+                DISHA
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
 
         {/* User Card */}
-        <div className="glass-card" style={{
-          padding: "16px",
-          marginBottom: "24px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}>
-          <div style={{
-            width: "42px", height: "42px",
-            background: "linear-gradient(135deg, #60efff, #a78bfa)",
-            borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: "700", color: "#0a0a12", fontSize: "14px",
-            animation: "pulse-glow 3s infinite",
-          }}>
+        <Box
+          sx={{
+            p: 1.5,
+            mb: 1.5,
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            border: `1px solid ${colors.border.medium}`,
+            borderRadius: radius.md,
+            bgcolor: colors.bg.base,
+            boxShadow: shadows.sm,
+          }}
+        >
+          {/* Avatar */}
+          <Box
+            sx={{
+              width: 36, height: 36,
+              bgcolor: colors.primary.main,
+              borderRadius: radius.md,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: fonts.weight.semibold,
+              color: "#FFFFFF",
+              fontSize: fonts.size.sm,
+            }}
+          >
             RK
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: "600", fontSize: "14px", color: "#fff" }}>
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontWeight: fonts.weight.medium,
+                fontSize: fonts.size.sm,
+                color: colors.text.primary,
+                lineHeight: 1.3,
+              }}
+            >
               Rishikesh K.
-            </div>
-            <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
-              ES23BTECH11033 • ECE
-            </div>
-          </div>
-          <div style={{
-            background: "#7c3aed",
-            color: "#fff",
-            fontSize: "10px",
-            fontWeight: "700",
-            padding: "4px 8px",
-            borderRadius: "6px",
-          }}>
-            Y2S2
-          </div>
-        </div>
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: fonts.size.xs,
+                color: colors.text.muted,
+                lineHeight: 1.3,
+              }}
+            >
+              ES23BTECH11033
+            </Typography>
+          </Box>
+          <Chip
+            label="Y2S2"
+            size="small"
+            sx={{
+              bgcolor: colors.primary.ghost,
+              color: colors.primary.main,
+              fontWeight: fonts.weight.medium,
+              fontSize: fonts.size.xs,
+              height: 22,
+              border: `1px solid ${colors.primary.border}`,
+            }}
+          />
+        </Box>
 
-        {/* Navigation */}
-        <div style={{ flex: 1 }}>
-          {navigationItems.map((section, sectionIndex) => (
-            <div key={section.section} style={{ marginBottom: "16px" }}>
-              <p style={{
-                fontSize: "10px",
-                color: "rgba(255,255,255,0.3)",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                marginBottom: "8px",
-              }}>
+        {/* Navigation Items */}
+        <Box sx={{ flex: 1 }}>
+          {navigationItems.map((section) => (
+            <Box key={section.section} sx={{ mb: 2 }}>
+              <Typography
+                sx={{
+                  color: colors.text.muted,
+                  letterSpacing: fonts.letterSpacing.widest,
+                  textTransform: "uppercase",
+                  fontSize: "10px",
+                  fontWeight: fonts.weight.medium,
+                  mb: 0.5,
+                  px: 1,
+                }}
+              >
                 {section.section}
-              </p>
-              {section.items.map((item, i) => (
-                <div 
-                  key={item.path} 
-                  className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
-                  onClick={() => handleNavClick(item.path)}
-                  style={{
-                    animation: `fadeUp 0.4s ${0.1 + (sectionIndex * 0.1) + i * 0.05}s ease both`,
-                    opacity: 0,
-                  }}
-                >
-                  <span style={{ fontSize: "16px" }}>{item.icon}</span>
-                  <span style={{ flex: 1 }}>{item.label}</span>
-                  {item.badge && (
-                    <span style={{
-                      background: "#ef4444",
-                      color: "#fff",
-                      fontSize: "10px",
-                      fontWeight: "700",
-                      padding: "2px 6px",
-                      borderRadius: "10px",
-                    }}>
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
+              </Typography>
+              {section.items.map((item) => {
+                const isActive = location.pathname === item.path
+                const IconComponent = item.icon
+                return (
+                  <Box
+                    key={item.path}
+                    onClick={() => handleNavClick(item.path)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.5,
+                      p: "7px 10px",
+                      borderRadius: radius.md,
+                      cursor: "pointer",
+                      fontSize: fonts.size.sm,
+                      mb: "2px",
+                      fontWeight: isActive ? fonts.weight.medium : fonts.weight.regular,
+                      color: isActive ? colors.primary.main : colors.text.secondary,
+                      bgcolor: isActive ? colors.primary.ghost : "transparent",
+                      transition: "all 0.1s ease",
+                      "&:hover": {
+                        bgcolor: isActive ? colors.primary.ghost : colors.bg.base,
+                        color: isActive ? colors.primary.main : colors.text.primary,
+                      },
+                    }}
+                  >
+                    {/* MUI Icon — 18px for visual balance */}
+                    <IconComponent sx={{ fontSize: 18, flexShrink: 0, opacity: isActive ? 1 : 0.7 }} />
+                    <Box component="span" sx={{ flex: 1 }}>
+                      {item.label}
+                    </Box>
+                    {item.badge && (
+                      <Chip
+                        label={item.badge}
+                        size="small"
+                        sx={{
+                          bgcolor: colors.error.ghost,
+                          color: colors.error.main,
+                          fontSize: "10px",
+                          fontWeight: fonts.weight.medium,
+                          height: 18,
+                          minWidth: 18,
+                          "& .MuiChip-label": { px: 0.5 },
+                        }}
+                      />
+                    )}
+                  </Box>
+                )
+              })}
+            </Box>
           ))}
-        </div>
+        </Box>
 
-        {/* Settings and Logout */}
-        <div style={{ 
-          borderTop: "1px solid rgba(255,255,255,0.1)", 
-          paddingTop: "16px",
-          marginTop: "16px" 
-        }}>
-          <div className="nav-item" onClick={() => navigate('/settings')}>
-            <span style={{ fontSize: "16px" }}>⚙️</span>
+        {/* Settings & Logout */}
+        <Box
+          sx={{
+            borderTop: `1px solid ${colors.border.medium}`,
+            pt: 1.5,
+            mt: 1,
+          }}
+        >
+          <Box
+            onClick={() => navigate("/settings")}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              p: "7px 10px",
+              borderRadius: radius.md,
+              cursor: "pointer",
+              fontSize: fonts.size.sm,
+              color: colors.text.secondary,
+              transition: "all 0.1s ease",
+              "&:hover": {
+                bgcolor: colors.bg.base,
+                color: colors.text.primary,
+              },
+            }}
+          >
+            <SettingsOutlined sx={{ fontSize: 18, opacity: 0.7 }} />
             <span>Settings</span>
-          </div>
-          <div className="nav-item" onClick={handleLogout} style={{ color: "rgba(239,68,68,0.8)" }}>
-            <span style={{ fontSize: "16px" }}>↩️</span>
-            <span>Logout</span>
-          </div>
-        </div>
-      </div>
+          </Box>
+          <Box
+            onClick={handleLogout}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              p: "7px 10px",
+              borderRadius: radius.md,
+              cursor: "pointer",
+              fontSize: fonts.size.sm,
+              color: colors.text.secondary,
+              transition: "all 0.1s ease",
+              "&:hover": {
+                bgcolor: colors.error.ghost,
+                color: colors.error.main,
+              },
+            }}
+          >
+            <LogoutOutlined sx={{ fontSize: 18, opacity: 0.7 }} />
+            <span>Log out</span>
+          </Box>
+        </Box>
+      </Box>
 
-      {/* Main Content Area */}
-      <div style={{ 
-        flex: 1, 
-        position: "relative",
-        zIndex: 10,
-      }}>
+      {/* ── MAIN CONTENT AREA ───────────────────────────── */}
+      <Box
+        sx={{
+          flex: 1,
+          overflow: "auto",
+          bgcolor: colors.bg.base,
+        }}
+      >
         {children}
-      </div>
-    </div>
+      </Box>
+    </Box>
   )
 }
