@@ -1,12 +1,5 @@
 import { Card } from "../ui/index";
-
-const typeColors = {
-  request: "#f59e0b",
-  system: "#60efff",
-  admin: "#a78bfa",
-  solver: "#3b82f6",
-  publish: "#22c55e",
-};
+import { colors, fonts } from "../../../../styles/tokens";
 
 export default function ActivityFeed({ activities }) {
   if (!activities || activities.length === 0) return null;
@@ -14,11 +7,11 @@ export default function ActivityFeed({ activities }) {
   return (
     <Card style={{ padding: "18px" }}>
       <h3 style={{
-        fontSize: "14px",
-        fontWeight: "700",
-        color: "#fff",
+        fontSize: fonts.size.md,
+        fontWeight: fonts.weight.bold,
+        color: colors.text.primary,
         margin: "0 0 14px",
-        fontFamily: "'Playfair Display', serif",
+        fontFamily: fonts.heading,
       }}>
         Recent Activity
       </h3>
@@ -29,9 +22,8 @@ export default function ActivityFeed({ activities }) {
             display: "flex",
             gap: "12px",
             padding: "10px 0",
-            borderBottom: index < activities.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+            borderBottom: index < activities.length - 1 ? `1px solid ${colors.border.subtle}` : "none",
           }}>
-            {/* Timeline dot + line */}
             <div style={{
               display: "flex",
               flexDirection: "column",
@@ -39,22 +31,24 @@ export default function ActivityFeed({ activities }) {
               gap: "4px",
               paddingTop: "2px",
             }}>
-              <span style={{ fontSize: "14px" }}>{event.icon}</span>
+              <div style={{
+                width: "8px", height: "8px", borderRadius: "50%",
+                background: colors.primary.main,
+              }} />
             </div>
 
-            {/* Content */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: "12px",
-                color: "rgba(255,255,255,0.7)",
+                fontSize: fonts.size.sm,
+                color: colors.text.secondary,
                 lineHeight: "1.5",
                 marginBottom: "2px",
               }}>
                 {event.message}
               </div>
               <div style={{
-                fontSize: "10px",
-                color: "rgba(255,255,255,0.25)",
+                fontSize: fonts.size.xs,
+                color: colors.text.muted,
               }}>
                 {event.timestamp}
               </div>

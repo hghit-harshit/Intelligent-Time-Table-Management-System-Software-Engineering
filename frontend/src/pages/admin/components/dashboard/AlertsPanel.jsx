@@ -1,9 +1,10 @@
 import { Card, Badge } from "../ui/index";
+import { colors, fonts, radius } from "../../../../styles/tokens";
 
 const severityConfig = {
-  critical: { color: "#ef4444", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.15)", icon: "🔴" },
-  warning: { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.15)", icon: "🟡" },
-  healthy: { color: "#22c55e", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.15)", icon: "🟢" },
+  critical: { color: colors.error.main, bg: colors.error.ghost, border: colors.error.border },
+  warning:  { color: colors.warning.main, bg: colors.warning.ghost, border: colors.warning.border },
+  healthy:  { color: colors.success.main, bg: colors.success.ghost, border: colors.success.border },
 };
 
 export default function AlertsPanel({ alerts }) {
@@ -18,11 +19,11 @@ export default function AlertsPanel({ alerts }) {
         marginBottom: "14px",
       }}>
         <h3 style={{
-          fontSize: "14px",
-          fontWeight: "700",
-          color: "#fff",
+          fontSize: fonts.size.md,
+          fontWeight: fonts.weight.bold,
+          color: colors.text.primary,
           margin: 0,
-          fontFamily: "'Playfair Display', serif",
+          fontFamily: fonts.heading,
         }}>
           System Alerts
         </h3>
@@ -38,32 +39,35 @@ export default function AlertsPanel({ alerts }) {
               alignItems: "flex-start",
               gap: "10px",
               padding: "10px 12px",
-              borderRadius: "10px",
+              borderRadius: radius.lg,
               background: config.bg,
               border: `1px solid ${config.border}`,
               transition: "all 0.2s ease",
             }}>
-              <span style={{ fontSize: "12px", flexShrink: 0, marginTop: "1px" }}>{config.icon}</span>
+              <div style={{
+                width: "8px", height: "8px", borderRadius: "50%",
+                background: config.color, flexShrink: 0, marginTop: "5px",
+              }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: "12px",
-                  fontWeight: "600",
+                  fontSize: fonts.size.sm,
+                  fontWeight: fonts.weight.semibold,
                   color: config.color,
                   marginBottom: "2px",
                 }}>
                   {alert.title}
                 </div>
                 <div style={{
-                  fontSize: "11px",
-                  color: "rgba(255,255,255,0.45)",
+                  fontSize: fonts.size.xs,
+                  color: colors.text.secondary,
                   lineHeight: "1.4",
                 }}>
                   {alert.description}
                 </div>
               </div>
               <span style={{
-                fontSize: "10px",
-                color: "rgba(255,255,255,0.25)",
+                fontSize: fonts.size.xs,
+                color: colors.text.muted,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
               }}>

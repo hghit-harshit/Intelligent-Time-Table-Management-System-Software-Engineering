@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, Badge, DataTable, SearchInput, Button, Loader } from "../components/ui/index";
 import { fetchCourses } from "../services/adminApi";
+import { colors, fonts } from "../../../styles/tokens";
 import { Plus } from "lucide-react";
 
 const statusVariant = { active: "success", draft: "neutral", archived: "warning" };
@@ -24,7 +25,7 @@ export default function CoursesPage() {
   const columns = [
     {
       key: "id", label: "Code",
-      render: (val) => <span style={{ color: "#60efff", fontWeight: "600" }}>{val}</span>,
+      render: (val) => <span style={{ color: colors.primary.main, fontWeight: fonts.weight.semibold }}>{val}</span>,
     },
     { key: "name", label: "Course Name" },
     {
@@ -47,8 +48,8 @@ export default function CoursesPage() {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
         <div>
-          <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#fff", margin: "0 0 4px", fontFamily: "'Playfair Display', serif" }}>Courses</h1>
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", margin: 0 }}>{courses.length} courses registered</p>
+          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>Courses</h1>
+          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>{courses.length} courses registered</p>
         </div>
         <Button variant="primary" icon={<Plus size={14} />}>Add Course</Button>
       </div>

@@ -6,6 +6,7 @@ import ActivityFeed from "../components/dashboard/ActivityFeed";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
 import { Loader } from "../components/ui/index";
 import { fetchDashboard, updateRequestStatus } from "../services/adminApi";
+import { colors, fonts } from "../../../styles/tokens";
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
@@ -42,47 +43,40 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      {/* Page Header */}
       <div style={{ marginBottom: "20px" }}>
         <h1 style={{
-          fontSize: "22px",
-          fontWeight: "700",
-          color: "#fff",
+          fontSize: fonts.size["2xl"],
+          fontWeight: fonts.weight.bold,
+          color: colors.text.primary,
           margin: "0 0 4px",
-          fontFamily: "'Playfair Display', serif",
+          fontFamily: fonts.heading,
         }}>
           Admin Dashboard
         </h1>
         <p style={{
-          fontSize: "12px",
-          color: "rgba(255,255,255,0.4)",
+          fontSize: fonts.size.sm,
+          color: colors.text.muted,
           margin: 0,
         }}>
-          University Timetable Operations Center • Semester 2, 2025
+          University Timetable Operations Center
         </p>
       </div>
 
-      {/* Top Metrics */}
       <MetricsCards metrics={data.metrics} />
 
-      {/* Main Grid: Alerts + Quick Actions + Activity */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "1fr 280px",
         gap: "16px",
         marginBottom: "20px",
       }}>
-        {/* Left column */}
         <AlertsPanel alerts={data.alerts} />
-
-        {/* Right column */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <AdminQuickActions />
           <ActivityFeed activities={data.recentActivity} />
         </div>
       </div>
 
-      {/* Pending Approvals Table */}
       <PendingApprovals
         requests={data.pendingRequests}
         onApprove={handleApprove}

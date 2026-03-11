@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Card, Badge, Button } from "../ui/index";
+import { colors, fonts } from "../../../../styles/tokens";
 import { Check, X } from "lucide-react";
 
 export default function PendingApprovals({ requests, onApprove, onReject }) {
@@ -16,11 +16,11 @@ export default function PendingApprovals({ requests, onApprove, onReject }) {
         marginBottom: "14px",
       }}>
         <h3 style={{
-          fontSize: "14px",
-          fontWeight: "700",
-          color: "#fff",
+          fontSize: fonts.size.md,
+          fontWeight: fonts.weight.bold,
+          color: colors.text.primary,
           margin: 0,
-          fontFamily: "'Playfair Display', serif",
+          fontFamily: fonts.heading,
         }}>
           Pending Approvals
         </h3>
@@ -31,7 +31,8 @@ export default function PendingApprovals({ requests, onApprove, onReject }) {
         <table style={{
           width: "100%",
           borderCollapse: "collapse",
-          fontSize: "12px",
+          fontSize: fonts.size.sm,
+          fontFamily: fonts.body,
           minWidth: "700px",
         }}>
           <thead>
@@ -40,12 +41,12 @@ export default function PendingApprovals({ requests, onApprove, onReject }) {
                 <th key={h} style={{
                   textAlign: "left",
                   padding: "8px 10px",
-                  color: "rgba(255,255,255,0.35)",
-                  fontWeight: "600",
-                  fontSize: "10px",
+                  color: colors.text.muted,
+                  fontWeight: fonts.weight.semibold,
+                  fontSize: fonts.size.xs,
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  borderBottom: `1px solid ${colors.border.medium}`,
                   whiteSpace: "nowrap",
                 }}>
                   {h}
@@ -56,31 +57,31 @@ export default function PendingApprovals({ requests, onApprove, onReject }) {
           <tbody>
             {pending.slice(0, 5).map((req) => (
               <tr key={req.id}
-                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.primary.ghost}
                 onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
               >
-                <td style={{ padding: "10px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <div style={{ fontWeight: "600", color: "#fff" }}>{req.facultyName}</div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)" }}>{req.facultyDept}</div>
+                <td style={{ padding: "10px", borderBottom: `1px solid ${colors.border.subtle}` }}>
+                  <div style={{ fontWeight: fonts.weight.semibold, color: colors.text.primary }}>{req.facultyName}</div>
+                  <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>{req.facultyDept}</div>
                 </td>
-                <td style={{ padding: "10px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)" }}>
+                <td style={{ padding: "10px", borderBottom: `1px solid ${colors.border.subtle}`, color: colors.text.secondary }}>
                   <div>{req.courseCode}</div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)" }}>{req.course}</div>
+                  <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>{req.course}</div>
                 </td>
-                <td style={{ padding: "10px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.6)" }}>
+                <td style={{ padding: "10px", borderBottom: `1px solid ${colors.border.subtle}`, color: colors.text.secondary }}>
                   <div>{req.currentSlot.day} {req.currentSlot.time}</div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)" }}>{req.currentSlot.room}</div>
+                  <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>{req.currentSlot.room}</div>
                 </td>
-                <td style={{ padding: "10px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.6)" }}>
+                <td style={{ padding: "10px", borderBottom: `1px solid ${colors.border.subtle}`, color: colors.text.secondary }}>
                   <div>{req.requestedSlot.day} {req.requestedSlot.time}</div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)" }}>{req.requestedSlot.room}</div>
+                  <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>{req.requestedSlot.room}</div>
                 </td>
-                <td style={{ padding: "10px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <td style={{ padding: "10px", borderBottom: `1px solid ${colors.border.subtle}` }}>
                   <Badge variant={req.conflictStatus === "No conflicts" ? "success" : "danger"}>
                     {req.conflictStatus}
                   </Badge>
                 </td>
-                <td style={{ padding: "10px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <td style={{ padding: "10px", borderBottom: `1px solid ${colors.border.subtle}` }}>
                   <div style={{ display: "flex", gap: "6px" }}>
                     <Button
                       variant="success"
