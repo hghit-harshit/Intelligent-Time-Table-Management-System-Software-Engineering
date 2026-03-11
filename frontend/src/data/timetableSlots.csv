@@ -1,0 +1,13 @@
+label,startTime,endTime,day
+A,09:00,10:00,Monday
+D,14:00,15:00,Monday
+F,10:00,12:00,Tuesday
+G,13:00,14:00,Tuesday
+B,14:00,16:00,Tuesday
+H,16:00,17:00,Tuesday
+A,13:00,14:00,Wednesday
+E,14:00,15:00,Wednesday
+F,15:00,17:00,Wednesday
+G,09:00,10:00,Thursday
+A,15:00,16:00,Friday
+H,16:00,17:00,Friday
