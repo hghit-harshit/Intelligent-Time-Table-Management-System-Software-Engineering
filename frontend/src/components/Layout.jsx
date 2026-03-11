@@ -5,18 +5,18 @@ export default function Layout({ children }) {
   const location = useLocation()
 
   const navigationItems = [
-    { 
+    {
       section: "MAIN",
       items: [
         { icon: "📅", label: "My Timetable", path: "/dashboard", badge: null },
         { icon: "📋", label: "Exam Schedule", path: "/exams", badge: "3" },
         { icon: "🔔", label: "Notifications", path: "/notifications", badge: "3" },
         { icon: "📚", label: "Courses", path: "/courses", badge: null },
-        //{ icon: "📁", label: "Resources", path: "/resources", badge: null },
+        { icon: "🎓", label: "Google Classroom", path: "/google-classroom", badge: null },
       ]
     },
     {
-      section: "WORKSPACE", 
+      section: "WORKSPACE",
       items: [
         { icon: "📝", label: "My Notes", path: "/notes", badge: null },
         { icon: "✅", label: "Tasks", path: "/tasks", badge: null },
