@@ -73,24 +73,27 @@ app.get('/api/auth/url', (req, res) => {
 });
 
 // OAuth callback
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+const CLASSROOM_PATH = '/StudentPage/google-classroom';
+
 app.get('/api/auth/callback', async (req, res) => {
   try {
     const code = req.query.code;
     if (!code) {
-      return res.redirect('http://localhost:5173/google-classroom?auth=error&message=No+code+received');
+      return res.redirect(`${FRONTEND_ORIGIN}${CLASSROOM_PATH}?auth=error&message=No+code+received`);
     }
 
     const oauth2Client = getOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
     
     if (!tokens || !tokens.access_token) {
-      return res.redirect('http://localhost:5173/google-classroom?auth=error&message=No+tokens+received');
+      return res.redirect(`${FRONTEND_ORIGIN}${CLASSROOM_PATH}?auth=error&message=No+tokens+received`);
     }
     
     saveCredentials(tokens);
-    res.redirect('http://localhost:5173/google-classroom?auth=success');
+    res.redirect(`${FRONTEND_ORIGIN}${CLASSROOM_PATH}?auth=success`);
   } catch (error) {
-    res.redirect(`http://localhost:5173/google-classroom?auth=error&message=${encodeURIComponent(error.message)}`);
+    res.redirect(`${FRONTEND_ORIGIN}${CLASSROOM_PATH}?auth=error&message=${encodeURIComponent(error.message)}`);
   }
 });
 
