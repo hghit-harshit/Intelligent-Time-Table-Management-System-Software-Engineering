@@ -10,14 +10,14 @@ import { colors, fonts, radius, glass } from "../../styles/tokens"
 
 export default function UpcomingEvents({ upcomingEvents }) {
   return (
-    <Box sx={{ ...glass, p: 2, flex: 1 }}>
+    <Box sx={{ ...glass, p: 1.5, flex: 1 }}>
       <Typography
         sx={{
-          fontSize: fonts.size.base,
+          fontSize: fonts.size.sm,
           fontWeight: fonts.weight.bold,
           color: colors.text.primary,
           fontFamily: fonts.heading,
-          mb: 1.5,
+          mb: 1,
         }}
       >
         Upcoming This Week
@@ -33,7 +33,7 @@ export default function UpcomingEvents({ upcomingEvents }) {
               gap: 1.5,
               p: "8px 12px",
               borderRadius: radius.md,
-              bgcolor: "rgba(255,255,255,0.02)",
+              bgcolor: colors.bg.raised,
               border: `1px solid ${event.color}20`,
               cursor: "pointer",
               transition: "all 0.2s ease",

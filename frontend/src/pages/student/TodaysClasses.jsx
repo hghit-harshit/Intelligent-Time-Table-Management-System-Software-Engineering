@@ -16,13 +16,13 @@ export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSl
         sx={{
           display: "flex",
           alignItems: "center",
-          p: "16px 20px",
+          p: "10px 16px",
           borderBottom: `1px solid ${colors.border.subtle}`,
         }}
       >
         <Typography
           sx={{
-            fontSize: fonts.size.md,
+            fontSize: fonts.size.sm,
             fontWeight: fonts.weight.bold,
             color: colors.text.primary,
             fontFamily: fonts.heading,
@@ -58,12 +58,12 @@ export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSl
           sx={{
             display: "flex",
             alignItems: "center",
-            p: "14px 20px",
+            p: "10px 16px",
             borderBottom: i < todaysClasses.length - 1 ? `1px solid ${colors.border.subtle}` : "none",
             gap: 2,
             cursor: "pointer",
             transition: "background 0.2s ease",
-            "&:hover": { bgcolor: "rgba(255,255,255,0.02)" },
+            "&:hover": { bgcolor: colors.bg.raised },
           }}
         >
           {/* Time */}

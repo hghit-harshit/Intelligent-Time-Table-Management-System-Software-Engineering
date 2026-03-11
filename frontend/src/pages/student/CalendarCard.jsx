@@ -33,7 +33,7 @@ export default function CalendarCard({
     <Box
       sx={{
         ...glass,
-        mb: "20px",
+        mb: "12px",
         overflow: "hidden",
       }}
     >
@@ -42,7 +42,7 @@ export default function CalendarCard({
         sx={{
           display: "flex",
           alignItems: "center",
-          p: "16px 20px",
+          p: "10px 16px",
           borderBottom: `1px solid ${colors.border.subtle}`,
         }}
       >
@@ -64,7 +64,7 @@ export default function CalendarCard({
               component="button"
               onClick={btn.handler}
               sx={{
-                background: `rgba(255,255,255,0.08)`,
+                background: colors.bg.raised,
                 border: `1px solid ${colors.border.medium}`,
                 borderRadius: radius.sm,
                 width: 28,
@@ -102,7 +102,7 @@ export default function CalendarCard({
                 bgcolor:
                   selectedView === view.toLowerCase()
                     ? colors.primary.main
-                    : "rgba(255,255,255,0.08)",
+                    : colors.bg.raised,
                 color:
                   selectedView === view.toLowerCase()
                     ? colors.bg.deep
@@ -116,7 +116,7 @@ export default function CalendarCard({
                   bgcolor:
                     selectedView === view.toLowerCase()
                       ? colors.primary.light
-                      : "rgba(255,255,255,0.12)",
+                      : `${colors.border.subtle}`,
                 },
               }}
             >

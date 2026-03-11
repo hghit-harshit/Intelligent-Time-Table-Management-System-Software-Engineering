@@ -1,14 +1,11 @@
 /**
  * LoginPage.jsx — Role-based Login Screen
- * 
+ *
  * PURPOSE: Entry point for the app. Users pick their role (Student,
  * Faculty, or Admin) and are routed to the appropriate dashboard.
- * This page is the REFERENCE IMPLEMENTATION of our design system —
- * it demonstrates tokens, MUI components, Tailwind utilities, and
- * our animation patterns working together.
- * 
- * DESIGN: Dark utilitarian aesthetic with a centered glass card,
- * floating background orbs, and subtle grid overlay.
+ *
+ * AESTHETIC: Notion Calendar — clean white canvas, centered card with
+ * a thin border, no shadows, no orbs, no gradients. Clinical clarity.
  */
 
 import { useState } from "react"
@@ -17,203 +14,99 @@ import {
   Box,
   Typography,
   Button,
-  Chip,
   CircularProgress,
 } from "@mui/material"
-import { colors, fonts, radius, shadows, glass, animations } from "../styles/tokens"
+import { colors, fonts, radius, animations } from "../styles/tokens"
 
 // ─── ROLE DEFINITIONS ────────────────────────────────────────
-// Each role maps to a color from our design tokens
 const roles = [
   {
     id: "student",
     label: "Student",
-    icon: "◎",
     desc: "View your schedule & classes",
     color: colors.primary.main,
   },
   {
     id: "faculty",
     label: "Faculty",
-    icon: "◈",
     desc: "Manage lectures & availability",
-    color: colors.secondary.main,
+    color: "#7C3AED",
   },
   {
     id: "admin",
     label: "Admin",
-    icon: "◆",
     desc: "Full system control",
     color: colors.warning.main,
   },
 ]
 
 export default function Login() {
-  // useState tracks which role the user has selected
+  // WHY useState: local UI state — which role is picked, hover target, loading
   const [role, setRole] = useState("student")
-  // useState tracks which card the mouse is hovering over
   const [hoveredRole, setHoveredRole] = useState(null)
-  // useState shows a loading spinner when "logging in"
   const [loading, setLoading] = useState(false)
-  // useNavigate lets us redirect to a different page programmatically
   const navigate = useNavigate()
 
-  // Find the full role object for the currently selected role
   const selected = roles.find((r) => r.id === role)
 
   const handleLogin = (roleId) => {
     setLoading(true)
-    // Simulate a 1.2s auth delay, then navigate to the right dashboard
     setTimeout(() => {
       if (roleId === "student") navigate("/StudentPage")
       else if (roleId === "faculty") navigate("/FacultyPage")
       else if (roleId === "admin") navigate("/AdminPage")
       setLoading(false)
-    }, 1200)
+    }, 800)
   }
 
   return (
     <Box
-      className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      sx={{ background: colors.bg.deep }}
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: colors.bg.raised,
+      }}
     >
-      {/* ── FLOATING BACKGROUND ORBS ─────────────────────────── */}
-      {/* Decorative blurred circles that drift slowly for depth */}
-      <Box
-        sx={{
-          position: "absolute",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
-          top: -150,
-          left: -150,
-          background: `radial-gradient(circle, ${colors.primary.glow} 0%, transparent 70%)`,
-          animation: "float 9s ease-in-out infinite",
-          pointerEvents: "none",
-        }}
-      />
-      <Box
-        sx={{
-          position: "absolute",
-          width: 400,
-          height: 400,
-          borderRadius: "50%",
-          bottom: -100,
-          right: -80,
-          background: `radial-gradient(circle, rgba(167,139,250,0.14) 0%, transparent 70%)`,
-          animation: "float 12s ease-in-out infinite",
-          animationDelay: "3s",
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* ── GRID OVERLAY ─────────────────────────────────────── */}
-      {/* Subtle grid pattern — gives a "blueprint / institutional" feel */}
-      <Box
-        sx={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)
-          `,
-          backgroundSize: "48px 48px",
-          pointerEvents: "none",
-        }}
-      />
-
       {/* ── LOGIN CARD ───────────────────────────────────────── */}
       <Box
         sx={{
-          width: 420,
-          ...glass,
-          background: "rgba(255,255,255,0.03)",
-          p: "44px 40px 40px",
-          boxShadow: shadows.xl + ", " + shadows.inner,
+          width: 400,
+          bgcolor: colors.bg.base,
+          border: `1px solid ${colors.border.medium}`,
+          borderRadius: radius.lg,
+          p: "40px 36px 36px",
           animation: animations.fadeUp,
-          position: "relative",
-          zIndex: 10,
         }}
       >
-        {/* Rotating decorative ring — top right corner */}
-        <Box
-          sx={{
-            position: "absolute",
-            top: -20,
-            right: -20,
-            width: 80,
-            height: 80,
-            border: `1px dashed ${colors.primary.border}`,
-            borderRadius: "50%",
-            animation: "spinSlow 20s linear infinite",
-          }}
-        />
-
         {/* ── HEADER ───────────────────────────────────────── */}
-        <Box sx={{ mb: 4, animation: "fadeUp 0.6s 0.1s ease both", opacity: 0 }}>
-          {/* Live system status badge */}
-          <Chip
-            label="Live System"
-            size="small"
-            icon={
-              <Box
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  bgcolor: colors.primary.main,
-                  animation: animations.pulse,
-                  ml: 1,
-                }}
-              />
-            }
-            sx={{
-              bgcolor: colors.primary.ghost,
-              border: `1px solid ${colors.primary.border}`,
-              color: colors.primary.main,
-              fontFamily: fonts.body,
-              fontSize: fonts.size.xs,
-              letterSpacing: fonts.letterSpacing.widest,
-              textTransform: "uppercase",
-              mb: 2,
-              "& .MuiChip-icon": { order: -1 },
-            }}
-          />
-
-          {/* App title with gradient shimmer */}
+        <Box sx={{ mb: 4 }}>
           <Typography
-            variant="h1"
             sx={{
               fontFamily: fonts.heading,
               fontSize: fonts.size["2xl"],
+              fontWeight: fonts.weight.semibold,
+              color: colors.text.primary,
               mb: 0.5,
-              lineHeight: 1.15,
+              lineHeight: 1.2,
             }}
           >
-            Timetable
-            <br />
-            <Box
-              component="span"
-              sx={{
-                background: `linear-gradient(90deg, ${colors.primary.main}, ${colors.secondary.main}, ${colors.primary.main})`,
-                backgroundSize: "200% auto",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                animation: animations.shimmer,
-              }}
-            >
-              Portal
-            </Box>
+            SmartTimetable
           </Typography>
-
-          <Typography variant="body2" sx={{ color: colors.text.muted }}>
+          <Typography
+            sx={{
+              fontSize: fonts.size.sm,
+              color: colors.text.secondary,
+            }}
+          >
             Select your access level to continue
           </Typography>
         </Box>
 
         {/* ── ROLE SELECTOR CARDS ──────────────────────────── */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: "10px", mb: "28px" }}>
-          {roles.map((r, i) => {
+        <Box sx={{ display: "flex", flexDirection: "column", gap: "8px", mb: "24px" }}>
+          {roles.map((r) => {
             const isSelected = role === r.id
             const isHovered = hoveredRole === r.id
 
@@ -226,55 +119,39 @@ export default function Login() {
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 2,
-                  p: "14px 16px",
-                  borderRadius: radius.lg,
+                  gap: 1.5,
+                  p: "12px 14px",
+                  borderRadius: radius.md,
                   border: isSelected
-                    ? `1px solid ${r.color}55`
-                    : `1px solid ${colors.border.subtle}`,
-                  background: isSelected
-                    ? `linear-gradient(135deg, ${r.color}12, ${r.color}06)`
+                    ? `1px solid ${r.color}`
+                    : `1px solid ${colors.border.medium}`,
+                  bgcolor: isSelected
+                    ? `${r.color}0A`
                     : isHovered
-                      ? "rgba(255,255,255,0.04)"
-                      : "rgba(255,255,255,0.02)",
+                      ? colors.bg.raised
+                      : colors.bg.base,
                   cursor: "pointer",
-                  transition: "all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  animation: `fadeUp 0.5s ${0.15 + i * 0.08}s ease both`,
-                  opacity: 0,
-                  "&:hover": {
-                    transform: "translateY(-3px) scale(1.02)",
-                  },
+                  transition: "all 0.1s ease",
                 }}
               >
-                {/* Role icon */}
+                {/* Left accent bar */}
                 <Box
                   sx={{
-                    width: 40,
-                    height: 40,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: radius.md,
-                    bgcolor: isSelected ? `${r.color}20` : "rgba(255,255,255,0.05)",
-                    fontSize: "18px",
-                    color: isSelected ? r.color : colors.text.disabled,
-                    transition: "all 0.25s ease",
-                    flexShrink: 0,
+                    width: 3,
+                    height: 28,
+                    borderRadius: "2px",
+                    bgcolor: isSelected ? r.color : colors.border.medium,
+                    transition: "background 0.1s ease",
                   }}
-                >
-                  {r.icon}
-                </Box>
+                />
 
                 {/* Role label + description */}
                 <Box sx={{ flex: 1 }}>
                   <Typography
                     sx={{
-                      fontFamily: fonts.body,
-                      fontSize: fonts.size.base,
-                      fontWeight: fonts.weight.bold,
+                      fontSize: fonts.size.sm,
+                      fontWeight: fonts.weight.medium,
                       color: isSelected ? colors.text.primary : colors.text.secondary,
-                      letterSpacing: fonts.letterSpacing.wide,
-                      transition: "color 0.2s",
                     }}
                   >
                     {r.label}
@@ -282,16 +159,15 @@ export default function Login() {
                   <Typography
                     sx={{
                       fontSize: fonts.size.xs,
-                      color: isSelected ? colors.text.muted : colors.text.disabled,
+                      color: colors.text.muted,
                       mt: 0.25,
-                      transition: "color 0.2s",
                     }}
                   >
                     {r.desc}
                   </Typography>
                 </Box>
 
-                {/* Selection indicator dot */}
+                {/* Selection indicator */}
                 {isSelected && (
                   <Box
                     sx={{
@@ -299,7 +175,6 @@ export default function Login() {
                       height: 8,
                       borderRadius: "50%",
                       bgcolor: r.color,
-                      boxShadow: `0 0 10px ${r.color}`,
                       flexShrink: 0,
                     }}
                   />
@@ -316,50 +191,38 @@ export default function Login() {
           onClick={() => handleLogin(selected.id)}
           disabled={loading}
           sx={{
-            p: "14px",
-            borderRadius: radius.lg,
-            background: loading
-              ? "rgba(45, 212, 191, 0.1)"
-              : `linear-gradient(135deg, ${selected.color}, ${selected.color}bb)`,
-            color: loading ? colors.text.disabled : colors.bg.deep,
+            p: "8px 16px",
+            borderRadius: radius.md,
+            bgcolor: loading ? colors.bg.raised : colors.primary.main,
+            color: loading ? colors.text.muted : "#FFFFFF",
             fontSize: fonts.size.sm,
-            fontWeight: fonts.weight.bold,
-            letterSpacing: fonts.letterSpacing.wider,
-            textTransform: "uppercase",
-            boxShadow: loading ? "none" : `0 8px 24px ${selected.color}30`,
-            animation: "fadeUp 0.5s 0.4s ease both",
-            opacity: 0,
-            transition: "all 0.3s ease",
+            fontWeight: fonts.weight.medium,
+            textTransform: "none",
+            boxShadow: "none",
             "&:hover:not(:disabled)": {
-              transform: "translateY(-2px)",
-              boxShadow: `0 12px 40px ${selected.color}40`,
-              background: `linear-gradient(135deg, ${selected.color}, ${selected.color}bb)`,
-            },
-            "&:active:not(:disabled)": {
-              transform: "translateY(0) scale(0.98)",
+              bgcolor: colors.primary.dark,
+              boxShadow: "none",
             },
           }}
         >
           {loading ? (
-            <Box className="flex items-center gap-2">
-              <CircularProgress size={16} sx={{ color: colors.text.muted }} />
-              <span>Authenticating...</span>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CircularProgress size={14} sx={{ color: colors.text.muted }} />
+              <span>Signing in…</span>
             </Box>
           ) : (
-            `Enter as ${selected.label} →`
+            `Continue as ${selected.label}`
           )}
         </Button>
 
         {/* ── FOOTER ───────────────────────────────────────── */}
         <Typography
-          variant="caption"
           sx={{
             display: "block",
             textAlign: "center",
             mt: 2.5,
-            color: colors.text.disabled,
-            animation: "fadeUp 0.5s 0.5s ease both",
-            opacity: 0,
+            fontSize: fonts.size.xs,
+            color: colors.text.muted,
           }}
         >
           Academic Management System · v0.1

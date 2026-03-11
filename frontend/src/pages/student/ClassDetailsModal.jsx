@@ -30,7 +30,6 @@ export default function ClassDetailsModal({ selectedTimeSlot, onClose }) {
         onClick={(e) => e.stopPropagation()}
         sx={{
           bgcolor: colors.bg.raised,
-          backdropFilter: "blur(24px)",
           border: `1px solid ${colors.border.medium}`,
           borderRadius: radius.xl,
           p: 3,

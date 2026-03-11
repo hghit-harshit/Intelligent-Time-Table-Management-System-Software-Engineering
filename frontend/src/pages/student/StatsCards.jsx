@@ -14,8 +14,8 @@ export default function StatsCards({ stats }) {
       sx={{
         display: "grid",
         gridTemplateColumns: "repeat(4, 1fr)",
-        gap: "14px",
-        mb: "20px",
+        gap: "10px",
+        mb: "12px",
       }}
     >
       {stats.map((stat, i) => (
@@ -24,7 +24,7 @@ export default function StatsCards({ stats }) {
           onClick={stat.onClick ? () => (window.location.href = stat.onClick) : undefined}
           sx={{
             ...glass,
-            p: "20px",
+            p: "14px",
             textAlign: "center",
             cursor: stat.onClick ? "pointer" : "default",
             transition: "all 0.25s ease",
@@ -37,19 +37,19 @@ export default function StatsCards({ stats }) {
         >
           <Box
             sx={{
-              fontSize: "24px",
-              mb: 1.5,
-              filter: `drop-shadow(0 0 8px ${stat.color}30)`,
+              fontSize: "18px",
+              mb: 0.75,
+              filter: 'none',
             }}
           >
             {stat.icon}
           </Box>
           <Typography
             sx={{
-              fontSize: "28px",
+              fontSize: "20px",
               fontWeight: fonts.weight.bold,
               color: stat.color,
-              mb: 0.5,
+              mb: 0.25,
               fontFamily: fonts.body,
             }}
           >
