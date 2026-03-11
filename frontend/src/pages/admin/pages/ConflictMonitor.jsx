@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, Badge, Button, DataTable, SearchInput, TabBar, Loader } from "../components/ui/index";
 import { fetchConflicts, resolveConflict } from "../services/adminApi";
-import { CheckCircle, Zap, XCircle } from "lucide-react";
+import { colors, fonts } from "../../../styles/tokens";
+import { CheckCircle, Zap } from "lucide-react";
 
 const severityVariant = { critical: "danger", warning: "warning", info: "info" };
 
@@ -42,9 +43,10 @@ export default function ConflictMonitor() {
       label: "",
       width: "30px",
       render: (val) => (
-        <span style={{ fontSize: "14px" }}>
-          {val === "critical" ? "🔴" : val === "warning" ? "🟡" : "🔵"}
-        </span>
+        <div style={{
+          width: "8px", height: "8px", borderRadius: "50%",
+          background: val === "critical" ? colors.error.main : val === "warning" ? colors.warning.main : colors.info.main,
+        }} />
       ),
     },
     {
@@ -61,7 +63,7 @@ export default function ConflictMonitor() {
       key: "suggestedFix",
       label: "Suggested Fix",
       render: (val) => (
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px" }}>{val}</span>
+        <span style={{ color: colors.text.muted, fontSize: fonts.size.xs }}>{val}</span>
       ),
     },
     {
@@ -69,7 +71,7 @@ export default function ConflictMonitor() {
       label: "Status",
       render: (val) => (
         <Badge variant={val === "resolved" ? "success" : "neutral"}>
-          {val === "resolved" ? "✓ Resolved" : "Unresolved"}
+          {val === "resolved" ? "Resolved" : "Unresolved"}
         </Badge>
       ),
     },
@@ -86,7 +88,7 @@ export default function ConflictMonitor() {
           </Button>
         </div>
       ) : (
-        <span style={{ color: "rgba(34,197,94,0.7)", fontSize: "11px" }}>✓ Done</span>
+        <span style={{ color: colors.success.main, fontSize: fonts.size.xs }}>Done</span>
       ),
     },
   ];
@@ -98,13 +100,12 @@ export default function ConflictMonitor() {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
         <div>
-          <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#fff", margin: "0 0 4px", fontFamily: "'Playfair Display', serif" }}>
+          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
             Conflict Monitor
           </h1>
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", margin: 0 }}>
+          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
             Detect, review, and resolve scheduling conflicts
           </p>
         </div>
@@ -114,7 +115,6 @@ export default function ConflictMonitor() {
         </div>
       </div>
 
-      {/* Filters */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search conflicts..." />
         <TabBar
@@ -130,7 +130,6 @@ export default function ConflictMonitor() {
         />
       </div>
 
-      {/* Table */}
       <Card style={{ padding: "16px" }} hover={false}>
         <DataTable
           columns={columns}

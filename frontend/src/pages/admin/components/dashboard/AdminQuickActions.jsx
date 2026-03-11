@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import { Card, Button } from "../ui/index";
+import { Card } from "../ui/index";
+import { colors, fonts, radius, transitions } from "../../../../styles/tokens";
 import { Cpu, AlertTriangle, RotateCcw, Send, CalendarClock } from "lucide-react";
 
 const actions = [
-  { icon: Cpu, label: "Generate Timetable", path: "/AdminPage/engine", color: "#60efff" },
-  { icon: AlertTriangle, label: "Review Conflicts", path: "/AdminPage/conflicts", color: "#ef4444" },
-  { icon: RotateCcw, label: "Approve Requests", path: "/AdminPage/requests", color: "#f59e0b" },
-  { icon: Send, label: "Publish Timetable", path: "/AdminPage/engine", color: "#22c55e" },
-  { icon: CalendarClock, label: "Schedule Exams", path: "/AdminPage/exams", color: "#a78bfa" },
+  { icon: Cpu, label: "Generate Timetable", path: "/AdminPage/engine", color: colors.primary.main },
+  { icon: AlertTriangle, label: "Review Conflicts", path: "/AdminPage/conflicts", color: colors.error.main },
+  { icon: RotateCcw, label: "Approve Requests", path: "/AdminPage/requests", color: colors.warning.main },
+  { icon: Send, label: "Publish Timetable", path: "/AdminPage/engine", color: colors.success.main },
+  { icon: CalendarClock, label: "Schedule Exams", path: "/AdminPage/exams", color: "#6D28D9" },
 ];
 
 export default function AdminQuickActions() {
@@ -16,11 +17,11 @@ export default function AdminQuickActions() {
   return (
     <Card style={{ padding: "18px" }}>
       <h3 style={{
-        fontSize: "14px",
-        fontWeight: "700",
-        color: "#fff",
+        fontSize: fonts.size.md,
+        fontWeight: fonts.weight.bold,
+        color: colors.text.primary,
         margin: "0 0 14px",
-        fontFamily: "'Playfair Display', serif",
+        fontFamily: fonts.heading,
       }}>
         Quick Actions
       </h3>
@@ -37,35 +38,35 @@ export default function AdminQuickActions() {
                 alignItems: "center",
                 gap: "10px",
                 padding: "10px 12px",
-                borderRadius: "8px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.75)",
-                fontSize: "12px",
-                fontWeight: "500",
+                borderRadius: radius.md,
+                background: colors.bg.raised,
+                border: `1px solid ${colors.border.subtle}`,
+                color: colors.text.secondary,
+                fontSize: fonts.size.sm,
+                fontWeight: fonts.weight.medium,
                 cursor: "pointer",
-                transition: "all 0.2s ease",
-                fontFamily: "'Space Mono', monospace",
+                transition: transitions.smooth,
+                fontFamily: fonts.body,
                 textAlign: "left",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${action.color}12`;
-                e.currentTarget.style.borderColor = `${action.color}30`;
+                e.currentTarget.style.background = `${action.color}08`;
+                e.currentTarget.style.borderColor = `${action.color}25`;
                 e.currentTarget.style.color = action.color;
                 e.currentTarget.style.transform = "translateX(4px)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
-                e.currentTarget.style.color = "rgba(255,255,255,0.75)";
+                e.currentTarget.style.background = colors.bg.raised;
+                e.currentTarget.style.borderColor = colors.border.subtle;
+                e.currentTarget.style.color = colors.text.secondary;
                 e.currentTarget.style.transform = "translateX(0px)";
               }}
             >
               <div style={{
                 width: "28px", height: "28px",
-                borderRadius: "6px",
-                background: `${action.color}15`,
-                border: `1px solid ${action.color}25`,
+                borderRadius: radius.md,
+                background: `${action.color}10`,
+                border: `1px solid ${action.color}20`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
               }}>

@@ -1,7 +1,8 @@
 // ============================================================
 // REUSABLE UI COMPONENTS — Design system primitives
-// Matches the existing ITMS glass-card dark theme
+// Uses token-based light theme matching project design system
 // ============================================================
+import { colors, fonts, radius, shadows, transitions } from "../../../../styles/tokens";
 
 // ─── Glass Card ─────────────────────────────────────────────
 export function Card({ children, style, onClick, hover = true, className = "" }) {
@@ -10,13 +11,13 @@ export function Card({ children, style, onClick, hover = true, className = "" })
       className={`admin-card ${hover ? "admin-card-hover" : ""} ${className}`}
       onClick={onClick}
       style={{
-        background: "rgba(255,255,255,0.04)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "16px",
+        background: colors.bg.base,
+        border: `1px solid ${colors.border.medium}`,
+        borderRadius: radius.xl,
         padding: "20px",
-        transition: "all 0.25s ease",
+        transition: transitions.smooth,
         cursor: onClick ? "pointer" : "default",
+        boxShadow: shadows.sm,
         ...style,
       }}
     >
@@ -27,12 +28,12 @@ export function Card({ children, style, onClick, hover = true, className = "" })
 
 // ─── Badge ──────────────────────────────────────────────────
 const badgeColors = {
-  success: { bg: "rgba(34,197,94,0.15)", color: "#22c55e", border: "rgba(34,197,94,0.2)" },
-  warning: { bg: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "rgba(245,158,11,0.2)" },
-  danger: { bg: "rgba(239,68,68,0.15)", color: "#ef4444", border: "rgba(239,68,68,0.2)" },
-  info: { bg: "rgba(96,239,255,0.15)", color: "#60efff", border: "rgba(96,239,255,0.2)" },
-  neutral: { bg: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)", border: "rgba(255,255,255,0.1)" },
-  purple: { bg: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "rgba(167,139,250,0.2)" },
+  success: { bg: colors.success.ghost, color: colors.success.main, border: colors.success.border },
+  warning: { bg: colors.warning.ghost, color: colors.warning.main, border: colors.warning.border },
+  danger:  { bg: colors.error.ghost,   color: colors.error.main,   border: colors.error.border },
+  info:    { bg: colors.info.ghost,    color: colors.info.main,    border: "rgba(37,99,235,0.15)" },
+  neutral: { bg: colors.bg.raised,     color: colors.text.secondary, border: colors.border.medium },
+  purple:  { bg: "rgba(109,40,217,0.06)", color: "#6D28D9", border: "rgba(109,40,217,0.15)" },
 };
 
 export function Badge({ children, variant = "info", style }) {
@@ -41,14 +42,15 @@ export function Badge({ children, variant = "info", style }) {
     <span style={{
       display: "inline-flex",
       alignItems: "center",
-      fontSize: "11px",
-      fontWeight: "600",
+      fontSize: fonts.size.xs,
+      fontWeight: fonts.weight.semibold,
       padding: "3px 10px",
-      borderRadius: "20px",
+      borderRadius: radius.full,
       background: c.bg,
       color: c.color,
       border: `1px solid ${c.border}`,
       whiteSpace: "nowrap",
+      fontFamily: fonts.body,
       ...style,
     }}>
       {children}
@@ -59,28 +61,28 @@ export function Badge({ children, variant = "info", style }) {
 // ─── Button ─────────────────────────────────────────────────
 const buttonVariants = {
   primary: {
-    background: "linear-gradient(135deg, #60efff, #3b82f6)",
-    color: "#0a0a12",
+    background: colors.primary.main,
+    color: "#FFFFFF",
     border: "none",
   },
   secondary: {
-    background: "rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.8)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: colors.bg.raised,
+    color: colors.text.primary,
+    border: `1px solid ${colors.border.medium}`,
   },
   danger: {
-    background: "rgba(239,68,68,0.15)",
-    color: "#ef4444",
-    border: "1px solid rgba(239,68,68,0.25)",
+    background: colors.error.ghost,
+    color: colors.error.main,
+    border: `1px solid ${colors.error.border}`,
   },
   success: {
-    background: "rgba(34,197,94,0.15)",
-    color: "#22c55e",
-    border: "1px solid rgba(34,197,94,0.25)",
+    background: colors.success.ghost,
+    color: colors.success.main,
+    border: `1px solid ${colors.success.border}`,
   },
   ghost: {
     background: "transparent",
-    color: "rgba(255,255,255,0.6)",
+    color: colors.text.secondary,
     border: "1px solid transparent",
   },
 };
@@ -88,9 +90,9 @@ const buttonVariants = {
 export function Button({ children, variant = "primary", size = "md", onClick, disabled, style, icon }) {
   const v = buttonVariants[variant] || buttonVariants.primary;
   const sizes = {
-    sm: { padding: "6px 12px", fontSize: "11px" },
-    md: { padding: "8px 16px", fontSize: "13px" },
-    lg: { padding: "10px 24px", fontSize: "14px" },
+    sm: { padding: "6px 12px", fontSize: fonts.size.xs },
+    md: { padding: "8px 16px", fontSize: fonts.size.base },
+    lg: { padding: "10px 24px", fontSize: fonts.size.md },
   };
   const s = sizes[size] || sizes.md;
 
@@ -102,15 +104,15 @@ export function Button({ children, variant = "primary", size = "md", onClick, di
       style={{
         ...v,
         ...s,
-        borderRadius: "8px",
-        fontWeight: "600",
+        borderRadius: radius.md,
+        fontWeight: fonts.weight.semibold,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
         display: "inline-flex",
         alignItems: "center",
         gap: "6px",
-        transition: "all 0.2s ease",
-        fontFamily: "'Space Mono', monospace",
+        transition: transitions.smooth,
+        fontFamily: fonts.body,
         ...style,
       }}
     >
@@ -127,10 +129,9 @@ export function DataTable({ columns, data, onRowClick, emptyMessage = "No data f
       <div style={{
         textAlign: "center",
         padding: "40px 20px",
-        color: "rgba(255,255,255,0.3)",
+        color: colors.text.muted,
       }}>
-        <div style={{ fontSize: "28px", marginBottom: "8px" }}>📭</div>
-        <div style={{ fontSize: "13px" }}>{emptyMessage}</div>
+        <div style={{ fontSize: fonts.size.base }}>{emptyMessage}</div>
       </div>
     );
   }
@@ -140,7 +141,8 @@ export function DataTable({ columns, data, onRowClick, emptyMessage = "No data f
       <table style={{
         width: "100%",
         borderCollapse: "collapse",
-        fontSize: "13px",
+        fontSize: fonts.size.base,
+        fontFamily: fonts.body,
       }}>
         <thead>
           <tr>
@@ -148,12 +150,12 @@ export function DataTable({ columns, data, onRowClick, emptyMessage = "No data f
               <th key={col.key} style={{
                 textAlign: col.align || "left",
                 padding: "10px 12px",
-                color: "rgba(255,255,255,0.4)",
-                fontWeight: "600",
-                fontSize: "11px",
+                color: colors.text.muted,
+                fontWeight: fonts.weight.semibold,
+                fontSize: fonts.size.xs,
                 textTransform: "uppercase",
                 letterSpacing: "0.05em",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                borderBottom: `1px solid ${colors.border.medium}`,
                 whiteSpace: "nowrap",
                 width: col.width || "auto",
               }}>
@@ -171,14 +173,14 @@ export function DataTable({ columns, data, onRowClick, emptyMessage = "No data f
                 cursor: onRowClick ? "pointer" : "default",
                 transition: "background 0.15s ease",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
+              onMouseEnter={(e) => e.currentTarget.style.background = colors.primary.ghost}
               onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
             >
               {columns.map((col) => (
                 <td key={col.key} style={{
                   padding: "12px",
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.8)",
+                  borderBottom: `1px solid ${colors.border.subtle}`,
+                  color: colors.text.secondary,
                   textAlign: col.align || "left",
                   verticalAlign: "middle",
                 }}>
@@ -204,10 +206,14 @@ export function SearchInput({ value, onChange, placeholder = "Search..." }) {
       <span style={{
         position: "absolute",
         left: "12px",
-        color: "rgba(255,255,255,0.3)",
+        color: colors.text.muted,
         fontSize: "14px",
         pointerEvents: "none",
-      }}>🔍</span>
+        display: "flex",
+        alignItems: "center",
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </span>
       <input
         type="text"
         value={value}
@@ -216,22 +222,24 @@ export function SearchInput({ value, onChange, placeholder = "Search..." }) {
         style={{
           width: "100%",
           padding: "8px 12px 8px 36px",
-          background: "rgba(255,255,255,0.05)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: "8px",
-          color: "#fff",
-          fontSize: "13px",
-          fontFamily: "'Space Mono', monospace",
-          transition: "all 0.2s ease",
+          background: colors.bg.raised,
+          border: `1px solid ${colors.border.medium}`,
+          borderRadius: radius.md,
+          color: colors.text.primary,
+          fontSize: fonts.size.base,
+          fontFamily: fonts.body,
+          transition: transitions.smooth,
           outline: "none",
         }}
         onFocus={(e) => {
-          e.target.style.borderColor = "rgba(96,239,255,0.3)";
-          e.target.style.background = "rgba(255,255,255,0.08)";
+          e.target.style.borderColor = colors.primary.border;
+          e.target.style.background = colors.bg.base;
+          e.target.style.boxShadow = `0 0 0 3px ${colors.primary.ghost}`;
         }}
         onBlur={(e) => {
-          e.target.style.borderColor = "rgba(255,255,255,0.1)";
-          e.target.style.background = "rgba(255,255,255,0.05)";
+          e.target.style.borderColor = colors.border.medium;
+          e.target.style.background = colors.bg.raised;
+          e.target.style.boxShadow = "none";
         }}
       />
     </div>
@@ -245,9 +253,9 @@ export function TabBar({ tabs, activeTab, onChange }) {
       display: "flex",
       gap: "4px",
       padding: "4px",
-      background: "rgba(255,255,255,0.03)",
-      borderRadius: "10px",
-      border: "1px solid rgba(255,255,255,0.06)",
+      background: colors.bg.raised,
+      borderRadius: radius.lg,
+      border: `1px solid ${colors.border.subtle}`,
     }}>
       {tabs.map((tab) => (
         <button
@@ -255,25 +263,26 @@ export function TabBar({ tabs, activeTab, onChange }) {
           onClick={() => onChange(tab.id)}
           style={{
             padding: "6px 14px",
-            borderRadius: "8px",
+            borderRadius: radius.md,
             border: "none",
-            fontSize: "12px",
-            fontWeight: "600",
+            fontSize: fonts.size.sm,
+            fontWeight: fonts.weight.semibold,
             cursor: "pointer",
-            transition: "all 0.2s ease",
-            fontFamily: "'Space Mono', monospace",
-            background: activeTab === tab.id ? "rgba(96,239,255,0.15)" : "transparent",
-            color: activeTab === tab.id ? "#60efff" : "rgba(255,255,255,0.5)",
+            transition: transitions.smooth,
+            fontFamily: fonts.body,
+            background: activeTab === tab.id ? colors.bg.base : "transparent",
+            color: activeTab === tab.id ? colors.primary.main : colors.text.muted,
+            boxShadow: activeTab === tab.id ? shadows.sm : "none",
           }}
         >
           {tab.label}
           {tab.count !== undefined && (
             <span style={{
               marginLeft: "6px",
-              fontSize: "10px",
+              fontSize: fonts.size.xs,
               padding: "1px 6px",
-              borderRadius: "10px",
-              background: activeTab === tab.id ? "rgba(96,239,255,0.2)" : "rgba(255,255,255,0.08)",
+              borderRadius: radius.full,
+              background: activeTab === tab.id ? colors.primary.ghost : colors.bg.raised,
             }}>
               {tab.count}
             </span>
@@ -287,9 +296,9 @@ export function TabBar({ tabs, activeTab, onChange }) {
 // ─── Stat Card ──────────────────────────────────────────────
 export function StatCard({ icon, title, value, trend, trendDirection, color, onClick }) {
   const trendColors = {
-    up: "#22c55e",
-    down: "#ef4444",
-    neutral: "rgba(255,255,255,0.4)",
+    up: colors.success.main,
+    down: colors.error.main,
+    neutral: colors.text.muted,
   };
 
   return (
@@ -303,9 +312,9 @@ export function StatCard({ icon, title, value, trend, trendDirection, color, onC
         <div style={{
           width: "36px",
           height: "36px",
-          borderRadius: "10px",
-          background: `${color}15`,
-          border: `1px solid ${color}25`,
+          borderRadius: radius.lg,
+          background: `${color}12`,
+          border: `1px solid ${color}20`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -315,25 +324,25 @@ export function StatCard({ icon, title, value, trend, trendDirection, color, onC
         </div>
       </div>
       <div style={{
-        fontSize: "24px",
-        fontWeight: "700",
-        color: "#fff",
+        fontSize: fonts.size["2xl"],
+        fontWeight: fonts.weight.bold,
+        color: colors.text.primary,
         marginBottom: "4px",
-        fontFamily: "'Space Mono', monospace",
+        fontFamily: fonts.heading,
       }}>
         {value}
       </div>
       <div style={{
-        fontSize: "11px",
-        color: "rgba(255,255,255,0.5)",
+        fontSize: fonts.size.xs,
+        color: colors.text.muted,
         marginBottom: "4px",
       }}>
         {title}
       </div>
       {trend && (
         <div style={{
-          fontSize: "11px",
-          fontWeight: "600",
+          fontSize: fonts.size.xs,
+          fontWeight: fonts.weight.semibold,
           color: trendColors[trendDirection] || trendColors.neutral,
         }}>
           {trend}
@@ -344,16 +353,15 @@ export function StatCard({ icon, title, value, trend, trendDirection, color, onC
 }
 
 // ─── Empty State ────────────────────────────────────────────
-export function EmptyState({ icon = "📭", title, description }) {
+export function EmptyState({ title, description }) {
   return (
     <div style={{
       textAlign: "center",
       padding: "60px 20px",
-      color: "rgba(255,255,255,0.3)",
+      color: colors.text.muted,
     }}>
-      <div style={{ fontSize: "40px", marginBottom: "16px" }}>{icon}</div>
-      <div style={{ fontSize: "16px", fontWeight: "600", color: "rgba(255,255,255,0.5)", marginBottom: "8px" }}>{title}</div>
-      {description && <div style={{ fontSize: "13px" }}>{description}</div>}
+      <div style={{ fontSize: "16px", fontWeight: fonts.weight.semibold, color: colors.text.secondary, marginBottom: "8px" }}>{title}</div>
+      {description && <div style={{ fontSize: fonts.size.base }}>{description}</div>}
     </div>
   );
 }
@@ -370,8 +378,8 @@ export function Loader() {
       <div style={{
         width: "24px",
         height: "24px",
-        border: "2px solid rgba(96,239,255,0.2)",
-        borderTop: "2px solid #60efff",
+        border: `2px solid ${colors.border.medium}`,
+        borderTop: `2px solid ${colors.primary.main}`,
         borderRadius: "50%",
         animation: "spin 0.8s linear infinite",
       }} />

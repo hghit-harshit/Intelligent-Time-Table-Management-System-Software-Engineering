@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, Badge, Button, Loader } from "../components/ui/index";
 import { fetchTimetableVersions } from "../services/adminApi";
-import { Download, RotateCcw, Eye, Send } from "lucide-react";
+import { Download, RotateCcw, Eye, Rocket, FileText, Archive } from "lucide-react";
+import { colors, fonts, radius } from "../../../styles/tokens";
 
 const statusVariant = { published: "success", draft: "warning", archived: "neutral" };
+const statusIcon = { published: Rocket, draft: FileText, archived: Archive };
 
 export default function TimetableVersions() {
   const [versions, setVersions] = useState([]);
@@ -18,49 +20,53 @@ export default function TimetableVersions() {
   return (
     <div>
       <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#fff", margin: "0 0 4px", fontFamily: "'Playfair Display', serif" }}>
+        <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
           Timetable Versions
         </h1>
-        <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", margin: 0 }}>
+        <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
           Version history and rollback management
         </p>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {versions.map((v) => (
-          <Card key={v.id} style={{ padding: "16px" }} hover={false}>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <div style={{
-                width: "42px", height: "42px", borderRadius: "10px",
-                background: v.status === "published" ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${v.status === "published" ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.08)"}`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "16px", flexShrink: 0,
-              }}>
-                {v.status === "published" ? "🚀" : v.status === "draft" ? "📝" : "📦"}
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                  <span style={{ fontWeight: "700", color: "#fff", fontSize: "14px" }}>{v.label}</span>
-                  <Badge variant={statusVariant[v.status]}>{v.status}</Badge>
-                  {v.conflicts > 0 && <Badge variant="danger">{v.conflicts} conflicts</Badge>}
+        {versions.map((v) => {
+          const IconComp = statusIcon[v.status] || Archive;
+          const iconColor = v.status === "published" ? "#22c55e" : colors.text.muted;
+          return (
+            <Card key={v.id} style={{ padding: "16px" }} hover={false}>
+              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                <div style={{
+                  width: "42px", height: "42px", borderRadius: radius.lg,
+                  background: v.status === "published" ? "rgba(34,197,94,0.08)" : colors.bg.raised,
+                  border: `1px solid ${v.status === "published" ? "rgba(34,197,94,0.18)" : colors.border.subtle}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <IconComp size={18} style={{ color: iconColor }} />
                 </div>
-                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
-                  Created {new Date(v.createdAt).toLocaleDateString()} by {v.author}
+
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <span style={{ fontWeight: fonts.weight.bold, color: colors.text.primary, fontSize: fonts.size.sm }}>{v.label}</span>
+                    <Badge variant={statusVariant[v.status]}>{v.status}</Badge>
+                    {v.conflicts > 0 && <Badge variant="danger">{v.conflicts} conflicts</Badge>}
+                  </div>
+                  <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>
+                    Created {new Date(v.createdAt).toLocaleDateString()} by {v.author}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                  <Button size="sm" variant="ghost" icon={<Eye size={12} />}>Preview</Button>
+                  {v.status !== "published" && (
+                    <Button size="sm" variant="secondary" icon={<RotateCcw size={12} />}>Restore</Button>
+                  )}
+                  <Button size="sm" variant="ghost" icon={<Download size={12} />}>Export</Button>
                 </div>
               </div>
-
-              <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                <Button size="sm" variant="ghost" icon={<Eye size={12} />}>Preview</Button>
-                {v.status !== "published" && (
-                  <Button size="sm" variant="secondary" icon={<RotateCcw size={12} />}>Restore</Button>
-                )}
-                <Button size="sm" variant="ghost" icon={<Download size={12} />}>Export</Button>
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { colors, fonts, radius, shadows, transitions } from "../../../../styles/tokens";
 import {
   LayoutDashboard,
   Cpu,
@@ -78,59 +79,37 @@ export default function AdminLayout({ children }) {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#0a0a12",
-      fontFamily: "'Space Mono', monospace",
-      color: "#fff",
+      background: colors.bg.deep,
+      fontFamily: fonts.body,
+      color: colors.text.primary,
       display: "flex",
       overflow: "hidden",
     }}>
-      {/* ── Global Styles ─────────────────────────────────── */}
+      {/* Global Styles */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
         @keyframes spin { to { transform:rotate(360deg); } }
-        @keyframes shimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
-        @keyframes pulse-glow { 0%,100%{box-shadow:0 0 0 0 rgba(251,146,60,0.3);} 50%{box-shadow:0 0 0 8px rgba(251,146,60,0);} }
-        .admin-card-hover:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(96,239,255,0.15) !important; }
-        .admin-btn:hover:not(:disabled) { transform:translateY(-1px); filter:brightness(1.1); }
+        .admin-card-hover:hover { border-color: ${colors.border.strong} !important; box-shadow: ${shadows.md} !important; }
+        .admin-btn:hover:not(:disabled) { transform:translateY(-1px); filter:brightness(0.95); }
         *::-webkit-scrollbar { width:4px; }
         *::-webkit-scrollbar-track { background:transparent; }
-        *::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:4px; }
-        *::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.15); }
+        *::-webkit-scrollbar-thumb { background:${colors.border.medium}; border-radius:4px; }
+        *::-webkit-scrollbar-thumb:hover { background:${colors.border.strong}; }
       `}</style>
 
-      {/* ── Background Effects ────────────────────────────── */}
-      <div style={{
-        position: "fixed", width: "400px", height: "400px", borderRadius: "50%",
-        top: "-100px", left: "-100px",
-        background: "radial-gradient(circle, rgba(251,146,60,0.06) 0%, transparent 70%)",
-        pointerEvents: "none", zIndex: 0,
-      }} />
-      <div style={{
-        position: "fixed", width: "350px", height: "350px", borderRadius: "50%",
-        bottom: "-80px", right: "-60px",
-        background: "radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 70%)",
-        pointerEvents: "none", zIndex: 0,
-      }} />
-      <div style={{
-        position: "fixed", inset: 0,
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px)`,
-        backgroundSize: "40px 40px", pointerEvents: "none", zIndex: 0,
-      }} />
-
-      {/* ── Sidebar ───────────────────────────────────────── */}
+      {/* Sidebar */}
       <div style={{
         width: collapsed ? "72px" : "260px",
         minWidth: collapsed ? "72px" : "260px",
-        background: "rgba(255,255,255,0.03)",
-        backdropFilter: "blur(20px)",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
+        background: colors.bg.base,
+        borderRight: `1px solid ${colors.border.medium}`,
         display: "flex",
         flexDirection: "column",
         transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
         position: "relative",
         zIndex: 20,
         padding: "16px 12px",
+        boxShadow: shadows.sm,
       }}>
         {/* Logo */}
         <div style={{
@@ -143,33 +122,38 @@ export default function AdminLayout({ children }) {
           {!collapsed && (
             <div>
               <h1 style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: "20px", fontWeight: "700", margin: "0 0 2px",
-                background: "linear-gradient(90deg, #fb923c, #a78bfa)",
-                backgroundSize: "200% auto",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                animation: "shimmer 3s linear infinite",
+                fontFamily: fonts.heading,
+                fontSize: fonts.size.xl,
+                fontWeight: fonts.weight.bold,
+                margin: "0 0 2px",
+                color: colors.primary.main,
               }}>
-                SmartTimetable
+                Smart Timetable
               </h1>
-              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "9px", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0 }}>
-                ITMS • Admin Console
+              <p style={{
+                color: colors.text.muted,
+                fontSize: fonts.size.xs,
+                letterSpacing: fonts.letterSpacing.wider,
+                textTransform: "uppercase",
+                margin: 0,
+              }}>
+                DISHA — Admin Console
               </p>
             </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
             style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "8px",
-              color: "rgba(255,255,255,0.5)",
+              background: colors.bg.raised,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.md,
+              color: colors.text.muted,
               cursor: "pointer",
               padding: "6px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transition: "all 0.2s ease",
+              transition: transitions.smooth,
             }}
           >
             {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -179,9 +163,9 @@ export default function AdminLayout({ children }) {
         {/* Admin User Card */}
         {!collapsed && (
           <div style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "12px",
+            background: colors.primary.ghost,
+            border: `1px solid ${colors.primary.border}`,
+            borderRadius: radius.xl,
             padding: "12px",
             marginBottom: "20px",
             display: "flex",
@@ -190,26 +174,25 @@ export default function AdminLayout({ children }) {
           }}>
             <div style={{
               width: "36px", height: "36px",
-              background: "linear-gradient(135deg, #fb923c, #a78bfa)",
+              background: colors.primary.main,
               borderRadius: "50%",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: "700", color: "#0a0a12", fontSize: "12px",
-              animation: "pulse-glow 3s infinite",
+              fontWeight: fonts.weight.bold, color: "#fff", fontSize: fonts.size.sm,
               flexShrink: 0,
             }}>
               AD
             </div>
             <div style={{ flex: 1, overflow: "hidden" }}>
-              <div style={{ fontWeight: "600", fontSize: "13px", color: "#fff" }}>Admin User</div>
-              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)" }}>System Administrator</div>
+              <div style={{ fontWeight: fonts.weight.semibold, fontSize: fonts.size.base, color: colors.text.primary }}>Admin User</div>
+              <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>System Administrator</div>
             </div>
             <div style={{
-              background: "#fb923c",
-              color: "#0a0a12",
-              fontSize: "9px",
-              fontWeight: "700",
+              background: colors.primary.main,
+              color: "#fff",
+              fontSize: fonts.size.xs,
+              fontWeight: fonts.weight.bold,
               padding: "3px 6px",
-              borderRadius: "4px",
+              borderRadius: radius.sm,
             }}>
               ADMIN
             </div>
@@ -222,8 +205,13 @@ export default function AdminLayout({ children }) {
             <div key={section.label} style={{ marginBottom: "16px" }}>
               {!collapsed && (
                 <p style={{
-                  fontSize: "9px", color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em",
-                  textTransform: "uppercase", marginBottom: "6px", padding: "0 8px",
+                  fontSize: fonts.size.xs,
+                  color: colors.text.muted,
+                  letterSpacing: fonts.letterSpacing.wider,
+                  textTransform: "uppercase",
+                  marginBottom: "6px",
+                  padding: "0 8px",
+                  fontWeight: fonts.weight.medium,
                 }}>
                   {section.label}
                 </p>
@@ -241,40 +229,41 @@ export default function AdminLayout({ children }) {
                       alignItems: "center",
                       gap: "10px",
                       padding: collapsed ? "9px" : "8px 10px",
-                      borderRadius: "8px",
+                      borderRadius: radius.md,
                       cursor: "pointer",
                       marginBottom: "2px",
                       justifyContent: collapsed ? "center" : "flex-start",
-                      background: active ? "rgba(251,146,60,0.12)" : "transparent",
-                      color: active ? "#fb923c" : "rgba(255,255,255,0.5)",
-                      border: active ? "1px solid rgba(251,146,60,0.2)" : "1px solid transparent",
-                      transition: "all 0.2s ease",
+                      background: active ? colors.primary.ghost : "transparent",
+                      color: active ? colors.primary.main : colors.text.secondary,
+                      border: active ? `1px solid ${colors.primary.border}` : "1px solid transparent",
+                      transition: transitions.smooth,
+                      fontWeight: active ? fonts.weight.semibold : fonts.weight.regular,
                     }}
                     onMouseEnter={(e) => {
                       if (!active) {
-                        e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                        e.currentTarget.style.color = "rgba(255,255,255,0.8)";
+                        e.currentTarget.style.background = colors.bg.raised;
+                        e.currentTarget.style.color = colors.text.primary;
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!active) {
                         e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+                        e.currentTarget.style.color = colors.text.secondary;
                       }
                     }}
                   >
                     <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
                     {!collapsed && (
                       <>
-                        <span style={{ flex: 1, fontSize: "12px", fontWeight: active ? "600" : "400" }}>{item.label}</span>
+                        <span style={{ flex: 1, fontSize: fonts.size.sm }}>{item.label}</span>
                         {item.badge && (
                           <span style={{
-                            background: "#ef4444",
+                            background: colors.error.main,
                             color: "#fff",
-                            fontSize: "9px",
-                            fontWeight: "700",
+                            fontSize: fonts.size.xs,
+                            fontWeight: fonts.weight.bold,
                             padding: "1px 5px",
-                            borderRadius: "8px",
+                            borderRadius: radius.full,
                             lineHeight: "14px",
                           }}>
                             {item.badge}
@@ -291,28 +280,28 @@ export default function AdminLayout({ children }) {
 
         {/* Bottom Actions */}
         <div style={{
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: `1px solid ${colors.border.subtle}`,
           paddingTop: "12px",
         }}>
           <div
             onClick={() => navigate("/")}
             style={{
               display: "flex", alignItems: "center", gap: "10px",
-              padding: collapsed ? "9px" : "8px 10px", borderRadius: "8px",
-              cursor: "pointer", color: "rgba(239,68,68,0.7)",
+              padding: collapsed ? "9px" : "8px 10px", borderRadius: radius.md,
+              cursor: "pointer", color: colors.error.main,
               justifyContent: collapsed ? "center" : "flex-start",
-              transition: "all 0.2s ease",
+              transition: transitions.smooth,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = colors.error.ghost; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <LogOut size={16} />
-            {!collapsed && <span style={{ fontSize: "12px" }}>Logout</span>}
+            {!collapsed && <span style={{ fontSize: fonts.size.sm }}>Logout</span>}
           </div>
         </div>
       </div>
 
-      {/* ── Main Content Area ─────────────────────────────── */}
+      {/* Main Content Area */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 10, overflow: "hidden" }}>
         {/* Header Bar */}
         <div style={{
@@ -320,9 +309,8 @@ export default function AdminLayout({ children }) {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "12px 24px",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
-          background: "rgba(255,255,255,0.02)",
-          backdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${colors.border.subtle}`,
+          background: colors.bg.base,
           flexShrink: 0,
         }}>
           {/* Global Search */}
@@ -330,14 +318,15 @@ export default function AdminLayout({ children }) {
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            background: searchFocused ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
-            border: searchFocused ? "1px solid rgba(96,239,255,0.2)" : "1px solid rgba(255,255,255,0.06)",
-            borderRadius: "8px",
+            background: searchFocused ? colors.bg.base : colors.bg.raised,
+            border: searchFocused ? `1px solid ${colors.primary.border}` : `1px solid ${colors.border.medium}`,
+            borderRadius: radius.md,
             padding: "7px 14px",
             width: "340px",
-            transition: "all 0.2s ease",
+            transition: transitions.smooth,
+            boxShadow: searchFocused ? `0 0 0 3px ${colors.primary.ghost}` : "none",
           }}>
-            <Search size={14} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }} />
+            <Search size={14} style={{ color: colors.text.muted, flexShrink: 0 }} />
             <input
               type="text"
               placeholder="Search courses, faculty, rooms..."
@@ -347,20 +336,20 @@ export default function AdminLayout({ children }) {
                 background: "transparent",
                 border: "none",
                 outline: "none",
-                color: "#fff",
-                fontSize: "12px",
-                fontFamily: "'Space Mono', monospace",
+                color: colors.text.primary,
+                fontSize: fonts.size.sm,
+                fontFamily: fonts.body,
                 width: "100%",
               }}
             />
             <span style={{
-              fontSize: "10px",
-              color: "rgba(255,255,255,0.2)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "4px",
+              fontSize: fonts.size.xs,
+              color: colors.text.muted,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.sm,
               padding: "1px 5px",
               whiteSpace: "nowrap",
-            }}>⌘K</span>
+            }}>Ctrl+K</span>
           </div>
 
           {/* Right side */}
@@ -368,21 +357,21 @@ export default function AdminLayout({ children }) {
             {/* Notifications */}
             <div style={{
               position: "relative",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "8px",
+              background: colors.bg.raised,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.md,
               padding: "7px",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}>
-              <Bell size={16} style={{ color: "rgba(255,255,255,0.6)" }} />
+              <Bell size={16} style={{ color: colors.text.secondary }} />
               <span style={{
                 position: "absolute", top: "-3px", right: "-3px",
                 width: "16px", height: "16px", borderRadius: "50%",
-                background: "#ef4444", color: "#fff",
-                fontSize: "9px", fontWeight: "700",
+                background: colors.error.main, color: "#fff",
+                fontSize: fonts.size.xs, fontWeight: fonts.weight.bold,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>3</span>
             </div>
@@ -394,20 +383,20 @@ export default function AdminLayout({ children }) {
               gap: "8px",
               cursor: "pointer",
               padding: "4px 10px 4px 4px",
-              borderRadius: "8px",
-              border: "1px solid rgba(255,255,255,0.06)",
-              background: "rgba(255,255,255,0.03)",
+              borderRadius: radius.md,
+              border: `1px solid ${colors.border.medium}`,
+              background: colors.bg.raised,
             }}>
               <div style={{
                 width: "28px", height: "28px",
-                background: "linear-gradient(135deg, #fb923c, #a78bfa)",
+                background: colors.primary.main,
                 borderRadius: "50%",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: "700", color: "#0a0a12", fontSize: "10px",
+                fontWeight: fonts.weight.bold, color: "#fff", fontSize: fonts.size.xs,
               }}>
                 AD
               </div>
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)" }}>Admin</span>
+              <span style={{ fontSize: fonts.size.sm, color: colors.text.secondary }}>Admin</span>
             </div>
           </div>
         </div>

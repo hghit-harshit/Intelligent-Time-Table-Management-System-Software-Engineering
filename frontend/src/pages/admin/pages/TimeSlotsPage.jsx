@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, Badge, DataTable, SearchInput, Button, Loader } from "../components/ui/index";
 import { fetchTimeSlots } from "../services/adminApi";
+import { colors, fonts } from "../../../styles/tokens";
 import { Plus } from "lucide-react";
 
 const typeColors = { Lecture: "info", Lab: "purple", Break: "warning" };
@@ -23,15 +24,15 @@ export default function TimeSlotsPage() {
   const columns = [
     {
       key: "label", label: "Slot",
-      render: (val) => <span style={{ fontWeight: "600", color: "#fff" }}>{val}</span>,
+      render: (val) => <span style={{ fontWeight: fonts.weight.semibold, color: colors.text.primary }}>{val}</span>,
     },
     {
       key: "startTime", label: "Start",
-      render: (val) => <span style={{ color: "#60efff" }}>{val}</span>,
+      render: (val) => <span style={{ color: colors.primary.main }}>{val}</span>,
     },
     {
       key: "endTime", label: "End",
-      render: (val) => <span style={{ color: "#60efff" }}>{val}</span>,
+      render: (val) => <span style={{ color: colors.primary.main }}>{val}</span>,
     },
     { key: "day", label: "Days" },
     {
@@ -46,8 +47,8 @@ export default function TimeSlotsPage() {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
         <div>
-          <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#fff", margin: "0 0 4px", fontFamily: "'Playfair Display', serif" }}>Time Slots</h1>
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", margin: 0 }}>{slots.length} slots configured</p>
+          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>Time Slots</h1>
+          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>{slots.length} slots configured</p>
         </div>
         <Button variant="primary" icon={<Plus size={14} />}>Add Slot</Button>
       </div>
