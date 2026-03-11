@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, DataTable, SearchInput, Loader } from "../components/ui/index";
+import { Card, Badge, Button, DataTable, SearchInput, Loader, PageHeader } from "../components/ui/index";
 import { fetchExamSchedule } from "../services/adminApi";
 import { colors, fonts } from "../../../styles/tokens";
 import { CalendarClock, AlertTriangle, Plus, CheckCircle, FileText } from "lucide-react";
@@ -70,20 +70,17 @@ export default function ExamScheduler() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
-            Exam Scheduler
-          </h1>
-          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
-            Manage exam slots, rooms, and conflict detection
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {conflictCount > 0 && <Badge variant="danger">{conflictCount} conflicts</Badge>}
-          <Button variant="primary" icon={<Plus size={14} />}>Add Exam</Button>
-        </div>
-      </div>
+      {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing badges+button as action */}
+      <PageHeader
+        title="Exam Scheduler"
+        subtitle="Manage exam slots, rooms, and conflict detection"
+        action={
+          <div style={{ display: "flex", gap: "8px" }}>
+            {conflictCount > 0 && <Badge variant="danger">{conflictCount} conflicts</Badge>}
+            <Button variant="primary" icon={<Plus size={14} />}>Add Exam</Button>
+          </div>
+        }
+      />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px", marginBottom: "20px" }}>
         {[

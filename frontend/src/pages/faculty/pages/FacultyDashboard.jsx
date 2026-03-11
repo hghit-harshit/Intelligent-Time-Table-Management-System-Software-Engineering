@@ -1,6 +1,8 @@
 import { useState } from "react"
 import CalendarView from "../../../components/CalendarView"
 import { colors, fonts, radius, shadows } from "../../../styles/tokens"
+/* WHY: Import shared components to replace duplicated top-bar, stats grid, and modal */
+import { SubPageHeader, StatsGrid, Modal } from "../../admin/components/ui/index"
 
 export default function FacultyDashboard() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
@@ -50,34 +52,25 @@ export default function FacultyDashboard() {
 
   return (
     <>
-      {/* Top Bar */}
-      <div style={{ ...card, marginBottom: "12px", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: 3, height: 20, borderRadius: "2px", background: "#7C3AED" }} />
-            <h2 style={{ ...heading, fontSize: "15px", margin: 0, fontWeight: 700 }}>Faculty Dashboard</h2>
-          </div>
-          <p style={{ ...caption, margin: "4px 0 0 11px" }}>Teaching schedule & availability</p>
-        </div>
-        <button onClick={handleRequestReschedule} style={{ padding: "8px 16px", background: colors.primary.main, color: "#fff", border: "none", borderRadius: radius.md, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }}>
-          Request Reschedule
-        </button>
-      </div>
+      {/* WHY: Replaced duplicated accent-bar header with shared SubPageHeader */}
+      <SubPageHeader
+        title="Faculty Dashboard"
+        subtitle="Teaching schedule & availability"
+        accentColor="#7C3AED"
+        actions={
+          <button onClick={handleRequestReschedule} style={{ padding: "8px 16px", background: colors.primary.main, color: "#fff", border: "none", borderRadius: radius.md, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }}>
+            Request Reschedule
+          </button>
+        }
+      />
 
-      {/* Stats Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "12px" }}>
-        {[
-          { label: "Total Classes", value: "12", color: colors.primary.main },
-          { label: "Completed", value: "8", color: colors.success.main },
-          { label: "This Week", value: "5", color: colors.secondary.main },
-          { label: "Pending Requests", value: "1", color: colors.warning.main },
-        ].map((stat, i) => (
-          <div key={i} style={{ ...card, padding: "14px", textAlign: "center" }}>
-            <div style={{ fontSize: "22px", fontWeight: 700, color: stat.color, marginBottom: "4px", fontFamily: fonts.heading, fontVariantNumeric: "tabular-nums" }}>{stat.value}</div>
-            <div style={{ ...muted, fontSize: fonts.size.xs }}>{stat.label}</div>
-          </div>
-        ))}
-      </div>
+      {/* WHY: Replaced inline 4-column stat grid with shared StatsGrid */}
+      <StatsGrid stats={[
+        { num: "12", label: "Total Classes", color: colors.primary.main },
+        { num: "8", label: "Completed", color: colors.success.main },
+        { num: "5", label: "This Week", color: colors.secondary.main },
+        { num: "1", label: "Pending Requests", color: colors.warning.main },
+      ]} />
 
       {/* Calendar */}
       <div>
@@ -98,9 +91,8 @@ export default function FacultyDashboard() {
       </div>
 
       {/* Reschedule Modal */}
-      {showRescheduleModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setShowRescheduleModal(false)}>
-          <div style={{ background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.xl, padding: "24px", width: "90%", maxWidth: "500px", boxShadow: shadows.xl }} onClick={(e) => e.stopPropagation()}>
+      {/* WHY: Replaced inline modal wrapper with shared Modal component */}
+      <Modal open={showRescheduleModal} onClose={() => setShowRescheduleModal(false)} maxWidth="500px">
             <h3 style={{ ...heading, fontSize: fonts.size.lg, marginBottom: "20px" }}>Request Reschedule</h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
@@ -137,9 +129,7 @@ export default function FacultyDashboard() {
               <button onClick={() => setShowRescheduleModal(false)} style={{ flex: 1, padding: "8px 16px", background: colors.bg.raised, color: colors.text.primary, border: `1px solid ${colors.border.medium}`, borderRadius: radius.md, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }}>Cancel</button>
               <button onClick={handleSubmitReschedule} style={{ flex: 1, padding: "8px 16px", background: colors.primary.main, color: "#fff", border: "none", borderRadius: radius.md, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }}>Submit Request</button>
             </div>
-          </div>
-        </div>
-      )}
+          </Modal>
     </>
   )
 }

@@ -1,5 +1,7 @@
 import { useState } from "react"
 import { colors, fonts, radius, shadows } from "../../../styles/tokens"
+/* WHY: Import shared components to replace duplicated top-bar, stats grid, and modal */
+import { SubPageHeader, StatsGrid, Modal } from "../../admin/components/ui/index"
 
 export default function Notifications() {
   const [filterType, setFilterType] = useState("all")
@@ -36,16 +38,12 @@ export default function Notifications() {
 
   return (
     <>
-      {/* Top Bar */}
-      <div style={{ ...card, marginBottom: "12px", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: 3, height: 20, borderRadius: "2px", background: colors.warning.main }} />
-            <h2 style={{ ...heading, fontSize: "15px", margin: 0, fontWeight: 700 }}>Notifications</h2>
-          </div>
-          <p style={{ ...caption, margin: "4px 0 0 11px" }}>{unreadCount} unread · {notifications.length} total</p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* WHY: Replaced duplicated accent-bar header with shared SubPageHeader */}
+      <SubPageHeader
+        title="Notifications"
+        subtitle={`${unreadCount} unread · ${notifications.length} total`}
+        accentColor={colors.warning.main}
+        actions={<>
           <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ ...cardInner, padding: "6px 12px", color: colors.text.primary, fontSize: fonts.size.sm, cursor: "pointer", fontFamily: fonts.body }}>
             <option value="all">All Types</option>
             <option value="class_change">Class Changes</option>
@@ -56,27 +54,20 @@ export default function Notifications() {
             <option value="system">System</option>
           </select>
           {unreadCount > 0 && <button onClick={markAllAsRead} style={btn}>Mark All Read</button>}
-        </div>
-      </div>
+        </>}
+      />
 
       {/* Content */}
       <div style={{ flex: 1, display: "flex", margin: "12px", gap: "12px", overflow: "hidden" }}>
         {/* Main Panel */}
         <div style={{ flex: 1, overflowY: "auto", paddingRight: "8px" }}>
-          {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "12px" }}>
-            {[
-              { num: notifications.length.toString(), label: "Total Messages", color: colors.primary.main },
-              { num: unreadCount.toString(), label: "Unread", color: unreadCount > 0 ? colors.error.main : colors.success.main },
-              { num: notifications.filter(n => n.priority === "high").length.toString(), label: "High Priority", color: colors.warning.main },
-              { num: notifications.filter(n => n.isRead).length.toString(), label: "Read", color: colors.success.main },
-            ].map((stat, i) => (
-              <div key={i} style={{ ...card, padding: "12px", textAlign: "center" }}>
-                <div style={{ fontSize: "20px", fontWeight: 600, color: stat.color, marginBottom: "2px", fontVariantNumeric: "tabular-nums", fontFamily: fonts.heading }}>{stat.num}</div>
-                <div style={muted}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+          {/* WHY: Replaced inline 4-column stat grid with shared StatsGrid */}
+          <StatsGrid stats={[
+            { num: notifications.length.toString(), label: "Total Messages", color: colors.primary.main },
+            { num: unreadCount.toString(), label: "Unread", color: unreadCount > 0 ? colors.error.main : colors.success.main },
+            { num: notifications.filter(n => n.priority === "high").length.toString(), label: "High Priority", color: colors.warning.main },
+            { num: notifications.filter(n => n.isRead).length.toString(), label: "Read", color: colors.success.main },
+          ]} />
 
           {/* Notifications List */}
           <div style={{ ...card, overflow: "hidden" }}>
@@ -190,9 +181,9 @@ export default function Notifications() {
       </div>
 
       {/* Notification Details Modal */}
+      {/* WHY: Guard with && so children are never evaluated when selectedNotification is null */}
       {selectedNotification && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setSelectedNotification(null)}>
-          <div style={{ background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.xl, padding: "24px", maxWidth: "500px", width: "90%", boxShadow: shadows.xl }} onClick={(e) => e.stopPropagation()}>
+        <Modal open={true} onClose={() => setSelectedNotification(null)} maxWidth="500px">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div style={{ width: 4, height: 28, borderRadius: "2px", background: selectedNotification.color, flexShrink: 0 }} />
@@ -208,8 +199,7 @@ export default function Notifications() {
               <button style={{ ...btn, background: selectedNotification.color, padding: "8px 16px" }}>Take Action</button>
               <button onClick={() => { deleteNotification(selectedNotification.id); setSelectedNotification(null) }} style={btnGhost}>Delete</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

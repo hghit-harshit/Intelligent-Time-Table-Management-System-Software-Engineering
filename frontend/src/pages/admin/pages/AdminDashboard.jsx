@@ -4,9 +4,8 @@ import AlertsPanel from "../components/dashboard/AlertsPanel";
 import AdminQuickActions from "../components/dashboard/AdminQuickActions";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
-import { Loader } from "../components/ui/index";
+import { Loader, PageHeader } from "../components/ui/index";
 import { fetchDashboard, updateRequestStatus } from "../services/adminApi";
-import { colors, fonts } from "../../../styles/tokens";
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
@@ -43,24 +42,8 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{
-          fontSize: fonts.size["2xl"],
-          fontWeight: fonts.weight.bold,
-          color: colors.text.primary,
-          margin: "0 0 4px",
-          fontFamily: fonts.heading,
-        }}>
-          Admin Dashboard
-        </h1>
-        <p style={{
-          fontSize: fonts.size.sm,
-          color: colors.text.muted,
-          margin: 0,
-        }}>
-          University Timetable Operations Center
-        </p>
-      </div>
+      {/* WHY: Replaced inline h1+p with shared PageHeader to remove duplication */}
+      <PageHeader title="Admin Dashboard" subtitle="University Timetable Operations Center" />
 
       <MetricsCards metrics={data.metrics} />
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, DataTable, SearchInput, Button, Loader } from "../components/ui/index";
+import { Card, Badge, DataTable, SearchInput, Button, Loader, PageHeader } from "../components/ui/index";
 import { fetchRooms } from "../services/adminApi";
 import { colors, fonts } from "../../../styles/tokens";
 import { Plus } from "lucide-react";
@@ -65,13 +65,12 @@ export default function RoomsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>Rooms</h1>
-          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>{roomsList.length} rooms registered</p>
-        </div>
-        <Button variant="primary" icon={<Plus size={14} />}>Add Room</Button>
-      </div>
+      {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing action prop */}
+      <PageHeader
+        title="Rooms"
+        subtitle={`${roomsList.length} rooms registered`}
+        action={<Button variant="primary" icon={<Plus size={14} />}>Add Room</Button>}
+      />
 
       <div style={{ marginBottom: "16px", maxWidth: "320px" }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search rooms..." />

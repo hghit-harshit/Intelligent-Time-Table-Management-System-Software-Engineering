@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, SearchInput, TabBar, Loader } from "../components/ui/index";
+import { Card, Badge, Button, SearchInput, TabBar, Loader, PageHeader } from "../components/ui/index";
 import { fetchRescheduleRequests, updateRequestStatus } from "../services/adminApi";
 import { colors, fonts, radius } from "../../../styles/tokens";
 import { Check, X, Eye } from "lucide-react";
@@ -45,19 +45,16 @@ export default function RescheduleRequests() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
-            Reschedule Requests
-          </h1>
-          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
-            Faculty rescheduling request approval center
-          </p>
-        </div>
-        <Badge variant="warning" style={{ fontSize: fonts.size.sm, padding: "5px 14px" }}>
-          {pendingCount} pending
-        </Badge>
-      </div>
+      {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing badge as action */}
+      <PageHeader
+        title="Reschedule Requests"
+        subtitle="Faculty rescheduling request approval center"
+        action={
+          <Badge variant="warning" style={{ fontSize: fonts.size.sm, padding: "5px 14px" }}>
+            {pendingCount} pending
+          </Badge>
+        }
+      />
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search faculty, course..." />

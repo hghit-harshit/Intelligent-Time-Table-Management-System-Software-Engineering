@@ -1,5 +1,7 @@
 import { useState } from "react"
 import { colors, fonts, radius, shadows } from "../../../styles/tokens"
+/* WHY: Import shared components to replace duplicated top-bar, stats grid, and modal */
+import { SubPageHeader, StatsGrid, Modal } from "../../admin/components/ui/index"
 
 export default function CourseEnrollment() {
   const [selectedSemester, setSelectedSemester] = useState("current")
@@ -87,43 +89,32 @@ export default function CourseEnrollment() {
 
   return (
     <>
-      {/* Top Bar */}
-      <div style={{ ...card, marginBottom: "12px", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: 3, height: 20, borderRadius: "2px", background: colors.primary.main }} />
-            <h2 style={{ ...heading, fontSize: "15px", margin: 0, fontWeight: 700 }}>Course Enrollment</h2>
-          </div>
-          <p style={{ ...caption, margin: "4px 0 0 11px" }}>{enrolledCourses.length} enrolled · {availableCourses.filter(c => c.status === "available").length} available</p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* WHY: Replaced duplicated accent-bar header with shared SubPageHeader */}
+      <SubPageHeader
+        title="Course Enrollment"
+        subtitle={`${enrolledCourses.length} enrolled · ${availableCourses.filter(c => c.status === "available").length} available`}
+        accentColor={colors.primary.main}
+        actions={<>
           <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} style={inputField}>
             <option value="current">Spring 2024</option>
             <option value="next">Fall 2024</option>
             <option value="previous">Fall 2023</option>
           </select>
           <button style={btn}>Academic Plan</button>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* Content Area */}
       <div style={{ flex: 1, display: "flex", margin: "12px", gap: "12px", overflow: "hidden" }}>
         {/* Main Panel */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px", overflowY: "auto", paddingRight: "8px" }}>
-          {/* Enrollment Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
-            {[
-              { num: enrolledCourses.length.toString(), label: "Enrolled Courses", color: colors.primary.main },
-              { num: enrolledCourses.reduce((sum, c) => sum + c.credits, 0).toString(), label: "Total Credits", color: colors.success.main },
-              { num: (enrolledCourses.reduce((sum, c) => sum + c.completion, 0) / enrolledCourses.length).toFixed(0) + "%", label: "Avg Progress", color: colors.warning.main },
-              { num: "3.7", label: "Current GPA", color: colors.secondary.main },
-            ].map((stat, i) => (
-              <div key={i} style={{ ...card, padding: "12px", textAlign: "center" }}>
-                <div style={{ fontSize: "20px", fontWeight: 600, color: stat.color, marginBottom: "2px", fontVariantNumeric: "tabular-nums", fontFamily: fonts.heading }}>{stat.num}</div>
-                <div style={muted}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+          {/* WHY: Replaced inline 4-column stat grid with shared StatsGrid */}
+          <StatsGrid stats={[
+            { num: enrolledCourses.length.toString(), label: "Enrolled Courses", color: colors.primary.main },
+            { num: enrolledCourses.reduce((sum, c) => sum + c.credits, 0).toString(), label: "Total Credits", color: colors.success.main },
+            { num: (enrolledCourses.reduce((sum, c) => sum + c.completion, 0) / enrolledCourses.length).toFixed(0) + "%", label: "Avg Progress", color: colors.warning.main },
+            { num: "3.7", label: "Current GPA", color: colors.secondary.main },
+          ]} />
 
           {/* Enrolled Courses */}
           <div style={{ ...card, overflow: "hidden" }}>
@@ -289,9 +280,9 @@ export default function CourseEnrollment() {
       </div>
 
       {/* Course Details Modal */}
+      {/* WHY: Guard with && so children are never evaluated when selectedCourse is null */}
       {selectedCourse && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setSelectedCourse(null)}>
-          <div style={{ background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.xl, padding: "24px", maxWidth: "600px", width: "90%", maxHeight: "80vh", overflowY: "auto", boxShadow: shadows.xl }} onClick={(e) => e.stopPropagation()}>
+        <Modal open={true} onClose={() => setSelectedCourse(null)} maxWidth="600px">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
               <div>
                 <h3 style={{ ...heading, fontSize: "16px", color: colors.primary.main, margin: "0 0 4px" }}>{selectedCourse.code} – {selectedCourse.name}</h3>
@@ -346,8 +337,7 @@ export default function CourseEnrollment() {
               <button style={btn}>Access Course</button>
               <button onClick={() => dropCourse(selectedCourse.id)} style={btnGhost}>Drop Course</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </>
   )

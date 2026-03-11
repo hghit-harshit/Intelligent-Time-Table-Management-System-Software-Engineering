@@ -1,4 +1,4 @@
-import { Card, Badge } from "../components/ui/index";
+import { Card, Badge, PageHeader } from "../components/ui/index";
 import { Calendar, MessageSquare, Mail, Building2, Hash } from "lucide-react";
 import { colors, fonts, radius } from "../../../styles/tokens";
 
@@ -13,10 +13,8 @@ const integrations = [
 export default function IntegrationsPage() {
   return (
     <div>
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>Integrations</h1>
-        <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>Connect external services to the timetable system</p>
-      </div>
+      {/* WHY: Replaced inline h1+p with shared PageHeader to remove duplication */}
+      <PageHeader title="Integrations" subtitle="Connect external services to the timetable system" />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
         {integrations.map((item) => (

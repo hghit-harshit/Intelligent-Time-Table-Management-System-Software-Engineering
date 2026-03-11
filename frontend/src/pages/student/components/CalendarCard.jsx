@@ -10,7 +10,7 @@ import {
   ChevronLeftOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material"
-import { colors, fonts, radius, shadows } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 import WeekView from "./WeekView"
 import MonthView from "./MonthView"
 import DayView from "./DayView"

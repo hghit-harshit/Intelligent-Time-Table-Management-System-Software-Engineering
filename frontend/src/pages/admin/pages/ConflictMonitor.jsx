@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, DataTable, SearchInput, TabBar, Loader } from "../components/ui/index";
+import { Card, Badge, Button, DataTable, SearchInput, TabBar, Loader, PageHeader } from "../components/ui/index";
 import { fetchConflicts, resolveConflict } from "../services/adminApi";
 import { colors, fonts } from "../../../styles/tokens";
 import { CheckCircle, Zap } from "lucide-react";
@@ -100,20 +100,17 @@ export default function ConflictMonitor() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
-            Conflict Monitor
-          </h1>
-          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
-            Detect, review, and resolve scheduling conflicts
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Badge variant="danger">{criticalCount} critical</Badge>
-          <Badge variant="warning">{warningCount} warnings</Badge>
-        </div>
-      </div>
+      {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing badges as action */}
+      <PageHeader
+        title="Conflict Monitor"
+        subtitle="Detect, review, and resolve scheduling conflicts"
+        action={
+          <div style={{ display: "flex", gap: "8px" }}>
+            <Badge variant="danger">{criticalCount} critical</Badge>
+            <Badge variant="warning">{warningCount} warnings</Badge>
+          </div>
+        }
+      />
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search conflicts..." />

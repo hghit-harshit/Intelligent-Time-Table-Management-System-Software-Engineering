@@ -2,6 +2,8 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
 import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 import { getAuthUrl, checkAuthStatus, logout, getAssignments, getClassroomLink } from "../../../services/classroomApi"
+/* WHY: Import shared components to replace duplicated top-bar and stats grid */
+import { SubPageHeader, StatsGrid } from "../../admin/components/ui/index"
 
 export default function GoogleClassroom() {
   const [searchParams] = useSearchParams()
@@ -107,27 +109,19 @@ export default function GoogleClassroom() {
 
   return (
     <>
-      {/* Top Bar */}
-      <div style={{ ...card, marginBottom: "12px", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: 3, height: 20, borderRadius: "2px", background: "#4285F4" }} />
-            <h2 style={{ ...heading, fontSize: "15px", margin: 0, fontWeight: 700 }}>Google Classroom</h2>
-          </div>
-          <p style={{ ...caption, margin: "4px 0 0 11px" }}>
-            {authenticated ? `Connected · ${assignments.length} upcoming assignments` : "Connect to view your assignments"}
-          </p>
-        </div>
-        {authenticated && (
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button onClick={handleOpenClassroom} style={btnGhost}>Open Classroom</button>
-            <button onClick={handleRefresh} disabled={fetchingData} style={{ ...btnGhost, cursor: fetchingData ? "not-allowed" : "pointer", opacity: fetchingData ? 0.5 : 1 }}>
-              {fetchingData ? "Refreshing..." : "Refresh"}
-            </button>
-            <button onClick={handleLogout} style={{ ...btnGhost, color: colors.error.main, borderColor: colors.error.border }}>Disconnect</button>
-          </div>
-        )}
-      </div>
+      {/* WHY: Replaced duplicated accent-bar header with shared SubPageHeader */}
+      <SubPageHeader
+        title="Google Classroom"
+        subtitle={authenticated ? `Connected · ${assignments.length} upcoming assignments` : "Connect to view your assignments"}
+        accentColor="#4285F4"
+        actions={authenticated ? <>
+          <button onClick={handleOpenClassroom} style={btnGhost}>Open Classroom</button>
+          <button onClick={handleRefresh} disabled={fetchingData} style={{ ...btnGhost, cursor: fetchingData ? "not-allowed" : "pointer", opacity: fetchingData ? 0.5 : 1 }}>
+            {fetchingData ? "Refreshing..." : "Refresh"}
+          </button>
+          <button onClick={handleLogout} style={{ ...btnGhost, color: colors.error.main, borderColor: colors.error.border }}>Disconnect</button>
+        </> : null}
+      />
 
       {/* Error Banner */}
       {error && (
@@ -160,20 +154,13 @@ export default function GoogleClassroom() {
           <>
             {/* Main Panel */}
             <div style={{ flex: 1, overflowY: "auto", paddingRight: "8px" }}>
-              {/* Stats */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "12px" }}>
-                {[
-                  { num: assignments.length.toString(), label: "Total Assignments", color: colors.primary.main },
-                  { num: assignments.filter(a => { const d = a.dueDate; if (!d) return false; const due = new Date(d.year, d.month-1, d.day); const now = new Date(); const diff = Math.ceil((due - now) / (1000*60*60*24)); return diff <= 3 && diff >= 0 }).length.toString(), label: "Due Soon", color: colors.error.main },
-                  { num: assignments.filter(a => { const d = a.dueDate; if (!d) return false; return new Date(d.year, d.month-1, d.day) < new Date() }).length.toString(), label: "Overdue", color: colors.warning.main },
-                  { num: [...new Set(assignments.map(a => a.courseName))].length.toString(), label: "Courses", color: colors.success.main },
-                ].map((stat, i) => (
-                  <div key={i} style={{ ...card, padding: "12px", textAlign: "center" }}>
-                    <div style={{ fontSize: "20px", fontWeight: 600, color: stat.color, marginBottom: "2px", fontVariantNumeric: "tabular-nums", fontFamily: fonts.heading }}>{stat.num}</div>
-                    <div style={muted}>{stat.label}</div>
-                  </div>
-                ))}
-              </div>
+              {/* WHY: Replaced inline 4-column stat grid with shared StatsGrid */}
+              <StatsGrid stats={[
+                { num: assignments.length.toString(), label: "Total Assignments", color: colors.primary.main },
+                { num: assignments.filter(a => { const d = a.dueDate; if (!d) return false; const due = new Date(d.year, d.month-1, d.day); const now = new Date(); const diff = Math.ceil((due - now) / (1000*60*60*24)); return diff <= 3 && diff >= 0 }).length.toString(), label: "Due Soon", color: colors.error.main },
+                { num: assignments.filter(a => { const d = a.dueDate; if (!d) return false; return new Date(d.year, d.month-1, d.day) < new Date() }).length.toString(), label: "Overdue", color: colors.warning.main },
+                { num: [...new Set(assignments.map(a => a.courseName))].length.toString(), label: "Courses", color: colors.success.main },
+              ]} />
 
               {/* Assignments List */}
               {fetchingData && assignments.length === 0 ? (

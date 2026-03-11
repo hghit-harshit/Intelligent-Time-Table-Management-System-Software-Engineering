@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, DataTable, SearchInput, Button, Loader } from "../components/ui/index";
+import { Card, Badge, DataTable, SearchInput, Button, Loader, PageHeader } from "../components/ui/index";
 import { fetchTimeSlots } from "../services/adminApi";
 import { colors, fonts } from "../../../styles/tokens";
 import { Plus } from "lucide-react";
@@ -45,13 +45,12 @@ export default function TimeSlotsPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>Time Slots</h1>
-          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>{slots.length} slots configured</p>
-        </div>
-        <Button variant="primary" icon={<Plus size={14} />}>Add Slot</Button>
-      </div>
+      {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing action prop */}
+      <PageHeader
+        title="Time Slots"
+        subtitle={`${slots.length} slots configured`}
+        action={<Button variant="primary" icon={<Plus size={14} />}>Add Slot</Button>}
+      />
 
       <div style={{ marginBottom: "16px", maxWidth: "320px" }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search slots..." />

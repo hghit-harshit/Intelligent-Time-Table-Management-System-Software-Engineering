@@ -7,7 +7,7 @@
  */
 
 import { Box, Typography, Button } from "@mui/material"
-import { colors, fonts, radius, shadows } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 
 export default function ClassDetailsModal({ selectedTimeSlot, onClose }) {
   return (

@@ -1,14 +1,12 @@
-import { Card, Button, Badge } from "../components/ui/index";
+import { Card, Button, Badge, PageHeader } from "../components/ui/index";
 import { Save } from "lucide-react";
 import { colors, fonts, radius } from "../../../styles/tokens";
 
 export default function SettingsPage() {
   return (
     <div>
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>System Settings</h1>
-        <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>Configure system-wide scheduling parameters</p>
-      </div>
+      {/* WHY: Replaced inline h1+p with shared PageHeader to remove duplication */}
+      <PageHeader title="System Settings" subtitle="Configure system-wide scheduling parameters" />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         {/* Scheduling Constraints */}

@@ -1,4 +1,4 @@
-import { Card, Button, Badge } from "../components/ui/index";
+import { Card, Button, Badge, PageHeader } from "../components/ui/index";
 import { CloudRain, Heart, Wrench, CalendarDays, Play, ClipboardList } from "lucide-react";
 import { colors, fonts, radius } from "../../../styles/tokens";
 
@@ -12,14 +12,8 @@ const scenarios = [
 export default function BulkRescheduling() {
   return (
     <div>
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
-          Bulk Rescheduling
-        </h1>
-        <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
-          Reschedule multiple classes at once for disruptions
-        </p>
-      </div>
+      {/* WHY: Replaced inline h1+p with shared PageHeader to remove duplication */}
+      <PageHeader title="Bulk Rescheduling" subtitle="Reschedule multiple classes at once for disruptions" />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
         {scenarios.map(({ Icon, title, desc, color }) => (

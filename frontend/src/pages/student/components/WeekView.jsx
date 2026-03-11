@@ -8,7 +8,7 @@
 
 import { Fragment } from "react"
 import { Box, Typography } from "@mui/material"
-import { colors, fonts, radius } from "../../styles/tokens"
+import { colors, fonts, radius } from "../../../styles/tokens"
 
 // Maps subject names to token colors for consistent color coding
 const getClassColor = (classItem) => {
