@@ -7,7 +7,7 @@
 
 import { Box, Typography, Chip } from "@mui/material"
 import { SearchOutlined } from "@mui/icons-material"
-import { colors, fonts, radius, shadows } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 
 export default function TopBar({ semester }) {
   return (

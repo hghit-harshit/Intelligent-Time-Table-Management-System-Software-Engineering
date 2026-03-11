@@ -6,7 +6,7 @@
  */
 
 import { Box, Typography, Chip } from "@mui/material"
-import { colors, fonts, radius, shadows } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 
 export default function TodaysClasses({ todaysClasses, currentDate, handleTimeSlotClick, setSelectedView }) {
   return (

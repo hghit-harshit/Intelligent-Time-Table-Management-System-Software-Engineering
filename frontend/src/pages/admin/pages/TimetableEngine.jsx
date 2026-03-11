@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, Loader } from "../components/ui/index";
+import { Card, Badge, Button, Loader, PageHeader } from "../components/ui/index";
 import { fetchTimetableEngine, generateTimetable, publishTimetable } from "../services/adminApi";
 import { colors, fonts, radius } from "../../../styles/tokens";
 import { Cpu, Play, Send, AlertTriangle, CheckCircle, Clock } from "lucide-react";
@@ -57,37 +57,34 @@ export default function TimetableEngine() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
-            Timetable Engine
-          </h1>
-          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
-            Constraint-based schedule generation & publishing
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <Badge variant={status.variant} style={{ fontSize: fonts.size.sm, padding: "5px 14px" }}>
-            {status.label} — {engine.currentVersion}
-          </Badge>
-          <Button
-            variant="secondary"
-            onClick={handleGenerate}
-            disabled={generating}
-            icon={generating ? <Clock size={14} className="spin" /> : <Play size={14} />}
-          >
-            {generating ? "Generating..." : "Run Solver"}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handlePublish}
-            disabled={publishing || engine.status === "published"}
-            icon={<Send size={14} />}
-          >
-            {publishing ? "Publishing..." : "Publish"}
-          </Button>
-        </div>
-      </div>
+      {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing badges+buttons as action */}
+      <PageHeader
+        title="Timetable Engine"
+        subtitle="Constraint-based schedule generation & publishing"
+        action={
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <Badge variant={status.variant} style={{ fontSize: fonts.size.sm, padding: "5px 14px" }}>
+              {status.label} — {engine.currentVersion}
+            </Badge>
+            <Button
+              variant="secondary"
+              onClick={handleGenerate}
+              disabled={generating}
+              icon={generating ? <Clock size={14} className="spin" /> : <Play size={14} />}
+            >
+              {generating ? "Generating..." : "Run Solver"}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handlePublish}
+              disabled={publishing || engine.status === "published"}
+              icon={<Send size={14} />}
+            >
+              {publishing ? "Publishing..." : "Publish"}
+            </Button>
+          </div>
+        }
+      />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px", marginBottom: "20px" }}>
         {[

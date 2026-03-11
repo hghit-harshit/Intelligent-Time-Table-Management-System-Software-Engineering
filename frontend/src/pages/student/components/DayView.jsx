@@ -7,7 +7,7 @@
  */
 
 import { Box, Typography } from "@mui/material"
-import { colors, fonts, radius } from "../../styles/tokens"
+import { colors, fonts, radius } from "../../../styles/tokens"
 
 // Maps subject names to token colors — same logic as WeekView
 const getClassColor = (classItem) => {

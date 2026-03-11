@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, Loader } from "../components/ui/index";
+import { Card, Badge, Button, Loader, PageHeader } from "../components/ui/index";
 import { fetchTimetableVersions } from "../services/adminApi";
 import { Download, RotateCcw, Eye, Rocket, FileText, Archive } from "lucide-react";
 import { colors, fonts, radius } from "../../../styles/tokens";
@@ -19,14 +19,8 @@ export default function TimetableVersions() {
 
   return (
     <div>
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>
-          Timetable Versions
-        </h1>
-        <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
-          Version history and rollback management
-        </p>
-      </div>
+      {/* WHY: Replaced inline h1+p with shared PageHeader to remove duplication */}
+      <PageHeader title="Timetable Versions" subtitle="Version history and rollback management" />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         {versions.map((v) => {

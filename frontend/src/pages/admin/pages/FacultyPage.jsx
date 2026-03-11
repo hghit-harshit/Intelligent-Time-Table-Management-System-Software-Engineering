@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, DataTable, SearchInput, Button, Loader } from "../components/ui/index";
+import { Card, Badge, DataTable, SearchInput, Button, Loader, PageHeader } from "../components/ui/index";
 import { fetchFaculty } from "../services/adminApi";
 import { colors, fonts, radius } from "../../../styles/tokens";
 import { Plus } from "lucide-react";
@@ -72,13 +72,12 @@ export default function FacultyPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-        <div>
-          <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>Faculty</h1>
-          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>{facultyList.length} faculty members</p>
-        </div>
-        <Button variant="primary" icon={<Plus size={14} />}>Add Faculty</Button>
-      </div>
+      {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing action prop */}
+      <PageHeader
+        title="Faculty"
+        subtitle={`${facultyList.length} faculty members`}
+        action={<Button variant="primary" icon={<Plus size={14} />}>Add Faculty</Button>}
+      />
 
       <div style={{ marginBottom: "16px", maxWidth: "320px" }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search faculty..." />

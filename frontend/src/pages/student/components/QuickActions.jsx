@@ -13,7 +13,7 @@ import {
   NotificationsActiveOutlined,
   BarChartOutlined,
 } from "@mui/icons-material"
-import { colors, fonts, radius, shadows } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 
 /* Map quick action labels to MUI icons */
 const iconMap = {

@@ -386,3 +386,174 @@ export function Loader() {
     </div>
   );
 }
+
+// ─── Page Header (admin pages) ──────────────────────────────
+/**
+ * PageHeader — Renders the standard admin page title + muted subtitle.
+ * WHY: This exact heading block was copy-pasted across 14 admin pages.
+ *
+ * Props:
+ *   title    — main heading text
+ *   subtitle — smaller muted description below the title
+ *   action   — optional React node rendered on the right (e.g. a Button)
+ */
+export function PageHeader({ title, subtitle, action }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+      <div>
+        <h1 style={{
+          fontSize: fonts.size["2xl"],
+          fontWeight: fonts.weight.bold,
+          color: colors.text.primary,
+          margin: "0 0 4px",
+          fontFamily: fonts.heading,
+        }}>
+          {title}
+        </h1>
+        {subtitle && (
+          <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {action && <div>{action}</div>}
+    </div>
+  );
+}
+
+// ─── Sub-Page Header (student / faculty pages) ──────────────
+/**
+ * SubPageHeader — Card-style top bar with a coloured accent stripe.
+ * WHY: This pattern (accent bar + bold title + caption + right-side actions)
+ *      was duplicated in 5 student/faculty pages.
+ *
+ * Props:
+ *   title       — heading text
+ *   subtitle    — muted caption below the title
+ *   accentColor — the 3px vertical bar colour (default: primary)
+ *   actions     — optional React node for the right side (buttons, selects, etc.)
+ */
+export function SubPageHeader({ title, subtitle, accentColor = colors.primary.main, actions }) {
+  return (
+    <div style={{
+      background: colors.bg.base,
+      border: `1px solid ${colors.border.medium}`,
+      borderRadius: radius.lg,
+      boxShadow: shadows.sm,
+      marginBottom: "12px",
+      padding: "10px 16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+    }}>
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ width: 3, height: 20, borderRadius: "2px", background: accentColor }} />
+          <h2 style={{
+            fontFamily: fonts.heading,
+            fontWeight: 700,
+            color: colors.text.primary,
+            fontSize: "15px",
+            margin: 0,
+          }}>
+            {title}
+          </h2>
+        </div>
+        {subtitle && (
+          <p style={{ fontSize: fonts.size.xs, color: colors.text.muted, margin: "4px 0 0 11px" }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {actions && (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {actions}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Stats Grid ─────────────────────────────────────────────
+/**
+ * StatsGrid — A responsive row of stat cards (coloured number + label).
+ * WHY: The same 4-column grid was copy-pasted in 6+ student/faculty/admin pages.
+ *
+ * Props:
+ *   stats — Array of { num: string, label: string, color: string }
+ */
+export function StatsGrid({ stats }) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: `repeat(${stats.length}, 1fr)`,
+      gap: "10px",
+      marginBottom: "12px",
+    }}>
+      {stats.map((stat, i) => (
+        <Card key={i} style={{ padding: "12px", textAlign: "center" }} hover={false}>
+          <div style={{
+            fontSize: "20px",
+            fontWeight: 600,
+            color: stat.color,
+            marginBottom: "2px",
+            fontVariantNumeric: "tabular-nums",
+            fontFamily: fonts.heading,
+          }}>
+            {stat.num}
+          </div>
+          <div style={{ fontSize: fonts.size.sm, color: colors.text.secondary }}>
+            {stat.label}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── Modal ──────────────────────────────────────────────────
+/**
+ * Modal — Reusable backdrop + centred card wrapper.
+ * WHY: The same fixed-overlay + stop-propagation pattern was repeated in 5+ pages.
+ * Clicking the dark backdrop calls onClose. Content clicks don't propagate.
+ *
+ * Props:
+ *   open     — boolean, whether the modal is visible
+ *   onClose  — function called when backdrop is clicked
+ *   maxWidth — optional max-width string (default "500px")
+ *   children — the modal body content
+ */
+export function Modal({ open, onClose, maxWidth = "500px", children }) {
+  if (!open) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.4)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: colors.bg.base,
+          border: `1px solid ${colors.border.medium}`,
+          borderRadius: radius.xl,
+          padding: "24px",
+          maxWidth,
+          width: "90%",
+          maxHeight: "80vh",
+          overflowY: "auto",
+          boxShadow: shadows.xl,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}

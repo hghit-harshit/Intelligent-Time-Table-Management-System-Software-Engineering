@@ -13,7 +13,7 @@ import {
   CalendarViewWeekOutlined,
   TrendingUpOutlined,
 } from "@mui/icons-material"
-import { colors, fonts, radius, shadows } from "../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 
 /* Map stat index to an icon and badge color */
 const statIcons = [

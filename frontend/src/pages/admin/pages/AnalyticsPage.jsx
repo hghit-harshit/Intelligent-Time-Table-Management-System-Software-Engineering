@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Loader } from "../components/ui/index";
+import { Card, Loader, PageHeader } from "../components/ui/index";
 import { fetchAnalytics } from "../services/adminApi";
 import { colors, fonts, radius } from "../../../styles/tokens";
 
@@ -44,10 +44,8 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, margin: "0 0 4px", fontFamily: fonts.heading }}>Analytics</h1>
-        <p style={{ fontSize: fonts.size.sm, color: colors.text.muted, margin: 0 }}>System utilization and scheduling insights</p>
-      </div>
+      {/* WHY: Replaced inline h1+p with shared PageHeader to remove duplication */}
+      <PageHeader title="Analytics" subtitle="System utilization and scheduling insights" />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
         <Card style={{ padding: "20px" }} hover={false}>
