@@ -1,4 +1,55 @@
-* {
+/**
+ * index.css — Global Styles & Cron-Grid System
+ *
+ * PURPOSE: Tailwind import, CSS custom properties mapped from tokens,
+ * keyframe animations, and the "Cron Grid" timetable system.
+ *
+ * AESTHETIC: Notion/Linear — clean 1px grid lines, airy whitespace,
+ * event cards with 3px left-border accents. DM Sans typeface.
+ */
+
+@import "tailwindcss";
+
+/* ─── CSS CUSTOM PROPERTIES ─────────────────────────────────── */
+/* Mirrors tokens.js so Tailwind utilities and raw CSS can use var() */
+:root {
+  --bg-deep:    #FAFAFA;
+  --bg-base:    #FFFFFF;
+  --bg-raised:  #F4F4F5;
+  --bg-overlay: #FFFFFF;
+
+  --primary:       #1E3A5F;
+  --primary-light: #2B4F7E;
+  --primary-ghost: rgba(30, 58, 95, 0.06);
+  --primary-border: rgba(30, 58, 95, 0.25);
+
+  --secondary:       #64748B;
+  --secondary-ghost: rgba(100, 116, 139, 0.06);
+
+  --warning:    #D97706;
+  --error:      #DC2626;
+  --success:    #16A34A;
+  --info:       #2563EB;
+
+  --text-primary:   #111827;
+  --text-secondary: #4B5563;
+  --text-muted:     #94A3B8;
+
+  --border-subtle: #F0F0F1;
+  --border-medium: #E2E4E9;
+  --border-strong: #CBD5E1;
+
+  --font-heading: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+}
+
+/* ─── BASE RESETS ───────────────────────────────────────────── */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -11,10 +62,153 @@ html, body, #root {
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background: #0a0a12; /* match app background to avoid white gaps */
-  color: #ffffff;
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-deep);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  max-width: none;
   margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* ─── KEYFRAME ANIMATIONS ───────────────────────────────────── */
+/* Subtle, fast — desktop-app feel */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ─── CRON-STYLE GRID SYSTEM ────────────────────────────────── */
+/* 1px solid grid lines that align with time markers */
+
+.cron-grid {
+  display: grid;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent calc(60px - 1px),
+      var(--border-subtle) calc(60px - 1px),
+      var(--border-subtle) 60px
+    );
+}
+
+/* Dashed time-slot divider — half-hour marks */
+.cron-grid-dashed {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent calc(30px - 1px),
+      transparent calc(30px - 1px),
+      transparent 30px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent calc(60px - 1px),
+      var(--border-subtle) calc(60px - 1px),
+      var(--border-subtle) 60px
+    );
+}
+
+/* Column separators for week view */
+.cron-grid-cols > * + * {
+  border-left: 1px solid var(--border-subtle);
+}
+
+/* ─── EVENT CARD SYSTEM ─────────────────────────────────────── */
+/* Cron-style: 3px left border, 10% bg opacity of accent color */
+
+.event-card {
+  position: relative;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.event-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+
+/* Color variants — accent left bar + 10% opacity background */
+.event-card--blue    { background: rgba(30, 58, 95, 0.08); color: #1E3A5F; }
+.event-card--blue::before    { background: #1E3A5F; }
+
+.event-card--green   { background: rgba(22, 163, 74, 0.10); color: #16A34A; }
+.event-card--green::before   { background: #16A34A; }
+
+.event-card--amber   { background: rgba(217, 119, 6, 0.10); color: #92400E; }
+.event-card--amber::before   { background: #D97706; }
+
+.event-card--red     { background: rgba(220, 38, 38, 0.08); color: #DC2626; }
+.event-card--red::before     { background: #DC2626; }
+
+.event-card--purple  { background: rgba(124, 58, 237, 0.10); color: #6D28D9; }
+.event-card--purple::before  { background: #7C3AED; }
+
+.event-card--grey    { background: rgba(100, 116, 139, 0.08); color: #4B5563; }
+.event-card--grey::before    { background: #64748B; }
+
+.event-card:hover {
+  filter: brightness(0.97);
+}
+
+/* ─── SCROLLBAR STYLING ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

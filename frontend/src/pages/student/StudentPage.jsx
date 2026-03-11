@@ -84,8 +84,8 @@ export default function StudentPage() {
       <div style={{
         flex: 1,
         display: "flex",
-        margin: "16px",
-        gap: "16px",
+        margin: "12px",
+        gap: "12px",
         overflow: "hidden",
       }}>
         {/* Main Panel */}
@@ -125,10 +125,10 @@ export default function StudentPage() {
 
         {/* Right Panel */}
         <div style={{
-          width: "300px",
+          width: "260px",
           display: "flex",
           flexDirection: "column",
-          gap: "16px",
+          gap: "10px",
         }}>
           <QuickActions
             quickActions={timetableData.quickActions}
