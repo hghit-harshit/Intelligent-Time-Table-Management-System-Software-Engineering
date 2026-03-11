@@ -1,10 +1,10 @@
 import { Routes, Route } from "react-router-dom"
 import StudentLayout from "./components/layout/StudentLayout"
 import StudentDashboard from "./pages/StudentDashboard"
-import ExamSchedule from "../ExamSchedule"
-import Notifications from "../Notifications"
-import CourseEnrollment from "../CourseEnrollment"
-import GoogleClassroom from "../GoogleClassroom"
+import ExamSchedule from "./pages/ExamSchedule"
+import Notifications from "./pages/Notifications"
+import CourseEnrollment from "./pages/CourseEnrollment"
+import GoogleClassroom from "./pages/GoogleClassroom"
 
 export default function StudentPage() {
   return (
