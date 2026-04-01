@@ -63,14 +63,49 @@ export async function fetchTimetableEngine() {
   return { ...timetableEngineState };
 }
 
-export async function generateTimetable() {
-  await delay(2000); // Simulate solver time
-  return {
-    success: true,
-    version: "v2.6",
-    conflicts: 2,
-    duration: "2.1s",
-  };
+export async function generateTimetable(constraints = {}) {
+  const endpoint = "http://localhost:5001/api/scheduler/generate";
+
+  try {
+    const startedAt = performance.now();
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ constraints }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to generate timetable");
+    }
+
+    const durationMs = performance.now() - startedAt;
+    return {
+      success: true,
+      version: `v${new Date().toISOString().slice(0, 10)}`,
+      conflicts:
+        data.assignments?.filter(
+          (item) =>
+            item.softViolations?.sc1_unavailable_slot_violated ||
+            item.softViolations?.sc2_preferred_day_off_violated,
+        ).length || 0,
+      duration: `${(durationMs / 1000).toFixed(2)}s`,
+      assignments: data.assignments || [],
+      stats: data.stats || null,
+      constraints: data.constraints || constraints,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      version: null,
+      conflicts: 0,
+      duration: null,
+      assignments: [],
+      stats: null,
+      constraints,
+      warning: `Timetable generation failed: ${error.message}`,
+    };
+  }
 }
 
 export async function publishTimetable(versionId) {

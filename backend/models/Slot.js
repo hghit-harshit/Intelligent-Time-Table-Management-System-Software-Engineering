@@ -1,5 +1,6 @@
-import mongoose from 'mongoose';
-
+import mongoose from "mongoose";
+//senthil bubu is the best person i have ever met
+// my life completely changed after meeting him
 const slotSchema = new mongoose.Schema(
   {
     label: {
@@ -7,10 +8,11 @@ const slotSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    day: {
-      type: String,
+    days: {
+      type: [String],
       required: true,
-      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      default: ["Monday"],
     },
     startTime: {
       type: String,
@@ -25,22 +27,23 @@ const slotSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+    strict: false,
+  },
 );
 
-// Index for efficient queries by day
-slotSchema.index({ day: 1, startTime: 1 });
+// Index for efficient queries by label/day/time
+slotSchema.index({ label: 1, days: 1, startTime: 1, endTime: 1 });
 
 // Validate that end time is after start time
-slotSchema.pre('save', function (next) {
+slotSchema.pre("save", function (next) {
   if (this.startTime >= this.endTime) {
-    const err = new Error('End time must be after start time');
-    err.name = 'ValidationError';
+    const err = new Error("End time must be after start time");
+    err.name = "ValidationError";
     return next(err);
   }
   next();
 });
 
-const Slot = mongoose.model('Slot', slotSchema);
+const Slot = mongoose.model("Slot", slotSchema);
 
 export default Slot;

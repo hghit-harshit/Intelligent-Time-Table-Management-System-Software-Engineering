@@ -6,7 +6,11 @@ COPY package*.json ./
 
 RUN npm install
 
+RUN apk add --no-cache python3 py3-pip
+
 COPY . .
+
+RUN if [ -f requirements.txt ]; then pip3 install --break-system-packages --no-cache-dir -r requirements.txt; fi
 
 EXPOSE 5001
 
