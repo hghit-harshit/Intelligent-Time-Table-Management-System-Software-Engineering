@@ -1,14 +1,39 @@
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, Loader, PageHeader } from "../components/ui/index";
-import { fetchTimetableEngine, generateTimetable, publishTimetable } from "../services/adminApi";
+import {
+  Card,
+  Badge,
+  Button,
+  Loader,
+  PageHeader,
+} from "../components/ui/index";
+import {
+  fetchTimetableEngine,
+  generateTimetable,
+  publishTimetable,
+} from "../services/adminApi";
 import { colors, fonts, radius } from "../../../styles/tokens";
-import { Cpu, Play, Send, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Play, Send, Clock } from "lucide-react";
+import ConstraintTogglesCard from "../components/engine/ConstraintTogglesCard";
+import SlotAllocationView from "../components/engine/SlotAllocationView";
+
+const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+const timeToMinutes = (time = "00:00") => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
 
 export default function TimetableEngine() {
   const [engine, setEngine] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [solverWarning, setSolverWarning] = useState("");
+  const [constraints, setConstraints] = useState({
+    hc1_enabled: true,
+    sc1_enabled: true,
+    sc2_enabled: true,
+  });
 
   useEffect(() => {
     fetchTimetableEngine().then((res) => {
@@ -19,8 +44,12 @@ export default function TimetableEngine() {
 
   const handleGenerate = async () => {
     setGenerating(true);
-    const result = await generateTimetable();
+    setSolverWarning("");
+    const result = await generateTimetable(constraints);
     setGenerating(false);
+    if (result.warning) {
+      setSolverWarning(result.warning);
+    }
     if (result.success) {
       setEngine((prev) => ({
         ...prev,
@@ -29,8 +58,18 @@ export default function TimetableEngine() {
         solverDuration: result.duration,
         lastGenerated: new Date().toISOString(),
         status: "draft",
+        latestAssignments: result.assignments || [],
+        latestConstraints: result.constraints || constraints,
+        latestStats: result.stats || null,
+        totalSlotsFilled: result.assignments?.length || 0,
+        totalSlotsAvailable:
+          result.stats?.timeslotCount || prev.totalSlotsAvailable,
       }));
     }
+  };
+
+  const handleConstraintChange = (key, checked) => {
+    setConstraints((prev) => ({ ...prev, [key]: checked }));
   };
 
   const handlePublish = async () => {
@@ -55,6 +94,52 @@ export default function TimetableEngine() {
   };
   const status = statusBadge[engine.status] || statusBadge.draft;
 
+  const hasLatestAssignments = (engine.latestAssignments?.length || 0) > 0;
+  const assignments = hasLatestAssignments ? engine.latestAssignments : [];
+
+  const previewDays = hasLatestAssignments
+    ? WEEK_DAYS.filter((day) => assignments.some((item) => item.day === day))
+    : engine.generatedSchedule.map((day) => day.day);
+
+  const previewRows = hasLatestAssignments
+    ? [
+        ...new Set(
+          assignments.map((item) => `${item.startTime}|${item.endTime}`),
+        ),
+      ]
+        .sort(
+          (a, b) =>
+            timeToMinutes(a.split("|")[0]) - timeToMinutes(b.split("|")[0]),
+        )
+        .map((rangeKey) => {
+          const [startTime, endTime] = rangeKey.split("|");
+          return {
+            key: rangeKey,
+            timeLabel: `${startTime} - ${endTime}`,
+            slotsByDay: Object.fromEntries(
+              previewDays.map((day) => [
+                day,
+                assignments.find(
+                  (item) =>
+                    item.day === day &&
+                    item.startTime === startTime &&
+                    item.endTime === endTime,
+                ) || null,
+              ]),
+            ),
+          };
+        })
+    : engine.generatedSchedule[0].slots.map((slot, slotIndex) => ({
+        key: `${slot.time}-${slotIndex}`,
+        timeLabel: slot.time,
+        slotsByDay: Object.fromEntries(
+          engine.generatedSchedule.map((day) => [
+            day.day,
+            day.slots[slotIndex] || null,
+          ]),
+        ),
+      }));
+
   return (
     <div>
       {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing badges+buttons as action */}
@@ -63,14 +148,23 @@ export default function TimetableEngine() {
         subtitle="Constraint-based schedule generation & publishing"
         action={
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <Badge variant={status.variant} style={{ fontSize: fonts.size.sm, padding: "5px 14px" }}>
+            <Badge
+              variant={status.variant}
+              style={{ fontSize: fonts.size.sm, padding: "5px 14px" }}
+            >
               {status.label} — {engine.currentVersion}
             </Badge>
             <Button
               variant="secondary"
               onClick={handleGenerate}
               disabled={generating}
-              icon={generating ? <Clock size={14} className="spin" /> : <Play size={14} />}
+              icon={
+                generating ? (
+                  <Clock size={14} className="spin" />
+                ) : (
+                  <Play size={14} />
+                )
+              }
             >
               {generating ? "Generating..." : "Run Solver"}
             </Button>
@@ -86,73 +180,209 @@ export default function TimetableEngine() {
         }
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px", marginBottom: "20px" }}>
-        {[
-          { icon: <Cpu size={16} />, label: "Solver Duration", value: engine.solverDuration, color: colors.primary.main },
-          { icon: <CheckCircle size={16} />, label: "Slots Filled", value: `${engine.totalSlotsFilled}/${engine.totalSlotsAvailable}`, color: colors.success.main },
-          { icon: <AlertTriangle size={16} />, label: "Violations", value: engine.constraintViolations, color: engine.constraintViolations > 0 ? colors.error.main : colors.success.main },
-          { icon: <Clock size={16} />, label: "Last Generated", value: new Date(engine.lastGenerated).toLocaleDateString(), color: "#6D28D9" },
-        ].map((stat) => (
-          <Card key={stat.label} style={{ padding: "16px" }}>
-            <div style={{ marginBottom: "8px", color: stat.color }}>{stat.icon}</div>
-            <div style={{ fontSize: fonts.size["2xl"], fontWeight: fonts.weight.bold, color: colors.text.primary, fontFamily: fonts.heading }}>{stat.value}</div>
-            <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "4px" }}>{stat.label}</div>
-          </Card>
-        ))}
-      </div>
+      <ConstraintTogglesCard
+        values={constraints}
+        onChange={handleConstraintChange}
+      />
+
+      {solverWarning && (
+        <Card
+          style={{
+            marginBottom: "16px",
+            border: `1px solid ${colors.warning.border}`,
+          }}
+        >
+          <div style={{ color: colors.warning.main, fontSize: fonts.size.xs }}>
+            {solverWarning}
+          </div>
+        </Card>
+      )}
 
       <Card style={{ padding: "20px" }} hover={false}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <h3 style={{ fontSize: fonts.size.md, fontWeight: fonts.weight.bold, color: colors.text.primary, margin: 0, fontFamily: fonts.heading }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "16px",
+          }}
+        >
+          <h3
+            style={{
+              fontSize: fonts.size.md,
+              fontWeight: fonts.weight.bold,
+              color: colors.text.primary,
+              margin: 0,
+              fontFamily: fonts.heading,
+            }}
+          >
             Schedule Preview — {engine.currentVersion}
           </h3>
           <div style={{ display: "flex", gap: "6px" }}>
             <Badge variant="info">{engine.totalSlotsFilled} classes</Badge>
             {engine.constraintViolations > 0 && (
-              <Badge variant="danger">{engine.constraintViolations} conflicts</Badge>
+              <Badge variant="danger">
+                {engine.constraintViolations} conflicts
+              </Badge>
             )}
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: fonts.size.xs, fontFamily: fonts.body }}>
+        <div
+          style={{
+            marginBottom: "12px",
+            fontSize: fonts.size.xs,
+            color: colors.text.muted,
+          }}
+        >
+          Weekly schedule by day and time. Empty cells indicate no class
+          assigned.
+        </div>
+
+        <div
+          style={{
+            overflowX: "auto",
+            border: `1px solid ${colors.border.subtle}`,
+            borderRadius: radius.lg,
+            background: colors.bg.raised,
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              minWidth: "760px",
+              borderCollapse: "collapse",
+              fontSize: fonts.size.xs,
+              fontFamily: fonts.body,
+            }}
+          >
             <thead>
               <tr>
-                <th style={{ padding: "8px 10px", textAlign: "left", color: colors.text.muted, fontSize: fonts.size.xs, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${colors.border.medium}`, width: "80px" }}>Time</th>
-                {engine.generatedSchedule.map((day) => (
-                  <th key={day.day} style={{ padding: "8px 10px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.xs, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${colors.border.medium}` }}>
-                    {day.day.slice(0, 3)}
+                <th
+                  style={{
+                    padding: "12px 10px",
+                    textAlign: "left",
+                    color: colors.text.muted,
+                    fontSize: fonts.size.xs,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderBottom: `1px solid ${colors.border.medium}`,
+                    width: "120px",
+                    position: "sticky",
+                    left: 0,
+                    background: colors.bg.raised,
+                    zIndex: 2,
+                  }}
+                >
+                  Time
+                </th>
+                {previewDays.map((day) => (
+                  <th
+                    key={day}
+                    style={{
+                      padding: "12px 10px",
+                      textAlign: "center",
+                      color: colors.text.muted,
+                      fontSize: fonts.size.xs,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      borderBottom: `1px solid ${colors.border.medium}`,
+                      background: colors.bg.raised,
+                    }}
+                  >
+                    {day.slice(0, 3)}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {engine.generatedSchedule[0].slots.map((_, slotIndex) => (
-                <tr key={slotIndex}>
-                  <td style={{ padding: "8px 10px", color: colors.text.secondary, fontWeight: fonts.weight.semibold, borderBottom: `1px solid ${colors.border.subtle}`, whiteSpace: "nowrap" }}>
-                    {engine.generatedSchedule[0].slots[slotIndex].time}
+              {previewRows.map((row) => (
+                <tr key={row.key}>
+                  <td
+                    style={{
+                      padding: "12px 10px",
+                      color: colors.text.secondary,
+                      fontWeight: fonts.weight.semibold,
+                      borderBottom: `1px solid ${colors.border.subtle}`,
+                      whiteSpace: "nowrap",
+                      position: "sticky",
+                      left: 0,
+                      background: colors.bg.raised,
+                      zIndex: 1,
+                    }}
+                  >
+                    {row.timeLabel}
                   </td>
-                  {engine.generatedSchedule.map((day) => {
-                    const slot = day.slots[slotIndex];
-                    if (!slot.course) {
+                  {previewDays.map((day) => {
+                    const slot = row.slotsByDay[day];
+                    const empty = hasLatestAssignments ? !slot : !slot?.course;
+
+                    if (empty) {
                       return (
-                        <td key={day.day} style={{ padding: "6px", borderBottom: `1px solid ${colors.border.subtle}`, textAlign: "center" }}>
-                          <span style={{ color: colors.text.disabled, fontSize: fonts.size.xs }}>—</span>
+                        <td
+                          key={day}
+                          style={{
+                            padding: "8px",
+                            borderBottom: `1px solid ${colors.border.subtle}`,
+                            textAlign: "center",
+                            background: colors.bg.base,
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: colors.text.disabled,
+                              fontSize: fonts.size.xs,
+                            }}
+                          >
+                            —
+                          </span>
                         </td>
                       );
                     }
+
+                    const courseTitle = hasLatestAssignments
+                      ? slot.courseName
+                      : slot.course;
+                    const facultyTitle = hasLatestAssignments
+                      ? slot.professorName
+                      : `${slot.room} • ${slot.faculty}`;
+
                     return (
-                      <td key={day.day} style={{ padding: "6px", borderBottom: `1px solid ${colors.border.subtle}` }}>
-                        <div style={{
-                          background: colors.primary.ghost,
-                          border: `1px solid ${colors.primary.border}`,
-                          borderRadius: radius.md,
-                          padding: "6px 8px",
-                          textAlign: "center",
-                        }}>
-                          <div style={{ fontWeight: fonts.weight.semibold, color: colors.primary.main, fontSize: fonts.size.xs }}>{slot.course}</div>
-                          <div style={{ color: colors.text.muted, fontSize: "9px", marginTop: "2px" }}>
-                            {slot.room} • {slot.faculty}
+                      <td
+                        key={day}
+                        style={{
+                          padding: "8px",
+                          borderBottom: `1px solid ${colors.border.subtle}`,
+                          background: colors.bg.base,
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: colors.bg.raised,
+                            border: `1px solid ${colors.primary.border}`,
+                            borderRadius: radius.md,
+                            padding: "8px",
+                            textAlign: "left",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontWeight: fonts.weight.semibold,
+                              color: colors.primary.main,
+                              fontSize: fonts.size.sm,
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {courseTitle}
+                          </div>
+                          <div
+                            style={{
+                              color: colors.text.muted,
+                              fontSize: fonts.size.xs,
+                              marginTop: "4px",
+                            }}
+                          >
+                            {facultyTitle}
                           </div>
                         </div>
                       </td>
@@ -164,6 +394,59 @@ export default function TimetableEngine() {
           </table>
         </div>
       </Card>
+
+      <Card style={{ padding: "16px", marginTop: "16px" }}>
+        <h3
+          style={{
+            margin: "0 0 10px 0",
+            color: colors.text.primary,
+            fontSize: fonts.size.md,
+            fontFamily: fonts.heading,
+          }}
+        >
+          Latest Solver Run
+        </h3>
+        <div
+          style={{
+            color: colors.text.secondary,
+            fontSize: fonts.size.xs,
+            lineHeight: 1.6,
+          }}
+        >
+          HC1: {engine.latestConstraints?.hc1_enabled ? "ON" : "OFF"} · SC1:{" "}
+          {engine.latestConstraints?.sc1_enabled ? "ON" : "OFF"} · SC2:{" "}
+          {engine.latestConstraints?.sc2_enabled ? "ON" : "OFF"}
+        </div>
+        <div
+          style={{
+            color: colors.text.muted,
+            fontSize: fonts.size.xs,
+            marginTop: "6px",
+          }}
+        >
+          Assignments generated: {engine.latestAssignments?.length || 0}
+        </div>
+      </Card>
+
+      {/* New Views for Better Schedule Visualization */}
+      <div style={{ marginTop: "20px" }}>
+        <h2
+          style={{
+            fontSize: fonts.size.lg,
+            fontWeight: fonts.weight.bold,
+            color: colors.text.primary,
+            marginBottom: "12px",
+            fontFamily: fonts.heading,
+          }}
+        >
+          Schedule Allocation
+        </h2>
+
+        <div>
+          {/* @ts-ignore - MUI Box component */}
+          <SlotAllocationView assignments={engine.latestAssignments || []} />
+        </div>
+      </div>
     </div>
   );
 }

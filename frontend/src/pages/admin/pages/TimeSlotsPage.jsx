@@ -1,6 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
-import { PageHeader, Button, Modal, Card, DataTable } from "../components/ui/index";
-import { colors, fonts, radius, shadows, transitions } from "../../../styles/tokens";
+import {
+  PageHeader,
+  Button,
+  Modal,
+  Card,
+  DataTable,
+} from "../components/ui/index";
+import {
+  colors,
+  fonts,
+  radius,
+  shadows,
+  transitions,
+} from "../../../styles/tokens";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -11,13 +23,23 @@ import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
 
 /* ── Warm distinct colors ──────────────────────────────────────── */
 const SLOT_COLORS = [
-  "#7C3AED", "#059669", "#D97706", "#DC2626",
-  "#0891B2", "#DB2777", "#EA580C", "#4338CA",
-  "#16A34A", "#9333EA", "#0D9488", "#C026D3",
+  "#7C3AED",
+  "#059669",
+  "#D97706",
+  "#DC2626",
+  "#0891B2",
+  "#DB2777",
+  "#EA580C",
+  "#4338CA",
+  "#16A34A",
+  "#9333EA",
+  "#0D9488",
+  "#C026D3",
 ];
 
 /* ── Constants ─────────────────────────────────────────────────── */
@@ -27,32 +49,84 @@ for (let h = 9; h <= 20; h++) HOURS.push(h);
 
 /* ── Tiny SVG Icons ────────────────────────────────────────────── */
 const GridIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-    <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
   </svg>
 );
 const ListIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-    <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-    <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="8" y1="6" x2="21" y2="6" />
+    <line x1="8" y1="12" x2="21" y2="12" />
+    <line x1="8" y1="18" x2="21" y2="18" />
+    <line x1="3" y1="6" x2="3.01" y2="6" />
+    <line x1="3" y1="12" x2="3.01" y2="12" />
+    <line x1="3" y1="18" x2="3.01" y2="18" />
   </svg>
 );
 const PlusIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 const EditIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
   </svg>
 );
 const TrashIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
@@ -91,8 +165,25 @@ const actionBtnStyle = {
   color: colors.text.secondary,
   transition: transitions.smooth,
 };
+const timeInputStyle = {
+  ...inputStyle,
+  whiteSpace: "nowrap",
+  letterSpacing: "0",
+  fontVariantNumeric: "tabular-nums",
+};
+const fieldGroupStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+};
 
-const EMPTY_FORM = { label: "", startTime: "09:00", endTime: "10:00", day: "Monday" };
+const EMPTY_FORM = {
+  label: "",
+  startTime: "09:00",
+  endTime: "10:00",
+  day: "Monday",
+};
+const EMPTY_TIME_ROW = { day: "Monday", startTime: "09:00", endTime: "10:00" };
 
 /* ── Component ─────────────────────────────────────────────────── */
 export default function TimeSlotsPage() {
@@ -101,6 +192,7 @@ export default function TimeSlotsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [timeRows, setTimeRows] = useState([{ ...EMPTY_TIME_ROW }]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -126,31 +218,83 @@ export default function TimeSlotsPage() {
   }, []);
 
   /* ── Modal helpers ───────────────────────────────────────────── */
-  const openAdd = () => { setEditingSlot(null); setForm({ ...EMPTY_FORM }); setModalOpen(true); };
-  const openEdit = (slot) => {
-    setEditingSlot(slot);
-    setForm({ label: slot.label, startTime: slot.startTime, endTime: slot.endTime, day: slot.day });
+  const openAdd = () => {
+    setEditingSlot(null);
+    setForm({ ...EMPTY_FORM });
+    setTimeRows([{ ...EMPTY_TIME_ROW }]);
     setModalOpen(true);
   };
-  const closeModal = () => { setModalOpen(false); setEditingSlot(null); };
+  const openEdit = (slot) => {
+    setEditingSlot(slot);
+    setForm({
+      label: slot.label,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      day: slot.day,
+    });
+    setTimeRows([
+      { day: slot.day, startTime: slot.startTime, endTime: slot.endTime },
+    ]);
+    setModalOpen(true);
+  };
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingSlot(null);
+    setTimeRows([{ ...EMPTY_TIME_ROW }]);
+  };
+
+  const addTimeRow = () => {
+    setTimeRows((prev) => [...prev, { ...EMPTY_TIME_ROW }]);
+  };
+
+  const removeTimeRow = (index) => {
+    setTimeRows((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, i) => i !== index),
+    );
+  };
+
+  const updateTimeRow = (index, field, value) => {
+    setTimeRows((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+    );
+  };
 
   const handleSave = async () => {
-    if (!form.label.trim() || !form.startTime || !form.endTime || !form.day) return;
-    
+    if (!form.label.trim()) return;
+
+    const rowsToSubmit = editingSlot
+      ? [{ day: form.day, startTime: form.startTime, endTime: form.endTime }]
+      : timeRows;
+
+    if (
+      rowsToSubmit.some((row) => !row.day || !row.startTime || !row.endTime)
+    ) {
+      return;
+    }
+
     try {
+      const payload = editingSlot
+        ? {
+            label: form.label,
+            day: form.day,
+            startTime: form.startTime,
+            endTime: form.endTime,
+          }
+        : { label: form.label, times: rowsToSubmit };
+
       const options = {
         method: editingSlot ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       };
-      
-      const url = editingSlot 
+
+      const url = editingSlot
         ? `${API_BASE}/slots/${editingSlot._id}`
         : `${API_BASE}/slots`;
-      
+
       const res = await fetch(url, options);
       const data = await res.json();
-      
+
       if (!res.ok) {
         if (res.status === 409) {
           alert(`Conflict: ${data.message}`);
@@ -158,7 +302,7 @@ export default function TimeSlotsPage() {
         }
         throw new Error(data.message || "Failed to save slot");
       }
-      
+
       await fetchSlots();
       closeModal();
     } catch (err) {
@@ -168,17 +312,17 @@ export default function TimeSlotsPage() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-    
+
     try {
       const res = await fetch(`${API_BASE}/slots/${deleteConfirm._id}`, {
         method: "DELETE",
       });
-      
+
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || "Failed to delete slot");
       }
-      
+
       await fetchSlots();
       setDeleteConfirm(null);
     } catch (err) {
@@ -190,7 +334,9 @@ export default function TimeSlotsPage() {
   const colorMap = useMemo(() => {
     const labels = [...new Set(slots.map((s) => s.label))].sort();
     const map = {};
-    labels.forEach((l, i) => { map[l] = SLOT_COLORS[i % SLOT_COLORS.length]; });
+    labels.forEach((l, i) => {
+      map[l] = SLOT_COLORS[i % SLOT_COLORS.length];
+    });
     return map;
   }, [slots]);
 
@@ -224,7 +370,9 @@ export default function TimeSlotsPage() {
           let span = 1;
           while (col + span < HOURS.length) {
             const nextHour = HOURS[col + span];
-            const hasSlot = daySlots.some((s) => s.sH < nextHour + 1 && s.eH > nextHour);
+            const hasSlot = daySlots.some(
+              (s) => s.sH < nextHour + 1 && s.eH > nextHour,
+            );
             if (hasSlot) break;
             span++;
           }
@@ -236,12 +384,22 @@ export default function TimeSlotsPage() {
     });
 
     const uniqueLabels = new Set(slots.map((s) => s.label));
-    return { rows: result, uniqueCount: uniqueLabels.size, totalEntries: slots.length };
+    return {
+      rows: result,
+      uniqueCount: uniqueLabels.size,
+      totalEntries: slots.length,
+    };
   }, [slots]);
 
   /* ── Sorted slots for list view ──────────────────────────────── */
   const sortedSlots = useMemo(() => {
-    const dayOrder = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5 };
+    const dayOrder = {
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+    };
     return [...slots].sort((a, b) => {
       const dDiff = (dayOrder[a.day] || 6) - (dayOrder[b.day] || 6);
       if (dDiff !== 0) return dDiff;
@@ -252,39 +410,72 @@ export default function TimeSlotsPage() {
   /* ── List columns ────────────────────────────────────────────── */
   const listColumns = [
     {
-      key: "label", label: "Slot",
+      key: "label",
+      label: "Slot",
       render: (val) => {
         const clr = colorMap[val] || colors.text.muted;
         return (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: clr, flexShrink: 0 }} />
-            <strong style={{ color: clr, fontFamily: fonts.heading }}>{val}</strong>
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: clr,
+                flexShrink: 0,
+              }}
+            />
+            <strong style={{ color: clr, fontFamily: fonts.heading }}>
+              {val}
+            </strong>
           </span>
         );
       },
     },
     { key: "day", label: "Day" },
     {
-      key: "startTime", label: "Time",
+      key: "startTime",
+      label: "Time",
       render: (_, row) => `${row.startTime} – ${row.endTime}`,
     },
     {
-      key: "duration", label: "Duration",
+      key: "duration",
+      label: "Duration",
       render: (_, row) => {
         const [sh, sm] = row.startTime.split(":").map(Number);
         const [eh, em] = row.endTime.split(":").map(Number);
-        const mins = (eh * 60 + em) - (sh * 60 + sm);
-        return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60 ? mins % 60 + "m" : ""}`.trim() : `${mins}m`;
+        const mins = eh * 60 + em - (sh * 60 + sm);
+        return mins >= 60
+          ? `${Math.floor(mins / 60)}h ${mins % 60 ? (mins % 60) + "m" : ""}`.trim()
+          : `${mins}m`;
       },
     },
     {
-      key: "actions", label: "", align: "right",
+      key: "actions",
+      label: "",
+      align: "right",
       render: (_, row) => (
         <span style={{ display: "inline-flex", gap: "6px" }}>
-          <button onClick={(e) => { e.stopPropagation(); openEdit(row); }} title="Edit" style={actionBtnStyle}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openEdit(row);
+            }}
+            title="Edit"
+            style={actionBtnStyle}
+          >
             <EditIcon />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(row); }} title="Delete" style={{ ...actionBtnStyle, color: colors.error.main }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteConfirm(row);
+            }}
+            title="Delete"
+            style={{ ...actionBtnStyle, color: colors.error.main }}
+          >
             <TrashIcon />
           </button>
         </span>
@@ -294,13 +485,15 @@ export default function TimeSlotsPage() {
 
   /* ── View toggle ─────────────────────────────────────────────── */
   const ViewToggle = () => (
-    <div style={{
-      display: "inline-flex",
-      background: colors.bg.raised,
-      borderRadius: radius.md,
-      border: `1px solid ${colors.border.subtle}`,
-      padding: "3px",
-    }}>
+    <div
+      style={{
+        display: "inline-flex",
+        background: colors.bg.raised,
+        borderRadius: radius.md,
+        border: `1px solid ${colors.border.subtle}`,
+        padding: "3px",
+      }}
+    >
       {[
         { id: "grid", icon: <GridIcon />, tip: "Grid view" },
         { id: "list", icon: <ListIcon />, tip: "List view" },
@@ -310,9 +503,15 @@ export default function TimeSlotsPage() {
           title={v.tip}
           onClick={() => setView(v.id)}
           style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            width: 32, height: 28, border: "none", borderRadius: radius.sm,
-            cursor: "pointer", transition: transitions.smooth,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 28,
+            border: "none",
+            borderRadius: radius.sm,
+            cursor: "pointer",
+            transition: transitions.smooth,
             background: view === v.id ? colors.bg.base : "transparent",
             color: view === v.id ? colors.primary.main : colors.text.muted,
             boxShadow: view === v.id ? shadows.sm : "none",
@@ -333,7 +532,12 @@ export default function TimeSlotsPage() {
         action={
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <ViewToggle />
-            <Button variant="primary" size="md" icon={<PlusIcon />} onClick={openAdd}>
+            <Button
+              variant="primary"
+              size="md"
+              icon={<PlusIcon />}
+              onClick={openAdd}
+            >
               Add Slot
             </Button>
           </div>
@@ -341,16 +545,36 @@ export default function TimeSlotsPage() {
       />
 
       {slots.length === 0 ? (
-        <Box sx={{
-          mt: 3, p: 5, textAlign: "center",
-          background: colors.bg.raised, border: `1px dashed ${colors.border.strong}`,
-          borderRadius: radius.lg,
-        }}>
-          <Typography sx={{ fontFamily: fonts.heading, fontSize: fonts.size.lg, fontWeight: fonts.weight.semibold, color: colors.text.secondary, mb: 1 }}>
+        <Box
+          sx={{
+            mt: 3,
+            p: 5,
+            textAlign: "center",
+            background: colors.bg.raised,
+            border: `1px dashed ${colors.border.strong}`,
+            borderRadius: radius.lg,
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: fonts.heading,
+              fontSize: fonts.size.lg,
+              fontWeight: fonts.weight.semibold,
+              color: colors.text.secondary,
+              mb: 1,
+            }}
+          >
             No slots configured yet
           </Typography>
-          <Typography sx={{ fontFamily: fonts.body, fontSize: fonts.size.sm, color: colors.text.muted }}>
-            Click <strong>Add Slot</strong> to create your first timetable entry.
+          <Typography
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: fonts.size.sm,
+              color: colors.text.muted,
+            }}
+          >
+            Click <strong>Add Slot</strong> to create your first timetable
+            entry.
           </Typography>
         </Box>
       ) : view === "grid" ? (
@@ -358,26 +582,48 @@ export default function TimeSlotsPage() {
         <TableContainer
           component={Paper}
           elevation={0}
-          sx={{ borderRadius: radius.lg, boxShadow: shadows.sm, overflowX: "auto", mt: 1 }}
+          sx={{
+            borderRadius: radius.lg,
+            boxShadow: shadows.sm,
+            overflowX: "auto",
+            mt: 1,
+          }}
         >
           <Table sx={{ minWidth: 800, borderCollapse: "collapse" }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{
-                  background: colors.bg.raised, fontFamily: fonts.heading,
-                  fontWeight: fonts.weight.semibold, fontSize: fonts.size.sm,
-                  color: colors.text.primary, padding: "10px 14px", border: "none",
-                  position: "sticky", left: 0, zIndex: 2,
-                }}>
+                <TableCell
+                  sx={{
+                    background: colors.bg.raised,
+                    fontFamily: fonts.heading,
+                    fontWeight: fonts.weight.semibold,
+                    fontSize: fonts.size.sm,
+                    color: colors.text.primary,
+                    padding: "10px 14px",
+                    border: "none",
+                    position: "sticky",
+                    left: 0,
+                    zIndex: 2,
+                  }}
+                >
                   Day
                 </TableCell>
                 {HOURS.map((h) => (
-                  <TableCell key={h} align="center" sx={{
-                    background: colors.bg.raised, fontFamily: fonts.heading,
-                    fontWeight: fonts.weight.semibold, fontSize: fonts.size.xs,
-                    color: colors.text.secondary, padding: "10px 6px", border: "none",
-                    whiteSpace: "nowrap", minWidth: 64,
-                  }}>
+                  <TableCell
+                    key={h}
+                    align="center"
+                    sx={{
+                      background: colors.bg.raised,
+                      fontFamily: fonts.heading,
+                      fontWeight: fonts.weight.semibold,
+                      fontSize: fonts.size.xs,
+                      color: colors.text.secondary,
+                      padding: "10px 6px",
+                      border: "none",
+                      whiteSpace: "nowrap",
+                      minWidth: 64,
+                    }}
+                  >
                     {h}:00 – {h + 1}:00
                   </TableCell>
                 ))}
@@ -387,21 +633,35 @@ export default function TimeSlotsPage() {
             <TableBody>
               {ALL_DAYS.map((day) => (
                 <TableRow key={day}>
-                  <TableCell sx={{
-                    background: colors.bg.raised, fontFamily: fonts.heading,
-                    fontWeight: fonts.weight.semibold, fontSize: fonts.size.base,
-                    color: colors.text.primary, padding: "16px 14px", border: "none",
-                    position: "sticky", left: 0, zIndex: 1, whiteSpace: "nowrap",
-                  }}>
+                  <TableCell
+                    sx={{
+                      background: colors.bg.raised,
+                      fontFamily: fonts.heading,
+                      fontWeight: fonts.weight.semibold,
+                      fontSize: fonts.size.base,
+                      color: colors.text.primary,
+                      padding: "16px 14px",
+                      border: "none",
+                      position: "sticky",
+                      left: 0,
+                      zIndex: 1,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {day}
                   </TableCell>
 
                   {dayRows.rows[day].map((seg, si) => {
                     if (seg.type === "empty") {
                       return Array.from({ length: seg.span }, (_, k) => (
-                        <TableCell key={`${si}-e-${k}`} sx={{
-                          border: "none", padding: "16px 4px", background: colors.bg.base,
-                        }} />
+                        <TableCell
+                          key={`${si}-e-${k}`}
+                          sx={{
+                            border: "none",
+                            padding: "16px 4px",
+                            background: colors.bg.base,
+                          }}
+                        />
                       ));
                     }
 
@@ -413,23 +673,35 @@ export default function TimeSlotsPage() {
                         align="center"
                         onClick={() => openEdit(seg.slot)}
                         sx={{
-                          background: clr + "18", border: "none", padding: "10px 6px",
-                          borderRadius: radius.md, position: "relative",
-                          cursor: "pointer", transition: transitions.smooth,
+                          background: clr + "18",
+                          border: "none",
+                          padding: "10px 6px",
+                          borderRadius: radius.md,
+                          position: "relative",
+                          cursor: "pointer",
+                          transition: transitions.smooth,
                           "&:hover": { background: clr + "28" },
                         }}
                       >
-                        <Typography sx={{
-                          fontFamily: fonts.heading, fontWeight: fonts.weight.bold,
-                          fontSize: fonts.size.md, color: clr,
-                          letterSpacing: fonts.letterSpacing.wide,
-                        }}>
+                        <Typography
+                          sx={{
+                            fontFamily: fonts.heading,
+                            fontWeight: fonts.weight.bold,
+                            fontSize: fonts.size.md,
+                            color: clr,
+                            letterSpacing: fonts.letterSpacing.wide,
+                          }}
+                        >
                           {seg.slot.label}
                         </Typography>
-                        <Typography sx={{
-                          fontFamily: fonts.body, fontSize: "10px",
-                          color: colors.text.muted, mt: "2px",
-                        }}>
+                        <Typography
+                          sx={{
+                            fontFamily: fonts.body,
+                            fontSize: "10px",
+                            color: colors.text.muted,
+                            mt: "2px",
+                          }}
+                        >
                           {seg.slot.startTime} – {seg.slot.endTime}
                         </Typography>
                       </TableCell>
@@ -443,21 +715,32 @@ export default function TimeSlotsPage() {
       ) : (
         /* ═══════════════ LIST VIEW ═══════════════ */
         <Card style={{ padding: 0, overflow: "hidden", marginTop: "8px" }}>
-          <DataTable columns={listColumns} data={sortedSlots} emptyMessage="No slots found" />
+          <DataTable
+            columns={listColumns}
+            data={sortedSlots}
+            emptyMessage="No slots found"
+          />
         </Card>
       )}
 
       {/* ═══════════════ ADD / EDIT MODAL ═══════════════ */}
       {modalOpen && (
         <Modal open={true} onClose={closeModal} maxWidth="420px">
-          <h2 style={{
-            fontFamily: fonts.heading, fontWeight: fonts.weight.bold,
-            fontSize: fonts.size.lg, color: colors.text.primary, margin: "0 0 18px",
-          }}>
+          <h2
+            style={{
+              fontFamily: fonts.heading,
+              fontWeight: fonts.weight.bold,
+              fontSize: fonts.size.lg,
+              color: colors.text.primary,
+              margin: "0 0 18px",
+            }}
+          >
             {editingSlot ? "Edit Slot" : "Add New Slot"}
           </h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+          >
             <div>
               <label style={labelStyle}>Slot Label</label>
               <input
@@ -468,70 +751,243 @@ export default function TimeSlotsPage() {
               />
             </div>
 
-            <div>
-              <label style={labelStyle}>Day</label>
-              <select
-                style={inputStyle}
-                value={form.day}
-                onChange={(e) => setForm({ ...form, day: e.target.value })}
-              >
-                {ALL_DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
+            {editingSlot ? (
+              <>
+                <div>
+                  <label style={labelStyle}>Day</label>
+                  <select
+                    style={inputStyle}
+                    value={form.day}
+                    onChange={(e) => setForm({ ...form, day: e.target.value })}
+                  >
+                    {ALL_DAYS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <div>
-                <label style={labelStyle}>Start Time</label>
-                <input
-                  type="time"
-                  style={inputStyle}
-                  value={form.startTime}
-                  onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-                />
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "10px",
+                  }}
+                >
+                  <div>
+                    <label style={labelStyle}>Start Time</label>
+                    <input
+                      type="time"
+                      style={timeInputStyle}
+                      value={form.startTime}
+                      onChange={(e) =>
+                        setForm({ ...form, startTime: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>End Time</label>
+                    <input
+                      type="time"
+                      style={timeInputStyle}
+                      value={form.endTime}
+                      onChange={(e) =>
+                        setForm({ ...form, endTime: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                {timeRows.map((row, index) => (
+                  <div
+                    key={`time-row-${index}`}
+                    style={{
+                      border: `1px solid ${colors.border.subtle}`,
+                      background: colors.bg.raised,
+                      borderRadius: radius.md,
+                      padding: "10px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.1fr 1fr 1fr auto",
+                        gap: "8px",
+                        alignItems: "stretch",
+                      }}
+                    >
+                      <div style={fieldGroupStyle}>
+                        <label style={{ ...labelStyle, textAlign: "left" }}>
+                          Day
+                        </label>
+                        <select
+                          style={inputStyle}
+                          value={row.day}
+                          onChange={(e) =>
+                            updateTimeRow(index, "day", e.target.value)
+                          }
+                        >
+                          {ALL_DAYS.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={fieldGroupStyle}>
+                        <label style={{ ...labelStyle, textAlign: "left" }}>
+                          Start
+                        </label>
+                        <input
+                          type="time"
+                          style={timeInputStyle}
+                          value={row.startTime}
+                          onChange={(e) =>
+                            updateTimeRow(index, "startTime", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div style={fieldGroupStyle}>
+                        <label style={{ ...labelStyle, textAlign: "left" }}>
+                          End
+                        </label>
+                        <input
+                          type="time"
+                          style={timeInputStyle}
+                          value={row.endTime}
+                          onChange={(e) =>
+                            updateTimeRow(index, "endTime", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          alignItems: "center",
+                          paddingTop: "18px",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          title="Remove time row"
+                          onClick={() => removeTimeRow(index)}
+                          style={{
+                            ...actionBtnStyle,
+                            height: 38,
+                            width: 36,
+                            color: colors.error.main,
+                          }}
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div>
+                  <Button variant="secondary" size="sm" onClick={addTimeRow}>
+                    + Add Time Block
+                  </Button>
+                </div>
               </div>
-              <div>
-                <label style={labelStyle}>End Time</label>
-                <input
-                  type="time"
-                  style={inputStyle}
-                  value={form.endTime}
-                  onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-                />
-              </div>
-            </div>
+            )}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "22px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              marginTop: "22px",
+              gap: "8px",
+            }}
+          >
             {editingSlot && (
-              <Button variant="danger" size="sm" icon={<TrashIcon />} onClick={() => { setDeleteConfirm(editingSlot); setModalOpen(false); }}>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={<TrashIcon />}
+                onClick={() => {
+                  setDeleteConfirm(editingSlot);
+                  setModalOpen(false);
+                }}
+                style={{ marginRight: "auto" }}
+              >
                 Delete
               </Button>
             )}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginLeft: editingSlot ? "auto" : "0" }}>
-              <Button variant="secondary" size="sm" onClick={closeModal}>Cancel</Button>
-              <Button variant="primary" size="sm" onClick={handleSave}>
-                {editingSlot ? "Save Changes" : "Add Slot"}
-              </Button>
-            </div>
+
+            <Button variant="secondary" size="sm" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleSave}>
+              {editingSlot ? "Save Changes" : "Add Slot"}
+            </Button>
           </div>
         </Modal>
       )}
 
       {/* ═══════════════ DELETE CONFIRMATION ═══════════════ */}
       {deleteConfirm && (
-        <Modal open={true} onClose={() => setDeleteConfirm(null)} maxWidth="380px">
-          <h2 style={{
-            fontFamily: fonts.heading, fontWeight: fonts.weight.bold,
-            fontSize: fonts.size.lg, color: colors.text.primary, margin: "0 0 8px",
-          }}>
+        <Modal
+          open={true}
+          onClose={() => setDeleteConfirm(null)}
+          maxWidth="380px"
+        >
+          <h2
+            style={{
+              fontFamily: fonts.heading,
+              fontWeight: fonts.weight.bold,
+              fontSize: fonts.size.lg,
+              color: colors.text.primary,
+              margin: "0 0 8px",
+            }}
+          >
             Delete Slot
           </h2>
-          <p style={{ fontFamily: fonts.body, fontSize: fonts.size.base, color: colors.text.secondary, margin: "0 0 20px" }}>
-            Are you sure you want to remove <strong style={{ color: colorMap[deleteConfirm.label] }}>{deleteConfirm.label}</strong> on {deleteConfirm.day} ({deleteConfirm.startTime} – {deleteConfirm.endTime})?
+          <p
+            style={{
+              fontFamily: fonts.body,
+              fontSize: fonts.size.base,
+              color: colors.text.secondary,
+              margin: "0 0 20px",
+            }}
+          >
+            Are you sure you want to remove{" "}
+            <strong style={{ color: colorMap[deleteConfirm.label] }}>
+              {deleteConfirm.label}
+            </strong>{" "}
+            on {deleteConfirm.day} ({deleteConfirm.startTime} –{" "}
+            {deleteConfirm.endTime})?
           </p>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-            <Button variant="secondary" size="sm" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="danger" size="sm" onClick={() => handleDelete(deleteConfirm)}>Delete</Button>
+          <div
+            style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => handleDelete(deleteConfirm)}
+            >
+              Delete
+            </Button>
           </div>
         </Modal>
       )}
