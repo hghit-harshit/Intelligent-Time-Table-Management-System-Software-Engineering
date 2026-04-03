@@ -1,28 +1,72 @@
 import Slot from "../models/Slot.js";
 
-const normalizeDayFromSlot = (slot) => {
-  if (Array.isArray(slot.days) && slot.days.length > 0) {
-    return slot.days[0];
+const normalizeSlotForResponse = (slot) =>
+  (typeof slot.toObject === "function" ? slot.toObject() : slot);
+
+const normalizeIncomingOccurrences = (payload = {}) => {
+  if (!Array.isArray(payload.occurrences)) {
+    return [];
   }
-  return slot.day;
+
+  return payload.occurrences.map((entry) => ({
+    day: entry?.day,
+    startTime: entry?.startTime,
+    endTime: entry?.endTime,
+  }));
 };
 
-const normalizeSlotForResponse = (slot) => {
-  const doc = typeof slot.toObject === "function" ? slot.toObject() : slot;
-  return {
-    ...doc,
-    day: normalizeDayFromSlot(doc),
-  };
+const timeToMinutes = (time) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+const hasTimeOverlap = (leftStart, leftEnd, rightStart, rightEnd) => {
+  const leftStartMinutes = timeToMinutes(leftStart);
+  const leftEndMinutes = timeToMinutes(leftEnd);
+  const rightStartMinutes = timeToMinutes(rightStart);
+  const rightEndMinutes = timeToMinutes(rightEnd);
+  return leftStartMinutes < rightEndMinutes && rightStartMinutes < leftEndMinutes;
+};
+
+const findOccurrenceConflict = async (occurrences, excludeSlotId = null) => {
+  const query = excludeSlotId ? { _id: { $ne: excludeSlotId } } : {};
+  const existingSlots = await Slot.find(query).lean();
+
+  for (const incoming of occurrences) {
+    for (const existingSlot of existingSlots) {
+      for (const existingOccurrence of existingSlot.occurrences || []) {
+        if (incoming.day !== existingOccurrence.day) {
+          continue;
+        }
+
+        if (
+          hasTimeOverlap(
+            incoming.startTime,
+            incoming.endTime,
+            existingOccurrence.startTime,
+            existingOccurrence.endTime,
+          )
+        ) {
+          return {
+            slotId: existingSlot._id,
+            label: existingSlot.label,
+            occurrenceId: existingOccurrence._id,
+            day: existingOccurrence.day,
+            startTime: existingOccurrence.startTime,
+            endTime: existingOccurrence.endTime,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
 };
 
 // Get all slots
 export const getAllSlots = async (req, res) => {
   try {
-    const slots = await Slot.find().sort({
-      startTime: 1,
-      endTime: 1,
-      label: 1,
-    });
+    const slots = await Slot.find().sort({ label: 1 });
     res.json(slots.map(normalizeSlotForResponse));
   } catch (error) {
     res
@@ -46,110 +90,52 @@ export const getSlotById = async (req, res) => {
   }
 };
 
-// Check if two time ranges overlap
-const hasTimeOverlap = (start1, end1, start2, end2) => {
-  const s1 = timeToMinutes(start1);
-  const e1 = timeToMinutes(end1);
-  const s2 = timeToMinutes(start2);
-  const e2 = timeToMinutes(end2);
-
-  return s1 < e2 && s2 < e1;
-};
-
-// Convert HH:MM to minutes
-const timeToMinutes = (time) => {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-};
-
-// Check for slot conflicts
-const checkConflict = async (day, startTime, endTime, excludeId = null) => {
-  const query = excludeId ? { _id: { $ne: excludeId } } : {};
-  const overlappingSlots = await Slot.find(query);
-
-  for (const slot of overlappingSlots) {
-    const slotDays = Array.isArray(slot.days) ? slot.days : [slot.day];
-    if (!slotDays.includes(day)) {
-      continue;
-    }
-    if (hasTimeOverlap(startTime, endTime, slot.startTime, slot.endTime)) {
-      return slot;
-    }
-  }
-  return null;
-};
-
-const normalizeIncomingTimes = (payload) => {
-  if (Array.isArray(payload.times) && payload.times.length > 0) {
-    return payload.times;
-  }
-  if (payload.day && payload.startTime && payload.endTime) {
-    return [
-      {
-        day: payload.day,
-        startTime: payload.startTime,
-        endTime: payload.endTime,
-      },
-    ];
-  }
-  return [];
-};
-
 // Create new slot
 export const createSlot = async (req, res) => {
   try {
     const { label } = req.body;
-    const times = normalizeIncomingTimes(req.body);
+    const normalizedLabel = (label || "").trim();
+    const occurrences = normalizeIncomingOccurrences(req.body);
 
-    // Validate required fields
-    if (!label || !times.length) {
+    if (!normalizedLabel || !occurrences.length) {
       return res
         .status(400)
-        .json({ message: "Label and at least one time entry are required" });
+        .json({ message: "Label and at least one occurrence are required" });
     }
 
-    const docsToCreate = [];
-    for (const entry of times) {
-      const day = entry.day;
-      const startTime = entry.startTime;
-      const endTime = entry.endTime;
-
-      if (!day || !startTime || !endTime) {
-        return res
-          .status(400)
-          .json({
-            message: "Each time entry must include day, startTime, endTime",
-          });
-      }
-
-      const conflict = await checkConflict(day, startTime, endTime);
-      if (conflict) {
-        return res.status(409).json({
-          message: "Time slot conflicts with existing slot",
-          conflict: {
-            id: conflict._id,
-            label: conflict.label,
-            day: normalizeDayFromSlot(conflict),
-            startTime: conflict.startTime,
-            endTime: conflict.endTime,
-          },
-        });
-      }
-
-      docsToCreate.push({
-        label,
-        days: [day],
-        startTime,
-        endTime,
+    if (occurrences.some((entry) => !entry.day || !entry.startTime || !entry.endTime)) {
+      return res.status(400).json({
+        message: "Each occurrence must include day, startTime, and endTime",
       });
     }
 
-    const created = await Slot.insertMany(docsToCreate);
-    res.status(201).json({
-      createdCount: created.length,
-      slots: created.map(normalizeSlotForResponse),
+    const duplicate = await Slot.findOne({ label: normalizedLabel }).lean();
+    if (duplicate) {
+      return res.status(409).json({
+        message: "A slot with this label already exists",
+      });
+    }
+
+    const conflict = await findOccurrenceConflict(occurrences);
+    if (conflict) {
+      return res.status(409).json({
+        message: "Occurrence conflicts with an existing slot",
+        conflict,
+      });
+    }
+
+    const created = await Slot.create({
+      label: normalizedLabel,
+      occurrences,
     });
+
+    res.status(201).json(normalizeSlotForResponse(created));
   } catch (error) {
+    if (error?.code === 11000) {
+      return res
+        .status(409)
+        .json({ message: "A slot with this label already exists" });
+    }
     if (error.name === "ValidationError") {
       return res.status(400).json({ message: error.message });
     }
@@ -162,31 +148,44 @@ export const createSlot = async (req, res) => {
 // Update slot
 export const updateSlot = async (req, res) => {
   try {
-    const { label, day, startTime, endTime } = req.body;
+    const { label } = req.body;
     const { id } = req.params;
+    const normalizedLabel = (label || "").trim();
+    const occurrences = normalizeIncomingOccurrences(req.body);
 
-    // Validate required fields
-    if (!label || !day || !startTime || !endTime) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!normalizedLabel || !occurrences.length) {
+      return res
+        .status(400)
+        .json({ message: "Label and at least one occurrence are required" });
     }
 
-    // Check for conflicts (excluding current slot)
-    const conflict = await checkConflict(day, startTime, endTime, id);
+    if (occurrences.some((entry) => !entry.day || !entry.startTime || !entry.endTime)) {
+      return res.status(400).json({
+        message: "Each occurrence must include day, startTime, and endTime",
+      });
+    }
+
+    const duplicate = await Slot.findOne({
+      _id: { $ne: id },
+      label: normalizedLabel,
+    }).lean();
+    if (duplicate) {
+      return res.status(409).json({
+        message: "A slot with this label already exists",
+      });
+    }
+
+    const conflict = await findOccurrenceConflict(occurrences, id);
     if (conflict) {
       return res.status(409).json({
-        message: "Time slot conflicts with existing slot",
-        conflict: {
-          id: conflict._id,
-          label: conflict.label,
-          startTime: conflict.startTime,
-          endTime: conflict.endTime,
-        },
+        message: "Occurrence conflicts with an existing slot",
+        conflict,
       });
     }
 
     const slot = await Slot.findByIdAndUpdate(
       id,
-      { label, days: [day], startTime, endTime },
+      { label: normalizedLabel, occurrences },
       { new: true, runValidators: true },
     );
 
@@ -196,6 +195,11 @@ export const updateSlot = async (req, res) => {
 
     res.json(normalizeSlotForResponse(slot));
   } catch (error) {
+    if (error?.code === 11000) {
+      return res
+        .status(409)
+        .json({ message: "A slot with this label already exists" });
+    }
     if (error.name === "ValidationError") {
       return res.status(400).json({ message: error.message });
     }
