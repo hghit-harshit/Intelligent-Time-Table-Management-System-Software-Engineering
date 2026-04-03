@@ -110,7 +110,18 @@ async function seedSchedulerTestData() {
   }
 
   const slotByKey = new Map(
-    slots.map((slot) => [slotLookupKey(slot.day, slot.startTime), slot]),
+    slots.flatMap((slot) =>
+      (slot.occurrences || []).map((occurrence) => [
+        slotLookupKey(occurrence.day, occurrence.startTime),
+        {
+          _id: occurrence._id,
+          label: slot.label,
+          day: occurrence.day,
+          startTime: occurrence.startTime,
+          endTime: occurrence.endTime,
+        },
+      ]),
+    ),
   );
 
   const courseDocs = {};

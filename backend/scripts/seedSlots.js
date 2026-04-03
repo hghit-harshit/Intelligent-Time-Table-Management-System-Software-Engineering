@@ -54,25 +54,25 @@ async function seedSlots() {
 
   await Slot.deleteMany({});
 
-  for (const slot of SLOT_DATA) {
-    await Slot.findOneAndUpdate(
-      {
-        label: slot.label,
-        days: [slot.day],
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-      },
-      {
-        $set: {
-          label: slot.label,
-          days: [slot.day],
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        },
-      },
-      { new: true, upsert: true },
-    );
+  const slotsByLabel = new Map();
+  for (const item of SLOT_DATA) {
+    const existing = slotsByLabel.get(item.label) || [];
+    existing.push({
+      day: item.day,
+      startTime: item.startTime,
+      endTime: item.endTime,
+    });
+    slotsByLabel.set(item.label, existing);
   }
+
+  const consolidatedDocs = Array.from(slotsByLabel.entries()).map(
+    ([label, occurrences]) => ({
+      label,
+      occurrences,
+    }),
+  );
+
+  await Slot.insertMany(consolidatedDocs);
 
   const count = await Slot.countDocuments();
   console.log("Scheduler slots seed completed");

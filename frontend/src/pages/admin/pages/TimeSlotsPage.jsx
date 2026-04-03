@@ -179,9 +179,6 @@ const fieldGroupStyle = {
 
 const EMPTY_FORM = {
   label: "",
-  startTime: "09:00",
-  endTime: "10:00",
-  day: "Monday",
 };
 const EMPTY_TIME_ROW = { day: "Monday", startTime: "09:00", endTime: "10:00" };
 
@@ -228,13 +225,16 @@ export default function TimeSlotsPage() {
     setEditingSlot(slot);
     setForm({
       label: slot.label,
-      startTime: slot.startTime,
-      endTime: slot.endTime,
-      day: slot.day,
     });
-    setTimeRows([
-      { day: slot.day, startTime: slot.startTime, endTime: slot.endTime },
-    ]);
+    setTimeRows(
+      Array.isArray(slot.occurrences) && slot.occurrences.length > 0
+        ? slot.occurrences.map((occurrence) => ({
+            day: occurrence.day,
+            startTime: occurrence.startTime,
+            endTime: occurrence.endTime,
+          }))
+        : [{ ...EMPTY_TIME_ROW }],
+    );
     setModalOpen(true);
   };
   const closeModal = () => {
@@ -262,9 +262,7 @@ export default function TimeSlotsPage() {
   const handleSave = async () => {
     if (!form.label.trim()) return;
 
-    const rowsToSubmit = editingSlot
-      ? [{ day: form.day, startTime: form.startTime, endTime: form.endTime }]
-      : timeRows;
+    const rowsToSubmit = timeRows;
 
     if (
       rowsToSubmit.some((row) => !row.day || !row.startTime || !row.endTime)
@@ -273,14 +271,10 @@ export default function TimeSlotsPage() {
     }
 
     try {
-      const payload = editingSlot
-        ? {
-            label: form.label,
-            day: form.day,
-            startTime: form.startTime,
-            endTime: form.endTime,
-          }
-        : { label: form.label, times: rowsToSubmit };
+      const payload = {
+        label: form.label,
+        occurrences: rowsToSubmit,
+      };
 
       const options = {
         method: editingSlot ? "PUT" : "POST",
@@ -296,7 +290,7 @@ export default function TimeSlotsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 409) {
+        if (res.status === 409 || res.status === 400) {
           alert(`Conflict: ${data.message}`);
           return;
         }
@@ -309,6 +303,21 @@ export default function TimeSlotsPage() {
       alert(err.message);
     }
   };
+
+  const occurrenceRows = useMemo(
+    () =>
+      slots.flatMap((slot) =>
+        (slot.occurrences || []).map((occurrence) => ({
+          _id: occurrence._id,
+          label: slot.label,
+          day: occurrence.day,
+          startTime: occurrence.startTime,
+          endTime: occurrence.endTime,
+          parentSlot: slot,
+        })),
+      ),
+    [slots],
+  );
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
@@ -344,7 +353,7 @@ export default function TimeSlotsPage() {
   const dayRows = useMemo(() => {
     const result = {};
     ALL_DAYS.forEach((day) => {
-      const daySlots = slots
+      const daySlots = occurrenceRows
         .filter((s) => s.day === day)
         .map((s) => {
           const [sh, sm] = s.startTime.split(":").map(Number);
@@ -387,9 +396,9 @@ export default function TimeSlotsPage() {
     return {
       rows: result,
       uniqueCount: uniqueLabels.size,
-      totalEntries: slots.length,
+      totalEntries: occurrenceRows.length,
     };
-  }, [slots]);
+  }, [occurrenceRows, slots]);
 
   /* ── Sorted slots for list view ──────────────────────────────── */
   const sortedSlots = useMemo(() => {
@@ -400,12 +409,12 @@ export default function TimeSlotsPage() {
       Thursday: 4,
       Friday: 5,
     };
-    return [...slots].sort((a, b) => {
+    return [...occurrenceRows].sort((a, b) => {
       const dDiff = (dayOrder[a.day] || 6) - (dayOrder[b.day] || 6);
       if (dDiff !== 0) return dDiff;
       return a.startTime.localeCompare(b.startTime);
     });
-  }, [slots]);
+  }, [occurrenceRows]);
 
   /* ── List columns ────────────────────────────────────────────── */
   const listColumns = [
@@ -461,7 +470,7 @@ export default function TimeSlotsPage() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              openEdit(row);
+              openEdit(row.parentSlot);
             }}
             title="Edit"
             style={actionBtnStyle}
@@ -471,7 +480,7 @@ export default function TimeSlotsPage() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setDeleteConfirm(row);
+              setDeleteConfirm(row.parentSlot);
             }}
             title="Delete"
             style={{ ...actionBtnStyle, color: colors.error.main }}
@@ -671,7 +680,7 @@ export default function TimeSlotsPage() {
                         key={`${si}-s`}
                         colSpan={seg.span}
                         align="center"
-                        onClick={() => openEdit(seg.slot)}
+                        onClick={() => openEdit(seg.slot.parentSlot)}
                         sx={{
                           background: clr + "18",
                           border: "none",
@@ -751,157 +760,107 @@ export default function TimeSlotsPage() {
               />
             </div>
 
-            {editingSlot ? (
-              <>
-                <div>
-                  <label style={labelStyle}>Day</label>
-                  <select
-                    style={inputStyle}
-                    value={form.day}
-                    onChange={(e) => setForm({ ...form, day: e.target.value })}
-                  >
-                    {ALL_DAYS.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}
+            >
+              {timeRows.map((row, index) => (
                 <div
+                  key={`time-row-${index}`}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "10px",
+                    border: `1px solid ${colors.border.subtle}`,
+                    background: colors.bg.raised,
+                    borderRadius: radius.md,
+                    padding: "10px",
                   }}
                 >
-                  <div>
-                    <label style={labelStyle}>Start Time</label>
-                    <input
-                      type="time"
-                      style={timeInputStyle}
-                      value={form.startTime}
-                      onChange={(e) =>
-                        setForm({ ...form, startTime: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>End Time</label>
-                    <input
-                      type="time"
-                      style={timeInputStyle}
-                      value={form.endTime}
-                      onChange={(e) =>
-                        setForm({ ...form, endTime: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                }}
-              >
-                {timeRows.map((row, index) => (
                   <div
-                    key={`time-row-${index}`}
                     style={{
-                      border: `1px solid ${colors.border.subtle}`,
-                      background: colors.bg.raised,
-                      borderRadius: radius.md,
-                      padding: "10px",
+                      display: "grid",
+                      gridTemplateColumns: "1.1fr 1fr 1fr auto",
+                      gap: "8px",
+                      alignItems: "stretch",
                     }}
                   >
+                    <div style={fieldGroupStyle}>
+                      <label style={{ ...labelStyle, textAlign: "left" }}>
+                        Day
+                      </label>
+                      <select
+                        style={inputStyle}
+                        value={row.day}
+                        onChange={(e) =>
+                          updateTimeRow(index, "day", e.target.value)
+                        }
+                      >
+                        {ALL_DAYS.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={fieldGroupStyle}>
+                      <label style={{ ...labelStyle, textAlign: "left" }}>
+                        Start
+                      </label>
+                      <input
+                        type="time"
+                        style={timeInputStyle}
+                        value={row.startTime}
+                        onChange={(e) =>
+                          updateTimeRow(index, "startTime", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div style={fieldGroupStyle}>
+                      <label style={{ ...labelStyle, textAlign: "left" }}>
+                        End
+                      </label>
+                      <input
+                        type="time"
+                        style={timeInputStyle}
+                        value={row.endTime}
+                        onChange={(e) =>
+                          updateTimeRow(index, "endTime", e.target.value)
+                        }
+                      />
+                    </div>
                     <div
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "1.1fr 1fr 1fr auto",
-                        gap: "8px",
-                        alignItems: "stretch",
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        alignItems: "center",
+                        paddingTop: "18px",
                       }}
                     >
-                      <div style={fieldGroupStyle}>
-                        <label style={{ ...labelStyle, textAlign: "left" }}>
-                          Day
-                        </label>
-                        <select
-                          style={inputStyle}
-                          value={row.day}
-                          onChange={(e) =>
-                            updateTimeRow(index, "day", e.target.value)
-                          }
-                        >
-                          {ALL_DAYS.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div style={fieldGroupStyle}>
-                        <label style={{ ...labelStyle, textAlign: "left" }}>
-                          Start
-                        </label>
-                        <input
-                          type="time"
-                          style={timeInputStyle}
-                          value={row.startTime}
-                          onChange={(e) =>
-                            updateTimeRow(index, "startTime", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div style={fieldGroupStyle}>
-                        <label style={{ ...labelStyle, textAlign: "left" }}>
-                          End
-                        </label>
-                        <input
-                          type="time"
-                          style={timeInputStyle}
-                          value={row.endTime}
-                          onChange={(e) =>
-                            updateTimeRow(index, "endTime", e.target.value)
-                          }
-                        />
-                      </div>
-                      <div
+                      <button
+                        type="button"
+                        title="Remove time row"
+                        onClick={() => removeTimeRow(index)}
                         style={{
-                          display: "flex",
-                          justifyContent: "flex-end",
-                          alignItems: "center",
-                          paddingTop: "18px",
+                          ...actionBtnStyle,
+                          height: 38,
+                          width: 36,
+                          color: colors.error.main,
                         }}
                       >
-                        <button
-                          type="button"
-                          title="Remove time row"
-                          onClick={() => removeTimeRow(index)}
-                          style={{
-                            ...actionBtnStyle,
-                            height: 38,
-                            width: 36,
-                            color: colors.error.main,
-                          }}
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
+                        <TrashIcon />
+                      </button>
                     </div>
                   </div>
-                ))}
-
-                <div>
-                  <Button variant="secondary" size="sm" onClick={addTimeRow}>
-                    + Add Time Block
-                  </Button>
                 </div>
+              ))}
+
+              <div>
+                <Button variant="secondary" size="sm" onClick={addTimeRow}>
+                  + Add Time Block
+                </Button>
               </div>
-            )}
+            </div>
           </div>
 
           <div
@@ -968,8 +927,8 @@ export default function TimeSlotsPage() {
             <strong style={{ color: colorMap[deleteConfirm.label] }}>
               {deleteConfirm.label}
             </strong>{" "}
-            on {deleteConfirm.day} ({deleteConfirm.startTime} –{" "}
-            {deleteConfirm.endTime})?
+            with {deleteConfirm.occurrences?.length || 0} occurrence
+            {(deleteConfirm.occurrences?.length || 0) === 1 ? "" : "s"}?
           </p>
           <div
             style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}
