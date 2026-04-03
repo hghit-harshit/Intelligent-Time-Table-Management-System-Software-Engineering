@@ -1,7 +1,7 @@
 import Slot from "../models/Slot.js";
 
 const normalizeSlotForResponse = (slot) =>
-  (typeof slot.toObject === "function" ? slot.toObject() : slot);
+  typeof slot.toObject === "function" ? slot.toObject() : slot;
 
 const normalizeIncomingOccurrences = (payload = {}) => {
   if (!Array.isArray(payload.occurrences)) {
@@ -25,7 +25,9 @@ const hasTimeOverlap = (leftStart, leftEnd, rightStart, rightEnd) => {
   const leftEndMinutes = timeToMinutes(leftEnd);
   const rightStartMinutes = timeToMinutes(rightStart);
   const rightEndMinutes = timeToMinutes(rightEnd);
-  return leftStartMinutes < rightEndMinutes && rightStartMinutes < leftEndMinutes;
+  return (
+    leftStartMinutes < rightEndMinutes && rightStartMinutes < leftEndMinutes
+  );
 };
 
 const findOccurrenceConflict = async (occurrences, excludeSlotId = null) => {
@@ -103,7 +105,11 @@ export const createSlot = async (req, res) => {
         .json({ message: "Label and at least one occurrence are required" });
     }
 
-    if (occurrences.some((entry) => !entry.day || !entry.startTime || !entry.endTime)) {
+    if (
+      occurrences.some(
+        (entry) => !entry.day || !entry.startTime || !entry.endTime,
+      )
+    ) {
       return res.status(400).json({
         message: "Each occurrence must include day, startTime, and endTime",
       });
@@ -159,7 +165,11 @@ export const updateSlot = async (req, res) => {
         .json({ message: "Label and at least one occurrence are required" });
     }
 
-    if (occurrences.some((entry) => !entry.day || !entry.startTime || !entry.endTime)) {
+    if (
+      occurrences.some(
+        (entry) => !entry.day || !entry.startTime || !entry.endTime,
+      )
+    ) {
       return res.status(400).json({
         message: "Each occurrence must include day, startTime, and endTime",
       });

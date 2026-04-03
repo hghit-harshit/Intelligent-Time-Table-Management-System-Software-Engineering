@@ -59,7 +59,9 @@ slotSchema.pre("validate", function (next) {
 
   for (const occurrence of this.occurrences) {
     if (occurrence.startTime >= occurrence.endTime) {
-      const err = new Error("End time must be after start time for each occurrence");
+      const err = new Error(
+        "End time must be after start time for each occurrence",
+      );
       err.name = "ValidationError";
       return next(err);
     }
