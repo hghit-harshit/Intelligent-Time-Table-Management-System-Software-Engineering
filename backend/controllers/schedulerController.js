@@ -14,8 +14,10 @@ export const generateSchedule = async (req, res) => {
     );
     const dataset = await getSchedulerInputData();
 
-    if (!dataset.timeslots.length) {
-      return res.status(400).json({ message: "No slot occurrences found in MongoDB" });
+    if (!dataset.slots.length) {
+      return res
+        .status(400)
+        .json({ message: "No slots found in MongoDB" });
     }
 
     if (!dataset.courses.length) {

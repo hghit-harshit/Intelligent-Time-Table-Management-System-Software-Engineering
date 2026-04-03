@@ -28,27 +28,39 @@ const SlotAllocationView = ({ assignments = [] }) => {
 
     assignments.forEach((assignment) => {
       const slotLabel =
-        assignment.originalLabel || assignment.timeslotLabel || "Unknown";
-      const slotId = assignment.originalSlotId || assignment.timeslotId;
+        assignment.slotLabel ||
+        assignment.originalLabel ||
+        assignment.timeslotLabel ||
+        "Unknown";
+      const slotId =
+        assignment.slotId || assignment.originalSlotId || slotLabel;
 
       if (!grouped[slotId]) {
         grouped[slotId] = {
           slotId,
           label: slotLabel,
-          startTime: assignment.startTime,
-          endTime: assignment.endTime,
-          courses: [],
-          days: new Set(),
+          courses: new Map(),
+          occurrences: new Map(),
         };
       }
 
-      grouped[slotId].courses.push({
-        courseId: assignment.courseId,
-        courseName: assignment.courseName,
-        professorName: assignment.professorName,
-      });
+      const courseKey = `${assignment.courseId || assignment.courseName}::${assignment.professorId || assignment.professorName}`;
+      if (!grouped[slotId].courses.has(courseKey)) {
+        grouped[slotId].courses.set(courseKey, {
+          courseId: assignment.courseId,
+          courseName: assignment.courseName,
+          professorName: assignment.professorName,
+        });
+      }
 
-      grouped[slotId].days.add(assignment.day);
+      const occurrenceKey = `${assignment.day}|${assignment.startTime}|${assignment.endTime}`;
+      if (!grouped[slotId].occurrences.has(occurrenceKey)) {
+        grouped[slotId].occurrences.set(occurrenceKey, {
+          day: assignment.day,
+          startTime: assignment.startTime,
+          endTime: assignment.endTime,
+        });
+      }
     });
 
     Object.values(grouped).forEach((slot) => {
@@ -59,9 +71,17 @@ const SlotAllocationView = ({ assignments = [] }) => {
         Thursday: 4,
         Friday: 5,
       };
-      slot.days = Array.from(slot.days).sort(
-        (a, b) => dayOrder[a] - dayOrder[b],
-      );
+
+      slot.courses = Array.from(slot.courses.values());
+      slot.occurrences = Array.from(slot.occurrences.values()).sort((a, b) => {
+        const dayDiff = (dayOrder[a.day] || 99) - (dayOrder[b.day] || 99);
+        if (dayDiff !== 0) {
+          return dayDiff;
+        }
+        return (a.startTime || "").localeCompare(b.startTime || "");
+      });
+
+      slot.firstStartTime = slot.occurrences[0]?.startTime || "";
     });
 
     return grouped;
@@ -77,8 +97,17 @@ const SlotAllocationView = ({ assignments = [] }) => {
     );
   }
 
-  const slotList = Object.values(slotGrouping).sort((a, b) =>
-    (a.startTime || "").localeCompare(b.startTime || ""),
+  const slotList = Object.values(slotGrouping).sort((a, b) => {
+    const timeDiff = (a.firstStartTime || "").localeCompare(b.firstStartTime || "");
+    if (timeDiff !== 0) {
+      return timeDiff;
+    }
+    return (a.label || "").localeCompare(b.label || "");
+  });
+
+  const totalUniqueCourseAssignments = slotList.reduce(
+    (acc, slot) => acc + slot.courses.length,
+    0,
   );
 
   return (
@@ -102,7 +131,7 @@ const SlotAllocationView = ({ assignments = [] }) => {
           Slot Allocation Overview
         </Typography>
         <Typography variant="caption" color="textSecondary">
-          {slotList.length} slots with {assignments.length} total course
+          {slotList.length} slots with {totalUniqueCourseAssignments} total course
           assignments
         </Typography>
       </Box>
@@ -170,21 +199,25 @@ const SlotAllocationView = ({ assignments = [] }) => {
                   <Box
                     sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}
                   >
-                    <Typography
-                      variant="body2"
-                      display="block"
-                      sx={{ fontWeight: 600, color: "text.primary" }}
-                    >
-                      📅 {slot.days.join(", ")}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="textSecondary"
-                      display="block"
-                      sx={{ fontSize: "0.74rem" }}
-                    >
-                      🕒 {slot.startTime} - {slot.endTime}
-                    </Typography>
+                    {slot.occurrences.map((occurrence, occurrenceIndex) => (
+                      <Box key={`${slot.slotId}-${occurrence.day}-${occurrence.startTime}-${occurrenceIndex}`}>
+                        <Typography
+                          variant="body2"
+                          display="block"
+                          sx={{ fontWeight: 600, color: "text.primary" }}
+                        >
+                          📅 {occurrence.day}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="textSecondary"
+                          display="block"
+                          sx={{ fontSize: "0.74rem" }}
+                        >
+                          🕒 {occurrence.startTime} - {occurrence.endTime}
+                        </Typography>
+                      </Box>
+                    ))}
                   </Box>
                 </TableCell>
 
@@ -250,7 +283,7 @@ const SlotAllocationView = ({ assignments = [] }) => {
         }}
       >
         <Typography variant="caption" color="textSecondary">
-          Total assignments: {assignments.length} courses across{" "}
+          Total assignments: {totalUniqueCourseAssignments} courses across{" "}
           {slotList.length} slots
         </Typography>
       </Box>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple
 
 try:
     from ortools.sat.python import cp_model
@@ -46,11 +46,27 @@ class TimetableCpSatBuilder:
         self.constraints = payload.get("constraints", {})
         self.model = cp_model.CpModel()
 
-        self.timeslots = payload.get("timeslots", [])
+        self.slots = self.normalize_slot_units(payload)
+        self.occurrence_count = sum(
+            len(slot.get("occurrences", [])) for slot in self.slots
+        )
         self.courses = payload.get("courses", [])
         self.professors = payload.get("professors", [])
 
-        self.timeslot_by_id = {stringify_id(slot.get("_id")): slot for slot in self.timeslots}
+        self.slot_by_id = {stringify_id(slot.get("_id")): slot for slot in self.slots}
+        self.occurrence_by_id = {}
+        for slot in self.slots:
+            slot_id = stringify_id(slot.get("_id"))
+            for occurrence in slot.get("occurrences", []):
+                occurrence_id = stringify_id(occurrence.get("_id"))
+                if occurrence_id:
+                    self.occurrence_by_id[occurrence_id] = {
+                        "slotId": slot_id,
+                        "day": occurrence.get("day"),
+                        "startTime": occurrence.get("startTime"),
+                        "endTime": occurrence.get("endTime"),
+                    }
+
         self.professor_by_id = {stringify_id(prof.get("_id")): prof for prof in self.professors}
 
         self.assignment_vars: Dict[Tuple[int, int, int], cp_model.IntVar] = {}
@@ -68,6 +84,57 @@ class TimetableCpSatBuilder:
             "sc2_enabled": self.apply_sc2_preferred_day_off_preference,
         }
 
+    def normalize_slot_units(self, payload):
+        slots = payload.get("slots", []) or []
+        if slots:
+            normalized = []
+            for slot in slots:
+                occurrences = []
+                for occurrence in slot.get("occurrences", []) or []:
+                    occurrences.append(
+                        {
+                            "_id": occurrence.get("_id"),
+                            "day": occurrence.get("day"),
+                            "startTime": occurrence.get("startTime"),
+                            "endTime": occurrence.get("endTime"),
+                        }
+                    )
+
+                normalized.append(
+                    {
+                        "_id": slot.get("_id"),
+                        "label": slot.get("label"),
+                        "occurrences": occurrences,
+                    }
+                )
+            return normalized
+
+        grouped = {}
+        for timeslot in payload.get("timeslots", []) or []:
+            parent_slot_id = stringify_id(
+                value_from(timeslot, ["slotId", "originalSlotId", "_id"])
+            )
+            if not parent_slot_id:
+                parent_slot_id = f"slot::{value_from(timeslot, ['label'], 'Unlabeled')}"
+
+            if parent_slot_id not in grouped:
+                grouped[parent_slot_id] = {
+                    "_id": parent_slot_id,
+                    "label": value_from(timeslot, ["label", "originalLabel"], ""),
+                    "occurrences": [],
+                }
+
+            grouped[parent_slot_id]["occurrences"].append(
+                {
+                    "_id": timeslot.get("_id"),
+                    "day": timeslot.get("day"),
+                    "startTime": timeslot.get("startTime"),
+                    "endTime": timeslot.get("endTime"),
+                }
+            )
+
+        return list(grouped.values())
+
     def build(self):
         self.create_decision_variables()
         self.apply_core_constraints()
@@ -80,8 +147,42 @@ class TimetableCpSatBuilder:
     def get_professor_name(self, professor):
         return value_from(professor, ["name", "facultyName", "fullName", "email"], "Unknown Faculty")
 
-    def slot_key(self, slot):
-        return f"{normalize_day(slot.get('day'))}|{slot.get('startTime', '')}|{slot.get('endTime', '')}"
+    def occurrence_key(self, occurrence):
+        return (
+            f"{normalize_day(occurrence.get('day'))}|"
+            f"{occurrence.get('startTime', '')}|"
+            f"{occurrence.get('endTime', '')}"
+        )
+
+    def occurrences_conflict(self, left, right):
+        if normalize_day(left.get("day")) != normalize_day(right.get("day")):
+            return False
+
+        left_start = left.get("startTime", "")
+        left_end = left.get("endTime", "")
+        right_start = right.get("startTime", "")
+        right_end = right.get("endTime", "")
+
+        if not left_start or not left_end or not right_start or not right_end:
+            return False
+
+        left_start_minutes = self.time_to_minutes(left_start)
+        left_end_minutes = self.time_to_minutes(left_end)
+        right_start_minutes = self.time_to_minutes(right_start)
+        right_end_minutes = self.time_to_minutes(right_end)
+
+        return left_start_minutes < right_end_minutes and right_start_minutes < left_end_minutes
+
+    def slots_conflict(self, left_slot, right_slot):
+        for left_occurrence in left_slot.get("occurrences", []):
+            for right_occurrence in right_slot.get("occurrences", []):
+                if self.occurrences_conflict(left_occurrence, right_occurrence):
+                    return True
+        return False
+
+    def time_to_minutes(self, time_text):
+        hours, minutes = str(time_text).split(":")
+        return int(hours) * 60 + int(minutes)
 
     def extract_professor_course_ids(self, professor):
         mappings = value_from(
@@ -133,20 +234,24 @@ class TimetableCpSatBuilder:
             course_name = self.get_course_name(course)
             eligible_prof_indices = self.eligible_professor_indices_for_course(course)
 
-            for slot_index, slot in enumerate(self.timeslots):
+            for slot_index, slot in enumerate(self.slots):
                 slot_id = stringify_id(slot.get("_id"))
                 for prof_index in eligible_prof_indices:
                     professor = self.professors[prof_index]
                     professor_name = self.get_professor_name(professor)
 
+                    blocked_reference = self.extract_blocked_reference(professor)
+                    if self.slot_has_any_blocked_occurrence(slot, blocked_reference):
+                        continue
+
                     var_key = (course_index, slot_index, prof_index)
                     var = self.model.NewBoolVar(
-                        f"x_c{course_index}_t{slot_index}_p{prof_index}"
+                        f"x_c{course_index}_s{slot_index}_p{prof_index}"
                     )
                     self.assignment_vars[var_key] = var
                     self.assignment_meta[var_key] = {
                         "courseName": course_name,
-                        "timeslotId": slot_id,
+                        "slotId": slot_id,
                         "professorName": professor_name,
                     }
 
@@ -187,7 +292,7 @@ class TimetableCpSatBuilder:
             else:
                 self.applied_constraints.append({"id": flag_key, "type": "soft", "enabled": False})
 
-    def extract_blocked_timeslot_ids(self, professor):
+    def extract_blocked_reference(self, professor):
         availability = value_from(professor, ["availability"], {}) or {}
         blocked_candidates = []
 
@@ -212,38 +317,68 @@ class TimetableCpSatBuilder:
                 if maybe_id:
                     blocked_ids.add(stringify_id(maybe_id))
                     continue
-                blocked_slot_keys.add(
-                    f"{normalize_day(item.get('day'))}|{item.get('startTime', '')}|{item.get('endTime', '')}"
-                )
+                blocked_slot_keys.add(self.occurrence_key(item))
 
-        for slot in self.timeslots:
-            slot_id = stringify_id(slot.get("_id"))
-            if self.slot_key(slot) in blocked_slot_keys:
-                blocked_ids.add(slot_id)
+        return {
+            "ids": blocked_ids,
+            "keys": blocked_slot_keys,
+        }
 
-        return blocked_ids
+    def slot_has_any_blocked_occurrence(self, slot, blocked_reference):
+        slot_id = stringify_id(slot.get("_id"))
+        if slot_id in blocked_reference["ids"]:
+            return True
+
+        for occurrence in slot.get("occurrences", []):
+            occurrence_id = stringify_id(occurrence.get("_id"))
+            if occurrence_id and occurrence_id in blocked_reference["ids"]:
+                return True
+
+            if self.occurrence_key(occurrence) in blocked_reference["keys"]:
+                return True
+
+        return False
 
     def apply_hc1_one_class_per_professor_per_slot(self):
         for prof_index, _prof in enumerate(self.professors):
-            for slot_index, _slot in enumerate(self.timeslots):
-                vars_for_prof_slot = [
+            vars_per_slot = {}
+            for slot_index, _slot in enumerate(self.slots):
+                vars_per_slot[slot_index] = [
                     var
                     for (c_idx, t_idx, p_idx), var in self.assignment_vars.items()
                     if t_idx == slot_index and p_idx == prof_index
                 ]
-                if vars_for_prof_slot:
-                    self.model.Add(sum(vars_for_prof_slot) <= 1)
+
+                if vars_per_slot[slot_index]:
+                    self.model.Add(sum(vars_per_slot[slot_index]) <= 1)
+
+            for left_slot_index in range(len(self.slots)):
+                left_vars = vars_per_slot.get(left_slot_index, [])
+                if not left_vars:
+                    continue
+
+                for right_slot_index in range(left_slot_index + 1, len(self.slots)):
+                    right_vars = vars_per_slot.get(right_slot_index, [])
+                    if not right_vars:
+                        continue
+
+                    if not self.slots_conflict(
+                        self.slots[left_slot_index],
+                        self.slots[right_slot_index],
+                    ):
+                        continue
+
+                    self.model.Add(sum(left_vars) + sum(right_vars) <= 1)
 
     def apply_sc1_unavailable_slots_preference(self):
         weight = 10
         for prof_index, professor in enumerate(self.professors):
-            blocked_ids = self.extract_blocked_timeslot_ids(professor)
+            blocked_reference = self.extract_blocked_reference(professor)
             for (c_idx, t_idx, p_idx), var in self.assignment_vars.items():
                 if p_idx != prof_index:
                     continue
-                slot = self.timeslots[t_idx]
-                slot_id = stringify_id(slot.get("_id"))
-                if slot_id not in blocked_ids:
+                slot = self.slots[t_idx]
+                if not self.slot_has_any_blocked_occurrence(slot, blocked_reference):
                     self.soft_reward_terms.append(weight * var)
 
     def extract_preferred_days_off(self, professor):
@@ -263,8 +398,13 @@ class TimetableCpSatBuilder:
             for (_c_idx, t_idx, p_idx), var in self.assignment_vars.items():
                 if p_idx != prof_index:
                     continue
-                slot_day = normalize_day(self.timeslots[t_idx].get("day"))
-                if slot_day not in days_off:
+                slot = self.slots[t_idx]
+                slot_days = {
+                    normalize_day(occurrence.get("day"))
+                    for occurrence in slot.get("occurrences", [])
+                    if occurrence.get("day")
+                }
+                if not slot_days.intersection(days_off):
                     self.soft_reward_terms.append(weight * var)
 
     def apply_objective(self):
@@ -275,7 +415,7 @@ class TimetableCpSatBuilder:
         if self.unschedulable_courses:
             return {
                 "success": False,
-                "message": "Some courses have no valid (timeslot, professor) options.",
+                "message": "Some courses have no valid (slot, professor) options.",
                 "diagnostics": {
                     "unschedulableCourses": self.unschedulable_courses,
                     "appliedConstraints": self.applied_constraints,
@@ -304,39 +444,48 @@ class TimetableCpSatBuilder:
                 continue
 
             course = self.courses[course_index]
-            slot = self.timeslots[slot_index]
+            slot = self.slots[slot_index]
             professor = self.professors[prof_index]
 
-            blocked_ids = self.extract_blocked_timeslot_ids(professor)
+            blocked_reference = self.extract_blocked_reference(professor)
             preferred_days_off = self.extract_preferred_days_off(professor)
 
-            slot_day = normalize_day(slot.get("day"))
-            slot_id = stringify_id(slot.get("_id"))
+            for occurrence in slot.get("occurrences", []):
+                slot_day = normalize_day(occurrence.get("day"))
+                occurrence_id = stringify_id(occurrence.get("_id"))
+                occurrence_is_blocked = (
+                    (occurrence_id and occurrence_id in blocked_reference["ids"])
+                    or self.occurrence_key(occurrence) in blocked_reference["keys"]
+                    or stringify_id(slot.get("_id")) in blocked_reference["ids"]
+                )
 
-            assignments.append(
-                {
-                    "courseId": stringify_id(course.get("_id")),
-                    "courseName": self.get_course_name(course),
-                    "professorId": stringify_id(professor.get("_id")),
-                    "professorName": self.get_professor_name(professor),
-                    "timeslotId": slot_id,
-                    "timeslotLabel": value_from(slot, ["label"], ""),
-                    "day": slot_day,
-                    "startTime": value_from(slot, ["startTime"], ""),
-                    "endTime": value_from(slot, ["endTime"], ""),
-                    "softViolations": {
-                        "sc1_unavailable_slot_violated": slot_id in blocked_ids,
-                        "sc2_preferred_day_off_violated": slot_day in preferred_days_off,
-                    },
-                }
-            )
+                assignments.append(
+                    {
+                        "courseId": stringify_id(course.get("_id")),
+                        "courseName": self.get_course_name(course),
+                        "professorId": stringify_id(professor.get("_id")),
+                        "professorName": self.get_professor_name(professor),
+                        "slotId": stringify_id(slot.get("_id")),
+                        "slotLabel": value_from(slot, ["label"], ""),
+                        "timeslotId": occurrence_id,
+                        "timeslotLabel": value_from(slot, ["label"], ""),
+                        "day": slot_day,
+                        "startTime": value_from(occurrence, ["startTime"], ""),
+                        "endTime": value_from(occurrence, ["endTime"], ""),
+                        "softViolations": {
+                            "sc1_unavailable_slot_violated": occurrence_is_blocked,
+                            "sc2_preferred_day_off_violated": slot_day in preferred_days_off,
+                        },
+                    }
+                )
 
         return {
             "success": True,
             "assignments": assignments,
             "stats": {
                 "courseCount": len(self.courses),
-                "timeslotCount": len(self.timeslots),
+                "slotCount": len(self.slots),
+                "timeslotCount": self.occurrence_count,
                 "professorCount": len(self.professors),
                 "objectiveValue": solver.ObjectiveValue() if self.soft_reward_terms else None,
                 "appliedConstraints": self.applied_constraints,
