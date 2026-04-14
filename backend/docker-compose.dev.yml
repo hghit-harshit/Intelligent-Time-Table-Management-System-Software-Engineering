@@ -20,17 +20,23 @@ services:
       dockerfile: Dockerfile.dev
     container_name: timetable-backend
     restart: unless-stopped
+    # env_file:
+      #- .env
     environment:
       - NODE_ENV=development
       - PORT=5001
       - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/timetable?authSource=admin
+      - GEMINI_API_KEY=AIzaSyDCjW6dr6nVy1IHDshdYIPe-6YcSz2LG_4
+      - GEMINI_MODEL=gemini-2.0-flash
     ports:
       - "5001:5001"
+    command: sh -c "npm install && npm run start"
     volumes:
       - .:/app
-      - /app/node_modules
+      - backend_node_modules:/app/node_modules
     depends_on:
       - mongodb
 
 volumes:
   mongodb_data:
+  backend_node_modules:

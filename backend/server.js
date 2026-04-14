@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import slotRoutes from "./routes/slotRoutes.js";
 import schedulerRoutes from "./routes/schedulerRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.get("/ping", (req, res) => {
 // Routes
 app.use("/api/slots", slotRoutes);
 app.use("/api/scheduler", schedulerRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Start server
 app.listen(PORT, () => {
