@@ -61,3 +61,12 @@ npm run dev
 | Frontend | React 19, Vite, Material UI (MUI v7), Tailwind CSS v4 |
 | Backend | Node.js, Express, MongoDB, Mongoose |
 | Integration | Google Classroom API, Google OAuth2 |
+
+## AI Assistant Setup
+
+The student AI Assistant uses the Gemini API through the backend. Add these values to `backend/.env` before starting the backend:
+
+```bash
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-1.5-flash
+```
