@@ -1,7 +1,67 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { colors, fonts, radius, shadows } from "../../../styles/tokens"
 /* WHY: Import shared components to replace duplicated top-bar, stats grid, and modal */
 import { SubPageHeader, StatsGrid, Modal } from "../../admin/components/ui/index"
+
+const ENROLLED_COURSES = [
+  {
+    id: 1, code: "EC301", name: "Digital Signal Processing", credits: 3,
+    instructor: "Dr. Sarah Chen", schedule: "Mon/Wed/Fri 10:00-11:00 AM", room: "E-204",
+    enrolled: 45, capacity: 50, status: "enrolled", grade: "A", completion: 75,
+    department: "ECE", semester: "Spring 2024",
+    assignments: [
+      { name: "Filter Design", due: "Mar 15", status: "submitted", score: "92/100" },
+      { name: "FFT Analysis", due: "Mar 28", status: "pending", score: null },
+      { name: "Final Project", due: "Apr 20", status: "not started", score: null },
+    ],
+    materials: [
+      { name: "Course Syllabus", type: "pdf", size: "2.3 MB" },
+      { name: "Lecture Notes Ch1-5", type: "pdf", size: "15.7 MB" },
+      { name: "Lab Manual", type: "pdf", size: "4.2 MB" },
+      { name: "Reference Code", type: "zip", size: "8.1 MB" },
+    ]
+  },
+  {
+    id: 2, code: "CS302", name: "Data Structures & Algorithms", credits: 4,
+    instructor: "Prof. Michael Wong", schedule: "Tue/Thu 2:00-3:30 PM", room: "CS-101",
+    enrolled: 38, capacity: 40, status: "enrolled", grade: "A-", completion: 82,
+    department: "CSE", semester: "Spring 2024",
+    assignments: [
+      { name: "Binary Trees", due: "Mar 12", status: "graded", score: "88/100" },
+      { name: "Graph Algorithms", due: "Mar 25", status: "submitted", score: null },
+      { name: "Dynamic Programming", due: "Apr 8", status: "not started", score: null },
+    ],
+    materials: [
+      { name: "Algorithm Slides", type: "pdf", size: "22.4 MB" },
+      { name: "Practice Problems", type: "pdf", size: "6.8 MB" },
+      { name: "Code Templates", type: "zip", size: "3.2 MB" },
+    ]
+  },
+  {
+    id: 3, code: "EC305", name: "VLSI Design", credits: 3,
+    instructor: "Dr. Rajesh Patel", schedule: "Mon/Wed 2:00-3:00 PM", room: "F-102",
+    enrolled: 28, capacity: 30, status: "enrolled", grade: "B+", completion: 68,
+    department: "ECE", semester: "Spring 2024",
+    assignments: [
+      { name: "Circuit Layout", due: "Mar 10", status: "graded", score: "85/100" },
+      { name: "Timing Analysis", due: "Mar 24", status: "pending", score: null },
+      { name: "Final Chip Design", due: "Apr 15", status: "not started", score: null },
+    ],
+    materials: [
+      { name: "VLSI Fundamentals", type: "pdf", size: "45.2 MB" },
+      { name: "CAD Tools Guide", type: "pdf", size: "12.1 MB" },
+      { name: "Sample Layouts", type: "zip", size: "28.7 MB" },
+    ]
+  },
+]
+
+const AVAILABLE_COURSES = [
+  { id: 101, code: "EC401", name: "Microwave Engineering", credits: 3, instructor: "Dr. Lisa Kumar", schedule: "Tue/Thu 11:00 AM-12:30 PM", room: "E-301", enrolled: 22, capacity: 35, status: "available", prerequisites: ["EC301", "EC204"], department: "ECE", semester: "Spring 2024", description: "Advanced study of microwave circuits, antennas, and propagation." },
+  { id: 102, code: "CS401", name: "Machine Learning", credits: 4, instructor: "Prof. David Park", schedule: "Mon/Wed/Fri 1:00-2:00 PM", room: "CS-203", enrolled: 35, capacity: 40, status: "available", prerequisites: ["CS302", "MATH301"], department: "CSE", semester: "Spring 2024", description: "Introduction to machine learning algorithms including supervised and deep learning." },
+  { id: 103, code: "EC403", name: "Digital Communications", credits: 3, instructor: "Dr. Anna Rodriguez", schedule: "Tue/Thu 9:00-10:30 AM", room: "E-205", enrolled: 31, capacity: 35, status: "available", prerequisites: ["EC301", "EC250"], department: "ECE", semester: "Spring 2024", description: "Modern digital communication systems including modulation and coding." },
+  { id: 104, code: "CS405", name: "Computer Networks", credits: 3, instructor: "Prof. James Wilson", schedule: "Mon/Wed 3:00-4:30 PM", room: "CS-105", enrolled: 28, capacity: 32, status: "available", prerequisites: ["CS302", "CS201"], department: "CSE", semester: "Spring 2024", description: "Network protocols, architectures, security, and performance analysis." },
+  { id: 105, code: "MATH402", name: "Advanced Statistics", credits: 3, instructor: "Dr. Emily Chen", schedule: "Tue/Thu 1:00-2:30 PM", room: "M-107", enrolled: 33, capacity: 35, status: "waitlist", prerequisites: ["MATH301", "MATH250"], department: "MATH", semester: "Spring 2024", description: "Statistical inference, hypothesis testing, and computational statistics." },
+]
 
 export default function CourseEnrollment() {
   const [selectedSemester, setSelectedSemester] = useState("current")
@@ -18,71 +78,29 @@ export default function CourseEnrollment() {
   const btn = { background: colors.primary.main, border: "none", borderRadius: radius.md, padding: "6px 14px", color: "#fff", fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }
   const btnGhost = { background: colors.bg.raised, border: `1px solid ${colors.border.medium}`, borderRadius: radius.md, padding: "8px 16px", color: colors.text.primary, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body }
 
-  const [enrolledCourses] = useState([
-    {
-      id: 1, code: "EC301", name: "Digital Signal Processing", credits: 3,
-      instructor: "Dr. Sarah Chen", schedule: "Mon/Wed/Fri 10:00-11:00 AM", room: "E-204",
-      enrolled: 45, capacity: 50, status: "enrolled", grade: "A", completion: 75,
-      department: "ECE", semester: "Spring 2024",
-      assignments: [
-        { name: "Filter Design", due: "Mar 15", status: "submitted", score: "92/100" },
-        { name: "FFT Analysis", due: "Mar 28", status: "pending", score: null },
-        { name: "Final Project", due: "Apr 20", status: "not started", score: null },
-      ],
-      materials: [
-        { name: "Course Syllabus", type: "pdf", size: "2.3 MB" },
-        { name: "Lecture Notes Ch1-5", type: "pdf", size: "15.7 MB" },
-        { name: "Lab Manual", type: "pdf", size: "4.2 MB" },
-        { name: "Reference Code", type: "zip", size: "8.1 MB" },
-      ]
-    },
-    {
-      id: 2, code: "CS302", name: "Data Structures & Algorithms", credits: 4,
-      instructor: "Prof. Michael Wong", schedule: "Tue/Thu 2:00-3:30 PM", room: "CS-101",
-      enrolled: 38, capacity: 40, status: "enrolled", grade: "A-", completion: 82,
-      department: "CSE", semester: "Spring 2024",
-      assignments: [
-        { name: "Binary Trees", due: "Mar 12", status: "graded", score: "88/100" },
-        { name: "Graph Algorithms", due: "Mar 25", status: "submitted", score: null },
-        { name: "Dynamic Programming", due: "Apr 8", status: "not started", score: null },
-      ],
-      materials: [
-        { name: "Algorithm Slides", type: "pdf", size: "22.4 MB" },
-        { name: "Practice Problems", type: "pdf", size: "6.8 MB" },
-        { name: "Code Templates", type: "zip", size: "3.2 MB" },
-      ]
-    },
-    {
-      id: 3, code: "EC305", name: "VLSI Design", credits: 3,
-      instructor: "Dr. Rajesh Patel", schedule: "Mon/Wed 2:00-3:00 PM", room: "F-102",
-      enrolled: 28, capacity: 30, status: "enrolled", grade: "B+", completion: 68,
-      department: "ECE", semester: "Spring 2024",
-      assignments: [
-        { name: "Circuit Layout", due: "Mar 10", status: "graded", score: "85/100" },
-        { name: "Timing Analysis", due: "Mar 24", status: "pending", score: null },
-        { name: "Final Chip Design", due: "Apr 15", status: "not started", score: null },
-      ],
-      materials: [
-        { name: "VLSI Fundamentals", type: "pdf", size: "45.2 MB" },
-        { name: "CAD Tools Guide", type: "pdf", size: "12.1 MB" },
-        { name: "Sample Layouts", type: "zip", size: "28.7 MB" },
-      ]
-    },
-  ])
+  const [enrolledCourses] = useState(ENROLLED_COURSES)
+  const [availableCourses] = useState(AVAILABLE_COURSES)
 
-  const [availableCourses] = useState([
-    { id: 101, code: "EC401", name: "Microwave Engineering", credits: 3, instructor: "Dr. Lisa Kumar", schedule: "Tue/Thu 11:00 AM-12:30 PM", room: "E-301", enrolled: 22, capacity: 35, status: "available", prerequisites: ["EC301", "EC204"], department: "ECE", semester: "Spring 2024", description: "Advanced study of microwave circuits, antennas, and propagation." },
-    { id: 102, code: "CS401", name: "Machine Learning", credits: 4, instructor: "Prof. David Park", schedule: "Mon/Wed/Fri 1:00-2:00 PM", room: "CS-203", enrolled: 35, capacity: 40, status: "available", prerequisites: ["CS302", "MATH301"], department: "CSE", semester: "Spring 2024", description: "Introduction to machine learning algorithms including supervised and deep learning." },
-    { id: 103, code: "EC403", name: "Digital Communications", credits: 3, instructor: "Dr. Anna Rodriguez", schedule: "Tue/Thu 9:00-10:30 AM", room: "E-205", enrolled: 31, capacity: 35, status: "available", prerequisites: ["EC301", "EC250"], department: "ECE", semester: "Spring 2024", description: "Modern digital communication systems including modulation and coding." },
-    { id: 104, code: "CS405", name: "Computer Networks", credits: 3, instructor: "Prof. James Wilson", schedule: "Mon/Wed 3:00-4:30 PM", room: "CS-105", enrolled: 28, capacity: 32, status: "available", prerequisites: ["CS302", "CS201"], department: "CSE", semester: "Spring 2024", description: "Network protocols, architectures, security, and performance analysis." },
-    { id: 105, code: "MATH402", name: "Advanced Statistics", credits: 3, instructor: "Dr. Emily Chen", schedule: "Tue/Thu 1:00-2:30 PM", room: "M-107", enrolled: 33, capacity: 35, status: "waitlist", prerequisites: ["MATH301", "MATH250"], department: "MATH", semester: "Spring 2024", description: "Statistical inference, hypothesis testing, and computational statistics." },
-  ])
-
-  const filteredAvailableCourses = availableCourses.filter(course => {
+  const filteredAvailableCourses = useMemo(() => availableCourses.filter(course => {
     const matchesSearch = course.name.toLowerCase().includes(searchTerm.toLowerCase()) || course.code.toLowerCase().includes(searchTerm.toLowerCase()) || course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesDept = filterDept === "all" || course.department === filterDept
     return matchesSearch && matchesDept
-  })
+  }), [availableCourses, searchTerm, filterDept])
+
+  const availableCount = useMemo(
+    () => availableCourses.filter((course) => course.status === "available").length,
+    [availableCourses],
+  )
+
+  const totalCredits = useMemo(
+    () => enrolledCourses.reduce((sum, course) => sum + course.credits, 0),
+    [enrolledCourses],
+  )
+
+  const avgProgress = useMemo(() => {
+    if (!enrolledCourses.length) return "0%"
+    return `${(enrolledCourses.reduce((sum, course) => sum + course.completion, 0) / enrolledCourses.length).toFixed(0)}%`
+  }, [enrolledCourses])
 
   const enrollInCourse = (courseId) => alert(`Enrolling in course ${courseId}.`)
   const dropCourse = (courseId) => alert(`Dropping course ${courseId}.`)
@@ -92,10 +110,10 @@ export default function CourseEnrollment() {
       {/* WHY: Replaced duplicated accent-bar header with shared SubPageHeader */}
       <SubPageHeader
         title="Course Enrollment"
-        subtitle={`${enrolledCourses.length} enrolled · ${availableCourses.filter(c => c.status === "available").length} available`}
+        subtitle={`${enrolledCourses.length} enrolled · ${availableCount} available`}
         accentColor={colors.primary.main}
         actions={<>
-          <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} style={inputField}>
+          <select aria-label="Select semester" value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} style={inputField}>
             <option value="current">Spring 2024</option>
             <option value="next">Fall 2024</option>
             <option value="previous">Fall 2023</option>
@@ -111,8 +129,8 @@ export default function CourseEnrollment() {
           {/* WHY: Replaced inline 4-column stat grid with shared StatsGrid */}
           <StatsGrid stats={[
             { num: enrolledCourses.length.toString(), label: "Enrolled Courses", color: colors.primary.main },
-            { num: enrolledCourses.reduce((sum, c) => sum + c.credits, 0).toString(), label: "Total Credits", color: colors.success.main },
-            { num: (enrolledCourses.reduce((sum, c) => sum + c.completion, 0) / enrolledCourses.length).toFixed(0) + "%", label: "Avg Progress", color: colors.warning.main },
+            { num: totalCredits.toString(), label: "Total Credits", color: colors.success.main },
+            { num: avgProgress, label: "Avg Progress", color: colors.warning.main },
             { num: "3.7", label: "Current GPA", color: colors.secondary.main },
           ]} />
 
@@ -166,8 +184,8 @@ export default function CourseEnrollment() {
             <div style={{ display: "flex", alignItems: "center", padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
               <h3 style={{ ...heading, fontSize: "13px", margin: 0 }}>Available Courses</h3>
               <div style={{ display: "flex", alignItems: "center", gap: "12px", marginLeft: "auto" }}>
-                <input type="text" placeholder="Search courses..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ ...inputField, width: "160px" }} />
-                <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)} style={inputField}>
+                <input aria-label="Search available courses" type="text" placeholder="Search courses..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ ...inputField, width: "160px" }} />
+                <select aria-label="Filter by department" value={filterDept} onChange={(e) => setFilterDept(e.target.value)} style={inputField}>
                   <option value="all">All Departments</option>
                   <option value="ECE">ECE</option>
                   <option value="CSE">CSE</option>
