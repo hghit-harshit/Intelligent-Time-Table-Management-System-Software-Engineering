@@ -1,0 +1,11 @@
+// Placeholder Prisma schema for DISHA structure compliance.
+// Current runtime persistence is implemented with Mongoose repositories.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}

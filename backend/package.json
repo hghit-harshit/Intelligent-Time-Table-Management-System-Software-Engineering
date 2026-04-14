@@ -2,13 +2,14 @@
   "name": "timetable-backend",
   "version": "1.0.0",
   "description": "Intelligent Timetable Management System Backend",
-  "main": "server.js",
+  "main": "src/server.ts",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "seed:slots:inside": "node scripts/seedSlots.js",
-    "seed:scheduler-test:inside": "node scripts/seedSchedulerTestData.js",
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
+    "seed:slots:inside": "tsx scripts/seedSlots.ts",
+    "seed:scheduler-test:inside": "tsx scripts/seedSchedulerTestData.ts",
     "seed:all:inside": "npm run seed:slots:inside && npm run seed:scheduler-test:inside",
     "seed:slots": "docker compose -f docker-compose.dev.yml exec backend npm run seed:slots:inside",
     "seed:scheduler-test": "docker compose -f docker-compose.dev.yml exec backend npm run seed:scheduler-test:inside",
@@ -21,9 +22,16 @@
     "cors": "^2.8.6",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "mongoose": "^8.0.3"
+    "mongoose": "^8.0.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/mongoose": "^5.11.96",
+    "@types/node": "^25.6.0",
+    "nodemon": "^3.0.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
   }
 }
