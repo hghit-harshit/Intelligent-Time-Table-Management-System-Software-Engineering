@@ -33,7 +33,7 @@ export default function ExamSchedule() {
         subtitle={`${upcomingExams.length} upcoming · Next in ${Math.min(...upcomingExams.map(e => e.daysLeft))} days`}
         accentColor={colors.error.main}
         actions={<>
-          <select value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} style={{ ...cardInner, padding: "6px 12px", color: colors.text.primary, fontSize: fonts.size.sm, cursor: "pointer", fontFamily: fonts.body }}>
+          <select aria-label="Filter exam subject" value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} style={{ ...cardInner, padding: "6px 12px", color: colors.text.primary, fontSize: fonts.size.sm, cursor: "pointer", fontFamily: fonts.body }}>
             <option value="all">All Subjects</option>
             <option value="digital">Digital Circuits</option>
             <option value="math">Mathematics</option>

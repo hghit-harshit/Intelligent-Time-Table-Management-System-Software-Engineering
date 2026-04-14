@@ -143,6 +143,7 @@ export default function AppShell({
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             style={{
               background: colors.bg.raised,
               border: `1px solid ${colors.border.medium}`,
@@ -383,7 +384,7 @@ export default function AppShell({
       </div>
 
       {/* ─── Main Content Area ───────────────────────────────── */}
-      <div
+      <main
         style={{
           flex: 1,
           display: "flex",
@@ -430,6 +431,7 @@ export default function AppShell({
             />
             <input
               type="text"
+              aria-label="Global search"
               placeholder={searchPlaceholder}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
@@ -460,7 +462,9 @@ export default function AppShell({
           {/* Right side — notifications + profile chip */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {/* Notification bell */}
-            <div
+            <button
+              type="button"
+              aria-label="Open notifications"
               onClick={
                 notificationPath
                   ? () => navigate(notificationPath)
@@ -476,6 +480,7 @@ export default function AppShell({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                border: `1px solid ${colors.border.medium}`,
               }}
             >
               <Bell size={16} style={{ color: colors.text.secondary }} />
@@ -500,7 +505,7 @@ export default function AppShell({
                   {notificationCount}
                 </span>
               )}
-            </div>
+            </button>
 
             {/* Profile chip */}
             <div
@@ -554,7 +559,7 @@ export default function AppShell({
         >
           {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
