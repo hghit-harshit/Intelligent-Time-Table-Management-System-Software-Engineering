@@ -60,7 +60,7 @@ export const assignClassrooms = async (slotAssignments) => {
     if (!assignedRoom) {
       // No suitable room found, still include in output but mark as unassigned
       console.warn(
-        `Warning: No suitable room for course ${assignment.courseName} (${students} students at ${day} ${startTime})`
+        `Warning: No suitable room for course ${assignment.courseName} (${students} students at ${day} ${startTime})`,
       );
       assignmentWithRooms.push({
         ...assignment,
@@ -70,7 +70,7 @@ export const assignClassrooms = async (slotAssignments) => {
     } else {
       roomBookings.set(
         `${assignedRoom._id}|${day}|${startTime}|${endTime}`,
-        true
+        true,
       );
       assignmentWithRooms.push({
         ...assignment,
