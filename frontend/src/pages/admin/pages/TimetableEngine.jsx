@@ -9,12 +9,15 @@ import {
 import {
   fetchTimetableEngine,
   generateTimetable,
+  assignClassrooms,
   publishTimetable,
 } from "../services/adminApi";
+import { getSolverResults, saveSolverResults, clearSolverResults } from "../../../data/timetableEngineStore";
 import { colors, fonts, radius } from "../../../styles/tokens";
 import { Play, Send, Clock } from "lucide-react";
 import ConstraintTogglesCard from "../components/engine/ConstraintTogglesCard";
 import SlotAllocationView from "../components/engine/SlotAllocationView";
+import ClassroomAllocationView from "../components/engine/ClassroomAllocationView";
 
 const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -26,9 +29,12 @@ const timeToMinutes = (time = "00:00") => {
 export default function TimetableEngine() {
   const [engine, setEngine] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [generatingSlots, setGeneratingSlots] = useState(false);
+  const [assigningClassrooms, setAssigningClassrooms] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [solverWarning, setSolverWarning] = useState("");
+  const [slotAssignments, setSlotAssignments] = useState([]); // Results from slot solver
+  const [classroomAssignments, setClassroomAssignments] = useState([]); // Results from classroom solver
   const [constraints, setConstraints] = useState({
     hc1_enabled: true,
     sc1_enabled: true,
@@ -37,20 +43,83 @@ export default function TimetableEngine() {
 
   useEffect(() => {
     fetchTimetableEngine().then((res) => {
+      // START FRESH: Do NOT load sessionStorage on initial page load
+      // Only use sessionStorage when navigating back to this page
+      // This prevents data contamination from previous solver runs
+      
       setEngine(res);
       setLoading(false);
     });
   }, []);
 
+  // Restore sessionStorage only when user navigates BACK (not on hard refresh)
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      // Only restore if this is a back/forward navigation (event.persisted = true for bfcache)
+      // Don't restore on hard refresh
+      if (event.persisted) {
+        const savedResults = getSolverResults();
+        if (savedResults && savedResults.assignments?.length > 0) {
+          setEngine((prev) => ({
+            ...prev,
+            latestAssignments: savedResults.assignments,
+            latestStats: savedResults.stats,
+            latestConstraints: savedResults.constraints,
+            totalSlotsFilled: savedResults.totalSlotsFilled,
+            lastGenerated: savedResults.timestamp,
+          }));
+          
+          // Restore into correct arrays based on whether rooms are assigned
+          const hasRoomData = savedResults.assignments.some(a => a.roomName);
+          if (hasRoomData) {
+            // If classrooms were assigned, restore to both
+            setSlotAssignments(savedResults.assignments);
+            setClassroomAssignments(savedResults.assignments);
+          } else {
+            // If only slots were assigned, restore to slots only
+            setSlotAssignments(savedResults.assignments);
+            setClassroomAssignments([]);
+          }
+        }
+      }
+      // If hard refresh (event.persisted = false), do NOT load - keep everything empty
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   const handleGenerate = async () => {
-    setGenerating(true);
+    setGeneratingSlots(true);
     setSolverWarning("");
+    // Clear old solver results and clear state to prevent duplication
+    clearSolverResults();
+    // Reset both slot and classroom assignments for fresh run
+    setSlotAssignments([]);
+    setClassroomAssignments([]);
+    setEngine((prev) => ({
+      ...prev,
+      latestAssignments: [],  // CLEAR assignments before fetching new ones
+    }));
+    
     const result = await generateTimetable(constraints);
-    setGenerating(false);
+    setGeneratingSlots(false);
     if (result.warning) {
       setSolverWarning(result.warning);
     }
     if (result.success) {
+      // Save solver results to sessionStorage for persistence across navigation
+      saveSolverResults({
+        assignments: result.assignments || [],
+        stats: result.stats || null,
+        constraints: constraints,
+        version: result.version,
+      });
+
+      // Set slot assignments (classroom will be empty until classroom solver runs)
+      setSlotAssignments(result.assignments || []);
+      setClassroomAssignments([]); // IMPORTANT: Clear classroom until explicitly assigned
+
       setEngine((prev) => ({
         ...prev,
         currentVersion: result.version,
@@ -64,6 +133,44 @@ export default function TimetableEngine() {
         totalSlotsFilled: result.assignments?.length || 0,
         totalSlotsAvailable:
           result.stats?.timeslotCount || prev.totalSlotsAvailable,
+      }));
+    }
+  };
+
+  const handleAssignClassrooms = async () => {
+    if (!slotAssignments || slotAssignments.length === 0) {
+      setSolverWarning(
+        "No slot assignments found. Run slot assignment first."
+      );
+      return;
+    }
+
+    setAssigningClassrooms(true);
+    setSolverWarning("");
+    const result = await assignClassrooms(slotAssignments);
+    setAssigningClassrooms(false);
+
+    if (result.warning) {
+      setSolverWarning(result.warning);
+    }
+
+    if (result.success) {
+      // Update sessionStorage with new assignments that include room info
+      saveSolverResults({
+        assignments: result.assignments || [],
+        stats: engine.latestStats || null,
+        constraints: engine.latestConstraints || constraints,
+        version: engine.currentVersion,
+      });
+
+      // IMPORTANT: Set classroom assignments separately from slot assignments
+      setClassroomAssignments(result.assignments || []);
+
+      setEngine((prev) => ({
+        ...prev,
+        latestAssignments: result.assignments || [],
+        classroomAssignmentDuration: result.duration,
+        status: "draft",
       }));
     }
   };
@@ -157,16 +264,35 @@ export default function TimetableEngine() {
             <Button
               variant="secondary"
               onClick={handleGenerate}
-              disabled={generating}
+              disabled={generatingSlots || assigningClassrooms}
               icon={
-                generating ? (
+                generatingSlots ? (
                   <Clock size={14} className="spin" />
                 ) : (
                   <Play size={14} />
                 )
               }
             >
-              {generating ? "Generating..." : "Run Solver"}
+              {generatingSlots ? "Assigning Slots..." : "Run Slot Assignment"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleAssignClassrooms}
+              disabled={
+                assigningClassrooms ||
+                generatingSlots ||
+                !engine.latestAssignments ||
+                engine.latestAssignments.length === 0
+              }
+              icon={
+                assigningClassrooms ? (
+                  <Clock size={14} className="spin" />
+                ) : (
+                  <Play size={14} />
+                )
+              }
+            >
+              {assigningClassrooms ? "Assigning Rooms..." : "Run Classroom Assignment"}
             </Button>
             <Button
               variant="primary"
@@ -444,7 +570,26 @@ export default function TimetableEngine() {
 
         <div>
           {/* @ts-ignore - MUI Box component */}
-          <SlotAllocationView assignments={engine.latestAssignments || []} />
+          <SlotAllocationView assignments={slotAssignments || []} />
+        </div>
+      </div>
+
+      <div style={{ marginTop: "32px" }}>
+        <h2
+          style={{
+            fontSize: fonts.size.lg,
+            fontWeight: fonts.weight.bold,
+            color: colors.text.primary,
+            marginBottom: "12px",
+            fontFamily: fonts.heading,
+          }}
+        >
+          Classroom Allocation
+        </h2>
+
+        <div>
+          {/* @ts-ignore - MUI Box component */}
+          <ClassroomAllocationView assignments={classroomAssignments || []} />
         </div>
       </div>
     </div>
