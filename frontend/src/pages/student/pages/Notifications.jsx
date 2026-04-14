@@ -44,7 +44,7 @@ export default function Notifications() {
         subtitle={`${unreadCount} unread · ${notifications.length} total`}
         accentColor={colors.warning.main}
         actions={<>
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ ...cardInner, padding: "6px 12px", color: colors.text.primary, fontSize: fonts.size.sm, cursor: "pointer", fontFamily: fonts.body }}>
+          <select aria-label="Filter notification type" value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ ...cardInner, padding: "6px 12px", color: colors.text.primary, fontSize: fonts.size.sm, cursor: "pointer", fontFamily: fonts.body }}>
             <option value="all">All Types</option>
             <option value="class_change">Class Changes</option>
             <option value="exam">Exams</option>

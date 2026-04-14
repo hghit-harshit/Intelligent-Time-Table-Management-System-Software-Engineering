@@ -371,15 +371,6 @@ export default function AIAssistant() {
             </div>
           </div>
 
-          <div style={{ ...card, padding: "14px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", color: colors.primary.main }}>
-              <Bot size={16} />
-              <div style={{ fontFamily: fonts.heading, fontWeight: fonts.weight.semibold }}>API note</div>
-            </div>
-            <div style={{ fontSize: fonts.size.sm, color: colors.text.secondary, lineHeight: 1.6 }}>
-              This page calls the backend at <strong>/api/ai/chat</strong>. Set <strong>GEMINI_API_KEY</strong> in the backend environment before using it.
-            </div>
-          </div>
         </div>
       </div>
     </>

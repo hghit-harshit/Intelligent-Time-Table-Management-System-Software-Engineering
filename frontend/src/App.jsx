@@ -8,30 +8,26 @@
  * background color and font to the <body> element.
  */
 
+import { Suspense, lazy } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
-import { ThemeProvider } from "@mui/material/styles"
-import CssBaseline from "@mui/material/CssBaseline"
-import theme from "./styles/theme"
-import Login from "./pages/LoginPage"
-import StudentPage from "./pages/student/StudentPage"
-import FacultyPage from "./pages/faculty/FacultyPage"
-import AdminPage from "./pages/admin/AdminPage"
+
+const Login = lazy(() => import("./pages/LoginPage"))
+const StudentPage = lazy(() => import("./pages/student/StudentPage"))
+const FacultyPage = lazy(() => import("./pages/faculty/FacultyPage"))
+const AdminPage = lazy(() => import("./pages/admin/AdminPage"))
 
 function App() {
   return (
-    // ThemeProvider makes our custom theme available to ALL MUI components
-    <ThemeProvider theme={theme}>
-      {/* CssBaseline normalizes browser styles and applies theme background */}
-      <CssBaseline />
-      <BrowserRouter>
+    <BrowserRouter>
+      <Suspense fallback={<div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>Loading...</div>}>
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/StudentPage/*" element={<StudentPage />} />
           <Route path="/FacultyPage/*" element={<FacultyPage />} />
           <Route path="/AdminPage/*" element={<AdminPage />} />
         </Routes>
-      </BrowserRouter>
-    </ThemeProvider>
+      </Suspense>
+    </BrowserRouter>
   )
 }
 

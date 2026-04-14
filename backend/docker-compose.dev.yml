@@ -26,7 +26,7 @@ services:
       - NODE_ENV=development
       - PORT=5001
       - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/timetable?authSource=admin
-      - GEMINI_API_KEY=AIzaSyDCjW6dr6nVy1IHDshdYIPe-6YcSz2LG_4
+      - GEMINI_API_KEY=AIzaSyBiTtdz9hgv7ZmDo1iKVRHfSRR773U5Jzk
       - GEMINI_MODEL=gemini-2.0-flash
     ports:
       - "5001:5001"
