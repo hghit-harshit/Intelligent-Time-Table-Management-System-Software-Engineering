@@ -463,6 +463,8 @@ class TimetableCpSatBuilder:
                     {
                         "courseId": stringify_id(course.get("_id")),
                         "courseName": self.get_course_name(course),
+                        "courseCode": course.get("code", ""),
+                        "students": course.get("students", 0),
                         "professorId": stringify_id(professor.get("_id")),
                         "professorName": self.get_professor_name(professor),
                         "slotId": stringify_id(slot.get("_id")),

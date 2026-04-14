@@ -7,6 +7,11 @@ const courseSchema = new mongoose.Schema(
     professorIds: [mongoose.Schema.Types.ObjectId],
     facultyIds: [mongoose.Schema.Types.ObjectId],
     sessionsPerWeek: Number,
+    students: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
   },
   {
     strict: false,

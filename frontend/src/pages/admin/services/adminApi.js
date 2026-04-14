@@ -108,6 +108,46 @@ export async function generateTimetable(constraints = {}) {
   }
 }
 
+export async function assignClassrooms(slotAssignments = []) {
+  const endpoint = "http://localhost:5001/api/scheduler/assign-classrooms";
+
+  try {
+    if (!slotAssignments || slotAssignments.length === 0) {
+      return {
+        success: false,
+        message: "No slot assignments provided",
+        assignments: [],
+      };
+    }
+
+    const startedAt = performance.now();
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignments: slotAssignments }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to assign classrooms");
+    }
+
+    const durationMs = performance.now() - startedAt;
+    return {
+      success: true,
+      duration: `${(durationMs / 1000).toFixed(2)}s`,
+      assignments: data.assignments || [],
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Classroom assignment failed: ${error.message}`,
+      assignments: [],
+      warning: error.message,
+    };
+  }
+}
+
 export async function publishTimetable(versionId) {
   await delay(800);
   return { success: true, versionId, publishedAt: new Date().toISOString() };
