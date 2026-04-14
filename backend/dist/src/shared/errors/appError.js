@@ -6,4 +6,3 @@ export class AppError extends Error {
         this.name = "AppError";
     }
 }
-//# sourceMappingURL=appError.js.map

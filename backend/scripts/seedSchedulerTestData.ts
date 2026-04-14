@@ -166,9 +166,15 @@ const run = async () => {
 
   const professorDocs: any[] = [];
   for (const prof of professorBlueprints) {
-    const courseMappings = prof.teaches.map((code) => courseDocs[code]?._id).filter(Boolean);
+    const courseMappings = prof.teaches
+      .map((code) => courseDocs[code]?._id)
+      .filter(Boolean);
     const unavailableSlotIds = prof.blocked
-      .map((entry) => (slotByKey.get(slotLookupKey(entry.day, entry.startTime)) as any)?._id)
+      .map(
+        (entry) =>
+          (slotByKey.get(slotLookupKey(entry.day, entry.startTime)) as any)
+            ?._id,
+      )
       .filter(Boolean);
 
     const professorDoc = await ProfessorModel.findOneAndUpdate(

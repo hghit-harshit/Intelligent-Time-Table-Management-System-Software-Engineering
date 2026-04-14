@@ -1,0 +1,14 @@
+export { default as AdminDashboard } from "../../pages/admin/pages/AdminDashboard";
+export { default as TimetableEngine } from "../../pages/admin/pages/TimetableEngine";
+export { default as ConflictMonitor } from "../../pages/admin/pages/ConflictMonitor";
+export { default as AdminRescheduleRequests } from "../../pages/admin/pages/RescheduleRequests";
+export { default as ExamScheduler } from "../../pages/admin/pages/ExamScheduler";
+export { default as CoursesPage } from "../../pages/admin/pages/CoursesPage";
+export { default as FacultyPage } from "../../pages/admin/pages/FacultyPage";
+export { default as RoomsPage } from "../../pages/admin/pages/RoomsPage";
+export { default as TimeSlotsPage } from "../../pages/admin/pages/TimeSlotsPage";
+export { default as BulkRescheduling } from "../../pages/admin/pages/BulkRescheduling";
+export { default as TimetableVersions } from "../../pages/admin/pages/TimetableVersions";
+export { default as AnalyticsPage } from "../../pages/admin/pages/AnalyticsPage";
+export { default as IntegrationsPage } from "../../pages/admin/pages/IntegrationsPage";
+export { default as SettingsPage } from "../../pages/admin/pages/SettingsPage";

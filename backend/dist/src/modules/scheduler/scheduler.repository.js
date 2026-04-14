@@ -16,4 +16,3 @@ export const schedulerRepository = {
         return rooms;
     },
 };
-//# sourceMappingURL=scheduler.repository.js.map

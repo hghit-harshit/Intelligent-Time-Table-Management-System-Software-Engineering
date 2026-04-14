@@ -8,17 +8,31 @@ import {
 } from "./reschedule.schema.js";
 import { rescheduleService } from "./reschedule.service.js";
 
-const handleError = (res: Response, error: unknown, fallbackMessage: string) => {
+const handleError = (
+  res: Response,
+  error: unknown,
+  fallbackMessage: string,
+) => {
   if (error instanceof ZodError) {
     return fail(res, "Validation failed", 400, error.flatten());
   }
 
-  if (error && typeof error === "object" && "statusCode" in error && "message" in error) {
+  if (
+    error &&
+    typeof error === "object" &&
+    "statusCode" in error &&
+    "message" in error
+  ) {
     const known = error as { statusCode: number; message: string };
     return fail(res, known.message, known.statusCode);
   }
 
-  return fail(res, fallbackMessage, 500, error instanceof Error ? error.message : error);
+  return fail(
+    res,
+    fallbackMessage,
+    500,
+    error instanceof Error ? error.message : error,
+  );
 };
 
 const readId = (value: string | string[] | undefined) => {
@@ -47,7 +61,9 @@ export const getRequests = async (req: Request, res: Response) => {
 
 export const getRequestById = async (req: Request, res: Response) => {
   try {
-    const request = await rescheduleService.getById(readId(req.params.id as string | string[] | undefined));
+    const request = await rescheduleService.getById(
+      readId(req.params.id as string | string[] | undefined),
+    );
     return ok(res, request);
   } catch (error) {
     return handleError(res, error, "Error fetching request");
@@ -57,7 +73,10 @@ export const getRequestById = async (req: Request, res: Response) => {
 export const approveRequest = async (req: Request, res: Response) => {
   try {
     const body = reviewRequestSchema.parse(req.body ?? {});
-    const request = await rescheduleService.approve(readId(req.params.id as string | string[] | undefined), body.adminId);
+    const request = await rescheduleService.approve(
+      readId(req.params.id as string | string[] | undefined),
+      body.adminId,
+    );
     return ok(res, request);
   } catch (error) {
     return handleError(res, error, "Error approving request");
@@ -67,7 +86,10 @@ export const approveRequest = async (req: Request, res: Response) => {
 export const rejectRequest = async (req: Request, res: Response) => {
   try {
     const body = reviewRequestSchema.parse(req.body ?? {});
-    const request = await rescheduleService.reject(readId(req.params.id as string | string[] | undefined), body.adminId);
+    const request = await rescheduleService.reject(
+      readId(req.params.id as string | string[] | undefined),
+      body.adminId,
+    );
     return ok(res, request);
   } catch (error) {
     return handleError(res, error, "Error rejecting request");

@@ -11,4 +11,3 @@ export const generateScheduleSchema = z.object({
 export const assignClassroomsSchema = z.object({
     assignments: z.array(z.record(z.string(), z.any())).min(1),
 });
-//# sourceMappingURL=scheduler.schema.js.map

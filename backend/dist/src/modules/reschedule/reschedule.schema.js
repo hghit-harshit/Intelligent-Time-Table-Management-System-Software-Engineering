@@ -13,4 +13,3 @@ export const requestQuerySchema = z.object({
 export const reviewRequestSchema = z.object({
     adminId: z.string().trim().optional(),
 });
-//# sourceMappingURL=reschedule.schema.js.map

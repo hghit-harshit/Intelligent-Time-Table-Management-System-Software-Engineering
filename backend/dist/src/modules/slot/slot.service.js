@@ -9,7 +9,7 @@ const hasTimeOverlap = (leftStart, leftEnd, rightStart, rightEnd) => {
     const leftEndMinutes = timeToMinutes(leftEnd);
     const rightStartMinutes = timeToMinutes(rightStart);
     const rightEndMinutes = timeToMinutes(rightEnd);
-    return leftStartMinutes < rightEndMinutes && rightStartMinutes < leftEndMinutes;
+    return (leftStartMinutes < rightEndMinutes && rightStartMinutes < leftEndMinutes);
 };
 const findOccurrenceConflict = async (occurrences, excludeSlotId) => {
     const query = excludeSlotId ? { _id: { $ne: excludeSlotId } } : {};
@@ -84,4 +84,3 @@ export const slotService = {
         return { message: "Slot deleted successfully" };
     },
 };
-//# sourceMappingURL=slot.service.js.map

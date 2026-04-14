@@ -8,4 +8,3 @@ export const errorMiddleware = (err, _req, res, _next) => {
     logger.error(message);
     return res.status(500).json({ message });
 };
-//# sourceMappingURL=error.middleware.js.map

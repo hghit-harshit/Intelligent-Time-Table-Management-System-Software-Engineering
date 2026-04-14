@@ -1,12 +1,15 @@
 import { ZodError } from "zod";
 import { fail, ok } from "../../shared/response.js";
-import { assignClassroomsSchema, generateScheduleSchema } from "./scheduler.schema.js";
+import { assignClassroomsSchema, generateScheduleSchema, } from "./scheduler.schema.js";
 import { schedulerService } from "./scheduler.service.js";
 const handleError = (res, error, fallbackMessage) => {
     if (error instanceof ZodError) {
         return fail(res, "Validation failed", 400, error.flatten());
     }
-    if (error && typeof error === "object" && "statusCode" in error && "message" in error) {
+    if (error &&
+        typeof error === "object" &&
+        "statusCode" in error &&
+        "message" in error) {
         const known = error;
         return fail(res, known.message, known.statusCode);
     }
@@ -32,4 +35,3 @@ export const assignClassroomsToSlots = async (req, res) => {
         return handleError(res, error, "Failed to assign classrooms");
     }
 };
-//# sourceMappingURL=scheduler.controller.js.map
