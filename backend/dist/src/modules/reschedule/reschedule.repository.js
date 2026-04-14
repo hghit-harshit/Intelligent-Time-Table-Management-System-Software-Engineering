@@ -22,4 +22,3 @@ export const rescheduleRepository = {
         return RequestModel.findById(id);
     },
 };
-//# sourceMappingURL=reschedule.repository.js.map

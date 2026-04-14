@@ -43,4 +43,3 @@ const requestSchema = new mongoose.Schema({
     collection: "requests",
 });
 export const RequestModel = mongoose.model("Request", requestSchema);
-//# sourceMappingURL=requestModel.js.map

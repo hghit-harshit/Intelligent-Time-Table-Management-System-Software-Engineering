@@ -1,4 +1,9 @@
-export type WeekDay = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday";
+export type WeekDay =
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday";
 
 export interface SlotOccurrence {
   _id?: string;

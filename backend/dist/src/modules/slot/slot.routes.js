@@ -7,4 +7,3 @@ slotRouter.post("/", createSlot);
 slotRouter.put("/:id", updateSlot);
 slotRouter.delete("/:id", deleteSlot);
 export default slotRouter;
-//# sourceMappingURL=slot.routes.js.map

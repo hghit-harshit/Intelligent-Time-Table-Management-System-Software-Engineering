@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { assignClassroomsToSlots, generateSchedule } from "./scheduler.controller.js";
+import {
+  assignClassroomsToSlots,
+  generateSchedule,
+} from "./scheduler.controller.js";
 
 const schedulerRouter = Router();
 

@@ -42,4 +42,3 @@ export const rescheduleService = {
         return updateRequestStatus(id, "rejected", adminId);
     },
 };
-//# sourceMappingURL=reschedule.service.js.map

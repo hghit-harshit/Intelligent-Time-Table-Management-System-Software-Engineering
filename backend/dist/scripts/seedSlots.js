@@ -18,7 +18,12 @@ const slotData = [
     { day: "Wednesday", startTime: "11:00", endTime: "11:55", label: "Slot A" },
     { day: "Wednesday", startTime: "12:00", endTime: "12:55", label: "Slot G" },
     { day: "Wednesday", startTime: "14:30", endTime: "15:55", label: "Slot F" },
-    { day: "Wednesday", startTime: "16:00", endTime: "17:25", label: "Challenge Lectures" },
+    {
+        day: "Wednesday",
+        startTime: "16:00",
+        endTime: "17:25",
+        label: "Challenge Lectures",
+    },
     { day: "Thursday", startTime: "09:00", endTime: "09:55", label: "Slot C" },
     { day: "Thursday", startTime: "10:00", endTime: "10:55", label: "Slot A" },
     { day: "Thursday", startTime: "11:00", endTime: "11:55", label: "Slot B" },
@@ -38,7 +43,11 @@ const run = async () => {
     const slotsByLabel = new Map();
     for (const item of slotData) {
         const existing = slotsByLabel.get(item.label) ?? [];
-        existing.push({ day: item.day, startTime: item.startTime, endTime: item.endTime });
+        existing.push({
+            day: item.day,
+            startTime: item.startTime,
+            endTime: item.endTime,
+        });
         slotsByLabel.set(item.label, existing);
     }
     const docs = Array.from(slotsByLabel.entries()).map(([label, occurrences]) => ({
@@ -60,4 +69,3 @@ run()
     await disconnectDatabase();
     process.exit(1);
 });
-//# sourceMappingURL=seedSlots.js.map

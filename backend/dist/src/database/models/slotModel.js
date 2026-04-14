@@ -68,4 +68,3 @@ slotSchema.pre("validate", function (next) {
     return next();
 });
 export const SlotModel = mongoose.model("Slot", slotSchema);
-//# sourceMappingURL=slotModel.js.map

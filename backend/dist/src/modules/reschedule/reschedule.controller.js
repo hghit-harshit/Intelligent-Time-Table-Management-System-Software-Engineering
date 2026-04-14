@@ -6,7 +6,10 @@ const handleError = (res, error, fallbackMessage) => {
     if (error instanceof ZodError) {
         return fail(res, "Validation failed", 400, error.flatten());
     }
-    if (error && typeof error === "object" && "statusCode" in error && "message" in error) {
+    if (error &&
+        typeof error === "object" &&
+        "statusCode" in error &&
+        "message" in error) {
         const known = error;
         return fail(res, known.message, known.statusCode);
     }
@@ -64,4 +67,3 @@ export const rejectRequest = async (req, res) => {
         return handleError(res, error, "Error rejecting request");
     }
 };
-//# sourceMappingURL=reschedule.controller.js.map
