@@ -53,7 +53,9 @@ slotSchema.pre("validate", function (next) {
 
   for (const occurrence of occurrences) {
     if (occurrence.startTime >= occurrence.endTime) {
-      const err = new Error("End time must be after start time for each occurrence");
+      const err = new Error(
+        "End time must be after start time for each occurrence",
+      );
       err.name = "ValidationError";
       return next(err);
     }
@@ -74,7 +76,9 @@ slotSchema.pre("validate", function (next) {
       const bEnd = timeToMinutes(b.endTime);
 
       if (aStart < bEnd && bStart < aEnd) {
-        const err = new Error(`Occurrences overlap within slot ${this.label} on ${a.day}`);
+        const err = new Error(
+          `Occurrences overlap within slot ${this.label} on ${a.day}`,
+        );
         err.name = "ValidationError";
         return next(err);
       }

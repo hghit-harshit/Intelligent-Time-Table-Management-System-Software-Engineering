@@ -17,4 +17,3 @@ export const disconnectDatabase = async () => {
     await mongoose.disconnect();
     connected = false;
 };
-//# sourceMappingURL=index.js.map

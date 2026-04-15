@@ -1,5 +1,9 @@
 import { AppError } from "../../shared/errors/index.js";
-import type { RequestStatus, RescheduleQuery, RescheduleRequestInput } from "./reschedule.types.js";
+import type {
+  RequestStatus,
+  RescheduleQuery,
+  RescheduleRequestInput,
+} from "./reschedule.types.js";
 import { rescheduleRepository } from "./reschedule.repository.js";
 
 const updateRequestStatus = async (
@@ -27,7 +31,9 @@ const updateRequestStatus = async (
 
 export const rescheduleService = {
   create: async (payload: RescheduleRequestInput) => {
-    return rescheduleRepository.create(payload as unknown as Record<string, unknown>);
+    return rescheduleRepository.create(
+      payload as unknown as Record<string, unknown>,
+    );
   },
 
   getAll: async (query: RescheduleQuery) => {

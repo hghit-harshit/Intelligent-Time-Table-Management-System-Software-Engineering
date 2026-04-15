@@ -100,7 +100,10 @@ export const schedulerService = {
 
   assignClassrooms: async (assignments: any[]) => {
     if (!Array.isArray(assignments) || assignments.length === 0) {
-      throw new AppError("Slot assignments required. Run slot assignment first.", 400);
+      throw new AppError(
+        "Slot assignments required. Run slot assignment first.",
+        400,
+      );
     }
 
     const assignmentsWithRooms = await assignClassroomsGreedy(assignments);

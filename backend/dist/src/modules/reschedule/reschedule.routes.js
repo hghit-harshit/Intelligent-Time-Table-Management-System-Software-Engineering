@@ -7,4 +7,3 @@ rescheduleRouter.post("/", createRequest);
 rescheduleRouter.patch("/:id/approve", approveRequest);
 rescheduleRouter.patch("/:id/reject", rejectRequest);
 export default rescheduleRouter;
-//# sourceMappingURL=reschedule.routes.js.map

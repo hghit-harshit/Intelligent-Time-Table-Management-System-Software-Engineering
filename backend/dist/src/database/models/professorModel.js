@@ -10,4 +10,3 @@ const professorSchema = new mongoose.Schema({
     collection: "professors",
 });
 export const ProfessorModel = mongoose.model("Professor", professorSchema);
-//# sourceMappingURL=professorModel.js.map

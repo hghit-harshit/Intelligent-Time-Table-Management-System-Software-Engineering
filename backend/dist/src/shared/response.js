@@ -8,4 +8,3 @@ export const fail = (res, message, statusCode = 400, details) => {
         ...(details ? { details } : {}),
     });
 };
-//# sourceMappingURL=response.js.map

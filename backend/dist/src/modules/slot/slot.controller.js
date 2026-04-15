@@ -62,4 +62,3 @@ export const deleteSlot = async (req, res) => {
         return handleError(res, error, "Error deleting slot");
     }
 };
-//# sourceMappingURL=slot.controller.js.map

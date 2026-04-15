@@ -35,4 +35,3 @@ export const runCpSatSolver = (payload) => new Promise((resolve, reject) => {
     child.stdin.write(JSON.stringify(payload));
     child.stdin.end();
 });
-//# sourceMappingURL=solverBridge.js.map
