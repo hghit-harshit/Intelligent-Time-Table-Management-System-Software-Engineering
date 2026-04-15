@@ -9,4 +9,3 @@ export const createSlotSchema = z.object({
     occurrences: z.array(occurrenceSchema).min(1),
 });
 export const updateSlotSchema = createSlotSchema;
-//# sourceMappingURL=slot.schema.js.map

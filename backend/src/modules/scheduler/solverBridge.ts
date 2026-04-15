@@ -25,7 +25,9 @@ export const runCpSatSolver = (payload: unknown) =>
     });
 
     child.on("error", (error) => {
-      reject(new Error(`Unable to start OR-Tools solver process: ${error.message}`));
+      reject(
+        new Error(`Unable to start OR-Tools solver process: ${error.message}`),
+      );
     });
 
     child.on("close", (code) => {
@@ -37,7 +39,9 @@ export const runCpSatSolver = (payload: unknown) =>
       try {
         resolve(JSON.parse(stdout || "{}"));
       } catch (error) {
-        reject(new Error(`Invalid solver response: ${(error as Error).message}`));
+        reject(
+          new Error(`Invalid solver response: ${(error as Error).message}`),
+        );
       }
     });
 

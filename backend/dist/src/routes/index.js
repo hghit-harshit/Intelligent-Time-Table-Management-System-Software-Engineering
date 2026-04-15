@@ -7,4 +7,3 @@ apiRouter.use("/slots", slotRouter);
 apiRouter.use("/scheduler", schedulerRouter);
 apiRouter.use("/requests", rescheduleRouter);
 export default apiRouter;
-//# sourceMappingURL=index.js.map

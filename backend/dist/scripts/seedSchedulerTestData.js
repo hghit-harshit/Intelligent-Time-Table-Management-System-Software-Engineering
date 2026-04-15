@@ -144,9 +144,12 @@ const run = async () => {
     }
     const professorDocs = [];
     for (const prof of professorBlueprints) {
-        const courseMappings = prof.teaches.map((code) => courseDocs[code]?._id).filter(Boolean);
+        const courseMappings = prof.teaches
+            .map((code) => courseDocs[code]?._id)
+            .filter(Boolean);
         const unavailableSlotIds = prof.blocked
-            .map((entry) => slotByKey.get(slotLookupKey(entry.day, entry.startTime))?._id)
+            .map((entry) => slotByKey.get(slotLookupKey(entry.day, entry.startTime))
+            ?._id)
             .filter(Boolean);
         const professorDoc = await ProfessorModel.findOneAndUpdate({ email: prof.email }, {
             $set: {
@@ -197,4 +200,3 @@ run()
     await disconnectDatabase();
     process.exit(1);
 });
-//# sourceMappingURL=seedSchedulerTestData.js.map

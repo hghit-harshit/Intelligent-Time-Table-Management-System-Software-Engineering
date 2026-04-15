@@ -108,6 +108,16 @@ Base URL:
 
 http://localhost:5001/api
 
+Auth:
+
+- All /api endpoints require `Authorization: Bearer <token>`
+- Default local token (if not overridden): `disha-dev-token`
+- Example curl:
+
+```bash
+curl -H "Authorization: Bearer disha-dev-token" http://localhost:5001/api/slots
+```
+
 Core endpoints:
 
 - GET /slots
@@ -145,4 +155,12 @@ Python solver issues:
 
 - Verify Python and OR-Tools are installed in backend runtime environment.
 - Optional env override for solver interpreter:
-	- ORTOOLS_PYTHON_BIN=python3
+  - ORTOOLS_PYTHON_BIN=python3
+
+Auth issues:
+
+- Set custom static token:
+  - `API_AUTH_TOKEN=<your-token>`
+- Disable auth temporarily for local debugging only:
+  - `AUTH_DISABLED=true`
+- Signed bearer tokens use `TOKEN_SECRET` for HMAC verification.

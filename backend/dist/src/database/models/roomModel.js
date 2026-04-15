@@ -15,4 +15,3 @@ const roomSchema = new mongoose.Schema({
     collection: "rooms",
 });
 export const RoomModel = mongoose.model("Room", roomSchema);
-//# sourceMappingURL=roomModel.js.map

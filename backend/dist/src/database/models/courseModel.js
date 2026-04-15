@@ -16,4 +16,3 @@ const courseSchema = new mongoose.Schema({
     collection: "courses",
 });
 export const CourseModel = mongoose.model("Course", courseSchema);
-//# sourceMappingURL=courseModel.js.map

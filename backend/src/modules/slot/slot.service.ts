@@ -18,7 +18,9 @@ const hasTimeOverlap = (
   const rightStartMinutes = timeToMinutes(rightStart);
   const rightEndMinutes = timeToMinutes(rightEnd);
 
-  return leftStartMinutes < rightEndMinutes && rightStartMinutes < leftEndMinutes;
+  return (
+    leftStartMinutes < rightEndMinutes && rightStartMinutes < leftEndMinutes
+  );
 };
 
 const findOccurrenceConflict = async (
@@ -59,7 +61,10 @@ const findOccurrenceConflict = async (
   return null;
 };
 
-const validateSlotBusinessRules = async (payload: SlotEntity, excludeId?: string) => {
+const validateSlotBusinessRules = async (
+  payload: SlotEntity,
+  excludeId?: string,
+) => {
   const normalizedLabel = payload.label.trim();
   if (!normalizedLabel) {
     throw new AppError("Label is required", 400);
@@ -69,14 +74,20 @@ const validateSlotBusinessRules = async (payload: SlotEntity, excludeId?: string
     throw new AppError("At least one occurrence is required", 400);
   }
 
-  const duplicate = await slotRepository.findByLabel(normalizedLabel, excludeId);
+  const duplicate = await slotRepository.findByLabel(
+    normalizedLabel,
+    excludeId,
+  );
   if (duplicate) {
     throw new AppError("A slot with this label already exists", 409);
   }
 
   const conflict = await findOccurrenceConflict(payload.occurrences, excludeId);
   if (conflict) {
-    const err = new AppError("Occurrence conflicts with an existing slot", 409) as AppError & {
+    const err = new AppError(
+      "Occurrence conflicts with an existing slot",
+      409,
+    ) as AppError & {
       details?: unknown;
     };
     err.details = conflict;

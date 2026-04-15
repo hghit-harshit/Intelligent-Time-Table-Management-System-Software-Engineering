@@ -3,4 +3,3 @@ export const logger = {
     warn: (...args) => console.warn("[WARN]", ...args),
     error: (...args) => console.error("[ERROR]", ...args),
 };
-//# sourceMappingURL=index.js.map
