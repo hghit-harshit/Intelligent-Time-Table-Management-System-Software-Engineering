@@ -8,6 +8,7 @@ export interface SchedulerInputData {
   slots: unknown[];
   courses: unknown[];
   professors: unknown[];
+  rooms: unknown[];
 }
 
 export interface SchedulerResult {
