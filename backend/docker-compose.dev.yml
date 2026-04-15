@@ -24,8 +24,8 @@ services:
       - NODE_ENV=development
       - PORT=5001
       - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/timetable?authSource=admin
-      - GEMINI_API_KEY=AIzaSyBiTtdz9hgv7ZmDo1iKVRHfSRR773U5Jzk
-      - GEMINI_MODEL=gemini-2.0-flash
+      - GEMINI_API_KEY=AIzaSyCJed26EnDBlOKaocd0rKxZqqovLf1YbmE
+      - GEMINI_MODEL=gemini-2.5-flash
     ports:
       - "5001:5001"
     command: sh -c "npm install && npm run dev"
@@ -38,5 +38,4 @@ services:
 
 volumes:
   mongodb_data:
-  backend_node_modules:
   backend_node_modules:

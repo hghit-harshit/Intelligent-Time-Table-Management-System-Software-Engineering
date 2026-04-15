@@ -1,3 +1,5 @@
+import { withAuthHeaders } from "./authInterceptor";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
 
 const toFriendlyMessage = (status, serverMessage) => {
@@ -6,7 +8,7 @@ const toFriendlyMessage = (status, serverMessage) => {
   }
 
   if (status === 401 || status === 403) {
-    return "Gemini API key is invalid or missing permission for this model.";
+    return "Unauthorized request. Please log in again so your auth token is sent to the backend.";
   }
 
   if (status >= 500) {
@@ -22,9 +24,9 @@ export async function sendAssistantMessage(message, history = []) {
   try {
     response = await fetch(`${API_BASE_URL}/ai/chat`, {
       method: "POST",
-      headers: {
+      headers: withAuthHeaders({
         "Content-Type": "application/json",
-      },
+      }),
       body: JSON.stringify({ message, history }),
     });
   } catch {

@@ -1,11 +1,22 @@
+import type { Request, Response } from "express";
+
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 const GEMINI_SYSTEM_PROMPT = `You are a helpful student timetable assistant for an academic scheduling app.
 Answer clearly and concisely.
 Help with classes, timetable navigation, course planning, exam reminders, and schedule-related questions.
 If the user asks for something outside the app's context, answer briefly and steer them back to timetable assistance.`;
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const buildGeminiBody = (history, message) => ({
+type HistoryItem = {
+  role?: string;
+  text?: string;
+};
+
+const buildGeminiBody = (history: HistoryItem[], message: string) => ({
   systemInstruction: {
     parts: [{ text: GEMINI_SYSTEM_PROMPT }],
   },
@@ -22,30 +33,36 @@ const buildGeminiBody = (history, message) => ({
   },
 });
 
-const isRetryableStatus = (status) => [429, 500, 502, 503, 504].includes(status);
+const isRetryableStatus = (status: number) =>
+  [429, 500, 502, 503, 504].includes(status);
 
-const normalizeHistory = (history = []) =>
+const normalizeHistory = (history: HistoryItem[] = []) =>
   history
     .filter((item) => item && typeof item.text === "string" && item.text.trim())
     .slice(-12)
     .map((item) => ({
       role: item.role === "assistant" ? "model" : "user",
-      parts: [{ text: item.text.trim() }],
+      parts: [{ text: item.text!.trim() }],
     }));
 
-const extractGeminiText = (payload) => {
-  const textParts = payload?.candidates?.[0]?.content?.parts || [];
+const extractGeminiText = (payload: unknown) => {
+  const typed = payload as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+
+  const textParts = typed?.candidates?.[0]?.content?.parts || [];
   return textParts
     .map((part) => part?.text || "")
     .join("")
     .trim();
 };
 
-export const chatWithAssistant = async (req, res) => {
+export const chatWithAssistant = async (req: Request, res: Response) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    const message =
+      typeof req.body?.message === "string" ? req.body.message.trim() : "";
     const history = Array.isArray(req.body?.history) ? req.body.history : [];
 
     if (!apiKey) {
@@ -68,8 +85,8 @@ export const chatWithAssistant = async (req, res) => {
     let lastMessage = "Gemini request failed";
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      let response;
-      let data;
+      let response: globalThis.Response;
+      let data: any;
 
       try {
         response = await fetch(endpoint, {
@@ -82,7 +99,10 @@ export const chatWithAssistant = async (req, res) => {
         data = await response.json();
       } catch (fetchError) {
         lastStatus = 503;
-        lastMessage = fetchError.message || "Network error while contacting Gemini";
+        lastMessage =
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Network error while contacting Gemini";
 
         if (attempt < maxAttempts) {
           await sleep(500 * attempt);
@@ -93,7 +113,8 @@ export const chatWithAssistant = async (req, res) => {
       }
 
       if (response.ok) {
-        const reply = extractGeminiText(data) || "I could not generate a response just now.";
+        const reply =
+          extractGeminiText(data) || "I could not generate a response just now.";
 
         return res.json({
           success: true,
@@ -128,7 +149,7 @@ export const chatWithAssistant = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to contact Gemini",
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 };
