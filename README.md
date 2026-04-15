@@ -1,4 +1,4 @@
-# Smart Timetable — DISHA
+# Smart Timetable for DISHA
 
 Intelligent Timetable Management System for academic scheduling, course enrollment, exam planning, and Google Classroom integration.
 
