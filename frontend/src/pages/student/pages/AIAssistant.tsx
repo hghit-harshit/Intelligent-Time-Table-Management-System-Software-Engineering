@@ -1,8 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { Bot, Send, Sparkles, RotateCcw, Clock3, MessageSquareText } from "lucide-react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 import { SubPageHeader, StatsGrid } from "../../admin/components/ui/index";
 import { sendAssistantMessage } from "../../../services/aiApi";
+
+type MessageRole = "assistant" | "user";
+
+interface ChatMessage {
+  id: string;
+  role: MessageRole;
+  text: string;
+}
+
+interface AssistantApiResponse {
+  reply: string;
+}
 
 const starterPrompts = [
   "What classes do I have today?",
@@ -11,7 +24,7 @@ const starterPrompts = [
   "Help me plan my study time around my schedule.",
 ];
 
-const initialMessages = [
+const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
     role: "assistant",
@@ -20,11 +33,11 @@ const initialMessages = [
 ];
 
 export default function AIAssistant() {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState(null);
-  const bottomRef = useRef(null);
+  const [error, setError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const card = {
     background: colors.bg.base,
@@ -61,7 +74,7 @@ export default function AIAssistant() {
       text: message.text,
     }));
 
-  const handleSend = async (promptText = input) => {
+  const handleSend = async (promptText: string = input) => {
     const trimmed = promptText.trim();
     if (!trimmed || isSending) return;
 
@@ -79,7 +92,7 @@ export default function AIAssistant() {
     setMessages(nextMessages);
 
     try {
-      const result = await sendAssistantMessage(trimmed, historyForApi.concat({ role: "user", text: trimmed }));
+      const result = (await sendAssistantMessage(trimmed, historyForApi.concat({ role: "user", text: trimmed }))) as AssistantApiResponse;
       setMessages((current) => [
         ...current,
         {
@@ -88,8 +101,8 @@ export default function AIAssistant() {
           text: result.reply,
         },
       ]);
-    } catch (chatError) {
-      const friendlyError = chatError.message || "Assistant request failed";
+    } catch (chatError: unknown) {
+      const friendlyError = chatError instanceof Error ? chatError.message : "Assistant request failed";
       setError(friendlyError);
       setMessages((current) => [
         ...current,
@@ -106,7 +119,7 @@ export default function AIAssistant() {
     }
   };
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       handleSend();
