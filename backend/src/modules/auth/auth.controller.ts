@@ -60,3 +60,17 @@ export const getProfile = async (
     next(error);
   }
 };
+
+export const updateProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firstName, lastName, email } = req.body;
+    const profile = await authService.updateProfile(req.user!.userId, { firstName, lastName, email });
+    res.json({ success: true, data: profile });
+  } catch (error) {
+    next(error);
+  }
+};

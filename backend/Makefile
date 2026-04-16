@@ -1,4 +1,4 @@
-.PHONY: up down logs clean rebuild
+.PHONY: up down logs clean rebuild db-setup
 
 # Start all services (MongoDB + Backend with hot reload)
 up:
@@ -35,3 +35,7 @@ install:
 # Shell into backend container
 shell:
 	docker compose -f docker-compose.dev.yml exec backend sh
+
+# Seed default users (student, prof, admin)
+db-setup:
+	docker compose -f docker-compose.dev.yml exec backend npm run db-setup:inside

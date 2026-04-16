@@ -1,6 +1,5 @@
 import { Router } from "express";
 import aiRouter from "../modules/ai/ai.routes.js";
-import authRouter from "../modules/auth/auth.routes.js";
 import rescheduleRouter from "../modules/reschedule/reschedule.routes.js";
 import schedulerRouter from "../modules/scheduler/scheduler.routes.js";
 import slotRouter from "../modules/slot/slot.routes.js";
