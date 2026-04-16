@@ -1,24 +1,123 @@
 import { disconnectDatabase, connectDatabase } from "../src/database/index.js";
+import { BatchCourseRequirementModel } from "../src/database/models/batchCourseRequirementModel.js";
 import { CourseModel } from "../src/database/models/courseModel.js";
 import { ProfessorModel } from "../src/database/models/professorModel.js";
 import { RoomModel } from "../src/database/models/roomModel.js";
 import { SlotModel } from "../src/database/models/slotModel.js";
 
 const courseBlueprints = [
-  { code: "CSE101", name: "Programming Fundamentals", students: 120 },
-  { code: "CSE201", name: "Data Structures", students: 95 },
-  { code: "MAT201", name: "Discrete Mathematics", students: 85 },
-  { code: "ECE205", name: "Digital Logic Design", students: 70 },
-  { code: "CSE303", name: "Database Systems", students: 56 },
-  { code: "CSE401", name: "Operating Systems", students: 78 },
-  { code: "CSE305", name: "Computer Networks", students: 92 },
-  { code: "CSE307", name: "Software Engineering", students: 110 },
-  { code: "CSE411", name: "Machine Learning", students: 65 },
-  { code: "MAT301", name: "Probability and Statistics", students: 88 },
-  { code: "PHY210", name: "Applied Physics", students: 100 },
-  { code: "EEE220", name: "Signals and Systems", students: 75 },
-  { code: "HUM101", name: "Technical Communication", students: 140 },
-  { code: "MGT201", name: "Engineering Economics", students: 130 },
+  {
+    code: "CSE101",
+    name: "Programming Fundamentals",
+    students: 120,
+    department: "CSE",
+    batchIds: ["CS-FY"],
+    compulsoryForBatchIds: ["CS-FY"],
+  },
+  {
+    code: "CSE201",
+    name: "Data Structures",
+    students: 95,
+    department: "CSE",
+    batchIds: ["CS-SY"],
+    compulsoryForBatchIds: ["CS-SY"],
+  },
+  {
+    code: "MAT201",
+    name: "Discrete Mathematics",
+    students: 85,
+    department: "MATH",
+    batchIds: ["CS-SY", "EE-SY"],
+    compulsoryForBatchIds: ["CS-SY", "EE-SY"],
+  },
+  {
+    code: "ECE205",
+    name: "Digital Logic Design",
+    students: 70,
+    department: "ECE",
+    batchIds: ["EE-SY"],
+    compulsoryForBatchIds: ["EE-SY"],
+  },
+  {
+    code: "CSE303",
+    name: "Database Systems",
+    students: 56,
+    department: "CSE",
+    batchIds: ["CS-TY"],
+    compulsoryForBatchIds: ["CS-TY"],
+  },
+  {
+    code: "CSE401",
+    name: "Operating Systems",
+    students: 78,
+    department: "CSE",
+    batchIds: ["CS-TY"],
+    compulsoryForBatchIds: ["CS-TY"],
+  },
+  {
+    code: "CSE305",
+    name: "Computer Networks",
+    students: 92,
+    department: "CSE",
+    batchIds: ["CS-TY"],
+    compulsoryForBatchIds: ["CS-TY"],
+  },
+  {
+    code: "CSE307",
+    name: "Software Engineering",
+    students: 110,
+    department: "CSE",
+    batchIds: ["CS-TY"],
+    compulsoryForBatchIds: ["CS-TY"],
+  },
+  {
+    code: "CSE411",
+    name: "Machine Learning",
+    students: 65,
+    department: "CSE",
+    batchIds: ["CS-FY"],
+    compulsoryForBatchIds: [],
+  },
+  {
+    code: "MAT301",
+    name: "Probability and Statistics",
+    students: 88,
+    department: "MATH",
+    batchIds: ["CS-TY", "EE-TY"],
+    compulsoryForBatchIds: ["EE-TY"],
+  },
+  {
+    code: "PHY210",
+    name: "Applied Physics",
+    students: 100,
+    department: "PHY",
+    batchIds: ["CS-FY", "EE-FY"],
+    compulsoryForBatchIds: ["EE-FY"],
+  },
+  {
+    code: "EEE220",
+    name: "Signals and Systems",
+    students: 75,
+    department: "EEE",
+    batchIds: ["EE-SY"],
+    compulsoryForBatchIds: ["EE-SY"],
+  },
+  {
+    code: "HUM101",
+    name: "Technical Communication",
+    students: 140,
+    department: "HUM",
+    batchIds: ["CS-FY", "EE-FY"],
+    compulsoryForBatchIds: ["CS-FY", "EE-FY"],
+  },
+  {
+    code: "MGT201",
+    name: "Engineering Economics",
+    students: 130,
+    department: "MGT",
+    batchIds: ["CS-SY", "EE-SY"],
+    compulsoryForBatchIds: ["CS-SY"],
+  },
 ];
 
 const professorBlueprints = [
@@ -95,22 +194,22 @@ const professorBlueprints = [
 ];
 
 const roomBlueprints = [
-  { name: "LH101", capacity: 150 },
-  { name: "LH102", capacity: 140 },
-  { name: "LH103", capacity: 120 },
-  { name: "LH104", capacity: 110 },
-  { name: "LH105", capacity: 95 },
-  { name: "LH106", capacity: 85 },
-  { name: "CR201", capacity: 70 },
-  { name: "CR202", capacity: 65 },
-  { name: "CR203", capacity: 60 },
-  { name: "CR204", capacity: 55 },
-  { name: "SR301", capacity: 45 },
-  { name: "SR302", capacity: 42 },
-  { name: "SR303", capacity: 38 },
-  { name: "SR304", capacity: 35 },
-  { name: "SR305", capacity: 32 },
-  { name: "SR306", capacity: 30 },
+  { name: "CSE-LH101", capacity: 150, department: "CSE", building: "CSE Block" },
+  { name: "CSE-LH102", capacity: 140, department: "CSE", building: "CSE Block" },
+  { name: "CSE-LH103", capacity: 120, department: "CSE", building: "CSE Block" },
+  { name: "CSE-LH104", capacity: 110, department: "CSE", building: "CSE Block" },
+  { name: "ECE-LH201", capacity: 95, department: "ECE", building: "ECE Block" },
+  { name: "ECE-LH202", capacity: 85, department: "ECE", building: "ECE Block" },
+  { name: "MATH-CR301", capacity: 90, department: "MATH", building: "Science Block" },
+  { name: "MATH-CR302", capacity: 70, department: "MATH", building: "Science Block" },
+  { name: "PHY-CR303", capacity: 110, department: "PHY", building: "Science Block" },
+  { name: "EEE-CR304", capacity: 80, department: "EEE", building: "EEE Block" },
+  { name: "HUM-SR401", capacity: 150, department: "HUM", building: "Humanities Block" },
+  { name: "MGT-SR402", capacity: 140, department: "MGT", building: "Management Block" },
+  { name: "CSE-SR501", capacity: 65, department: "CSE", building: "CSE Block" },
+  { name: "ECE-SR502", capacity: 60, department: "ECE", building: "ECE Block" },
+  { name: "MATH-SR503", capacity: 50, department: "MATH", building: "Science Block" },
+  { name: "EEE-SR504", capacity: 45, department: "EEE", building: "EEE Block" },
 ];
 
 const slotLookupKey = (day: string, startTime: string) => `${day}|${startTime}`;
@@ -146,6 +245,8 @@ const run = async () => {
         $set: {
           code: course.code,
           name: course.name,
+          department: course.department,
+          batchIds: course.batchIds,
           students: course.students,
           sessionsPerWeek: 1,
           seededBy: "scheduler-test-v2",
@@ -154,6 +255,61 @@ const run = async () => {
       { new: true, upsert: true },
     );
     courseDocs[course.code] = doc;
+  }
+
+  const requirementDocs = Object.values(courseDocs).flatMap((courseDoc: any) => {
+    const courseSeed = courseBlueprints.find((item) => item.code === courseDoc.code);
+    const compulsoryForBatchIds = courseSeed?.compulsoryForBatchIds || [];
+    return compulsoryForBatchIds.map((batchId) => ({
+      batchId,
+      courseId: courseDoc._id,
+      requirementType: "compulsory" as const,
+      academicYear: "2025-2026",
+      semester: 1,
+      active: true,
+    }));
+  });
+
+  if (requirementDocs.length) {
+    const legacyCourseIds = requirementDocs.map((doc) => doc.courseId);
+    const legacyBatchIds = requirementDocs.map((doc) => doc.batchId);
+
+    await BatchCourseRequirementModel.deleteMany({
+      courseId: { $in: legacyCourseIds },
+      batchId: { $in: legacyBatchIds },
+      $or: [
+        { semester: null },
+        { semester: { $exists: false } },
+        { academicYear: null },
+        { academicYear: { $exists: false } },
+      ],
+    });
+
+    await BatchCourseRequirementModel.bulkWrite(
+      requirementDocs.map((doc) => ({
+        updateOne: {
+          filter: {
+            batchId: doc.batchId,
+            courseId: doc.courseId,
+            semester: doc.semester,
+            academicYear: doc.academicYear,
+          },
+          update: {
+            $set: {
+              requirementType: doc.requirementType,
+              active: doc.active,
+            },
+            $setOnInsert: {
+              batchId: doc.batchId,
+              courseId: doc.courseId,
+              semester: doc.semester,
+              academicYear: doc.academicYear,
+            },
+          },
+          upsert: true,
+        },
+      })),
+    );
   }
 
   for (const room of roomBlueprints) {
@@ -215,7 +371,6 @@ const run = async () => {
       {
         $set: {
           professorIds,
-          facultyIds: professorIds,
         },
       },
     );
@@ -226,6 +381,9 @@ const run = async () => {
   console.log(`Courses: ${await CourseModel.countDocuments()}`);
   console.log(`Professors: ${await ProfessorModel.countDocuments()}`);
   console.log(`Rooms: ${await RoomModel.countDocuments()}`);
+  console.log(
+    `Batch Course Requirements: ${await BatchCourseRequirementModel.countDocuments()}`,
+  );
 };
 
 run()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 try:
     from ortools.sat.python import cp_model
@@ -40,6 +40,13 @@ def normalize_day(value):
     return text[0].upper() + text[1:].lower()
 
 
+def normalize_department(value):
+    if value is None:
+        return ""
+
+    return str(value).strip().upper()
+
+
 class TimetableCpSatBuilder:
     def __init__(self, payload: dict):
         self.payload = payload
@@ -52,6 +59,11 @@ class TimetableCpSatBuilder:
         )
         self.courses = payload.get("courses", [])
         self.professors = payload.get("professors", [])
+        self.rooms = payload.get("rooms", [])
+        self.batch_course_requirements = payload.get("batchCourseRequirements", [])
+        self.compulsory_batch_ids_by_course_id = (
+            self.build_compulsory_batch_index_from_requirements()
+        )
 
         self.slot_by_id = {stringify_id(slot.get("_id")): slot for slot in self.slots}
         self.occurrence_by_id = {}
@@ -78,6 +90,8 @@ class TimetableCpSatBuilder:
 
         self.hard_constraints_registry = {
             "hc1_enabled": self.apply_hc1_one_class_per_professor_per_slot,
+            "hc2_enabled": self.apply_hc_department_room_capacity_per_slot,
+            "hc3_enabled": self.apply_hc_no_compulsory_slot_clash_per_batch,
         }
         self.soft_constraints_registry = {
             "sc1_enabled": self.apply_sc1_unavailable_slots_preference,
@@ -203,10 +217,115 @@ class TimetableCpSatBuilder:
     def extract_course_professor_ids(self, course):
         raw_ids = value_from(
             course,
-            ["professorIds", "facultyIds", "teacherIds", "instructorIds", "assignedProfessorIds"],
+            ["professorIds", "teacherIds", "instructorIds", "assignedProfessorIds"],
             [],
         )
         return {stringify_id(value) for value in raw_ids or [] if value is not None}
+
+    def extract_course_department(self, course):
+        value = value_from(
+            course,
+            [
+                "department",
+                "dept",
+                "owningDepartment",
+                "buildingDepartment",
+                "courseDepartment",
+            ],
+            "",
+        )
+
+        normalized = normalize_department(value)
+        if normalized:
+            return normalized
+
+        code = str(value_from(course, ["code"], "")).strip().upper()
+        prefix = ""
+        for char in code:
+            if char.isalpha():
+                prefix += char
+            else:
+                break
+        return prefix
+
+    def extract_room_departments(self, room) -> Set[str]:
+        values = []
+        values.append(value_from(room, ["department", "owningDepartment", "buildingDepartment"], None))
+        values.extend(value_from(room, ["departments", "allowedDepartments"], []) or [])
+        return {
+            normalize_department(item)
+            for item in values
+            if normalize_department(item)
+        }
+
+    def room_matches_department(self, room, department):
+        if not department:
+            return True
+
+        room_departments = self.extract_room_departments(room)
+        if not room_departments:
+            return False
+
+        return department in room_departments
+
+    def room_supports_course(self, room, course):
+        students = value_from(course, ["students"], 0) or 0
+        room_capacity = value_from(room, ["capacity"], 0) or 0
+        if room_capacity < students:
+            return False
+
+        department = self.extract_course_department(course)
+        return self.room_matches_department(room, department)
+
+    def extract_course_batch_ids(self, course):
+        values = value_from(
+            course,
+            [
+                "batchIds",
+                "batches",
+                "batchCodes",
+                "targetBatchIds",
+                "targetBatches",
+                "programBatchIds",
+            ],
+            [],
+        )
+
+        result = []
+        for item in values or []:
+            if isinstance(item, dict):
+                maybe_id = value_from(item, ["batchId", "_id", "id", "code", "name"])
+                if maybe_id is not None:
+                    result.append(stringify_id(maybe_id))
+            else:
+                result.append(stringify_id(item))
+
+        return {batch for batch in result if batch}
+
+    def build_compulsory_batch_index_from_requirements(self):
+        result: Dict[str, Set[str]] = {}
+        for record in self.batch_course_requirements:
+            course_id = stringify_id(value_from(record, ["courseId", "course", "_courseId"], ""))
+            batch_id = stringify_id(value_from(record, ["batchId", "batch", "_batchId"], ""))
+            requirement_type = str(
+                value_from(record, ["requirementType"], "compulsory")
+            ).strip().lower()
+            active = bool(value_from(record, ["active"], True))
+
+            if not course_id or not batch_id or requirement_type != "compulsory" or not active:
+                continue
+
+            if course_id not in result:
+                result[course_id] = set()
+
+            result[course_id].add(batch_id)
+
+        return result
+
+    def extract_compulsory_batch_ids(self, course, course_batch_ids: Set[str]):
+        course_id = stringify_id(course.get("_id"))
+        mapped_batches = self.compulsory_batch_ids_by_course_id.get(course_id, set())
+        return set(mapped_batches)
 
     def eligible_professor_indices_for_course(self, course):
         explicit_ids = self.extract_course_professor_ids(course)
@@ -233,6 +352,19 @@ class TimetableCpSatBuilder:
         for course_index, course in enumerate(self.courses):
             course_name = self.get_course_name(course)
             eligible_prof_indices = self.eligible_professor_indices_for_course(course)
+
+            supports_room_assignment = any(
+                self.room_supports_course(room, course) for room in self.rooms
+            )
+            if self.rooms and not supports_room_assignment:
+                self.unschedulable_courses.append(
+                    {
+                        "courseId": stringify_id(course.get("_id")),
+                        "courseName": course_name,
+                        "reason": "No department-compatible room with enough capacity",
+                    }
+                )
+                continue
 
             for slot_index, slot in enumerate(self.slots):
                 slot_id = stringify_id(slot.get("_id"))
@@ -370,6 +502,66 @@ class TimetableCpSatBuilder:
 
                     self.model.Add(sum(left_vars) + sum(right_vars) <= 1)
 
+    def apply_hc_department_room_capacity_per_slot(self):
+        if not self.rooms:
+            return
+
+        room_count_by_department: Dict[str, int] = {}
+        for room in self.rooms:
+            departments = self.extract_room_departments(room)
+            for department in departments:
+                room_count_by_department[department] = (
+                    room_count_by_department.get(department, 0) + 1
+                )
+
+        for department, room_count in room_count_by_department.items():
+            if room_count <= 0:
+                continue
+
+            eligible_course_indices = [
+                index
+                for index, course in enumerate(self.courses)
+                if self.extract_course_department(course) == department
+            ]
+
+            if not eligible_course_indices:
+                continue
+
+            for slot_index, _slot in enumerate(self.slots):
+                vars_for_department_slot = [
+                    var
+                    for (c_idx, t_idx, _p_idx), var in self.assignment_vars.items()
+                    if c_idx in eligible_course_indices and t_idx == slot_index
+                ]
+
+                if vars_for_department_slot:
+                    self.model.Add(sum(vars_for_department_slot) <= room_count)
+
+    def apply_hc_no_compulsory_slot_clash_per_batch(self):
+        compulsory_course_indices_by_batch: Dict[str, List[int]] = {}
+
+        for course_index, course in enumerate(self.courses):
+            batch_ids = self.extract_course_batch_ids(course)
+            compulsory_batch_ids = self.extract_compulsory_batch_ids(course, batch_ids)
+            for batch_id in compulsory_batch_ids:
+                compulsory_course_indices_by_batch.setdefault(batch_id, []).append(
+                    course_index
+                )
+
+        for batch_id, compulsory_course_indices in compulsory_course_indices_by_batch.items():
+            if len(compulsory_course_indices) <= 1:
+                continue
+
+            for slot_index, _slot in enumerate(self.slots):
+                vars_for_batch_slot = [
+                    var
+                    for (c_idx, t_idx, _p_idx), var in self.assignment_vars.items()
+                    if c_idx in compulsory_course_indices and t_idx == slot_index
+                ]
+
+                if vars_for_batch_slot:
+                    self.model.Add(sum(vars_for_batch_slot) <= 1)
+
     def apply_sc1_unavailable_slots_preference(self):
         weight = 10
         for prof_index, professor in enumerate(self.professors):
@@ -446,6 +638,11 @@ class TimetableCpSatBuilder:
             course = self.courses[course_index]
             slot = self.slots[slot_index]
             professor = self.professors[prof_index]
+            course_department = self.extract_course_department(course)
+            course_batch_ids = sorted(self.extract_course_batch_ids(course))
+            compulsory_batch_ids = sorted(
+                self.extract_compulsory_batch_ids(course, set(course_batch_ids))
+            )
 
             blocked_reference = self.extract_blocked_reference(professor)
             preferred_days_off = self.extract_preferred_days_off(professor)
@@ -464,6 +661,9 @@ class TimetableCpSatBuilder:
                         "courseId": stringify_id(course.get("_id")),
                         "courseName": self.get_course_name(course),
                         "courseCode": course.get("code", ""),
+                        "courseDepartment": course_department,
+                        "batchIds": course_batch_ids,
+                        "compulsoryForBatchIds": compulsory_batch_ids,
                         "students": course.get("students", 0),
                         "professorId": stringify_id(professor.get("_id")),
                         "professorName": self.get_professor_name(professor),

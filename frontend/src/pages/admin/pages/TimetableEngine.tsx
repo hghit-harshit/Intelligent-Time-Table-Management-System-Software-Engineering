@@ -36,6 +36,8 @@ export default function TimetableEngine() {
   const [classroomAssignments, setClassroomAssignments] = useState([]); // Results from classroom solver
   const [constraints, setConstraints] = useState({
     hc1_enabled: true,
+    hc2_enabled: true,
+    hc3_enabled: true,
     sc1_enabled: true,
     sc2_enabled: true,
   });
@@ -540,7 +542,9 @@ export default function TimetableEngine() {
         >
           HC1: {engine.latestConstraints?.hc1_enabled ? "ON" : "OFF"} · SC1:{" "}
           {engine.latestConstraints?.sc1_enabled ? "ON" : "OFF"} · SC2:{" "}
-          {engine.latestConstraints?.sc2_enabled ? "ON" : "OFF"}
+          {engine.latestConstraints?.sc2_enabled ? "ON" : "OFF"} · HC2:{" "}
+          {engine.latestConstraints?.hc2_enabled !== false ? "ON" : "OFF"} ·
+          HC3: {engine.latestConstraints?.hc3_enabled !== false ? "ON" : "OFF"}
         </div>
         <div
           style={{

@@ -4,6 +4,8 @@ export const generateScheduleSchema = z.object({
   constraints: z
     .object({
       hc1_enabled: z.boolean().optional(),
+      hc2_enabled: z.boolean().optional(),
+      hc3_enabled: z.boolean().optional(),
       sc1_enabled: z.boolean().optional(),
       sc2_enabled: z.boolean().optional(),
     })

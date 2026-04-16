@@ -5,9 +5,90 @@ import type { SchedulerConstraints } from "./scheduler.types.js";
 
 const getConstraintFlags = (input: SchedulerConstraints = {}) => ({
   hc1_enabled: input.hc1_enabled !== false,
+  hc2_enabled: input.hc2_enabled !== false,
+  hc3_enabled: input.hc3_enabled !== false,
   sc1_enabled: input.sc1_enabled !== false,
   sc2_enabled: input.sc2_enabled !== false,
 });
+
+const normalizeDepartment = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).trim().toUpperCase();
+};
+
+const extractRoomDepartments = (room: Record<string, any>) => {
+  const values = [
+    room.department,
+    room.owningDepartment,
+    room.buildingDepartment,
+    ...(Array.isArray(room.departments) ? room.departments : []),
+    ...(Array.isArray(room.allowedDepartments) ? room.allowedDepartments : []),
+  ];
+
+  return new Set(values.map(normalizeDepartment).filter(Boolean));
+};
+
+const roomAllowedForDepartment = (
+  room: Record<string, any>,
+  department: string,
+) => {
+  if (!department) {
+    return true;
+  }
+
+  const roomDepartments = extractRoomDepartments(room);
+  if (!roomDepartments.size) {
+    return false;
+  }
+
+  return roomDepartments.has(department);
+};
+
+const isInterdisciplinaryAssignment = (
+  assignment: Record<string, any>,
+  courseDepartment: string,
+) => {
+  if (assignment.interdisciplinary === true || assignment.isInterdisciplinary === true) {
+    return true;
+  }
+
+  const rawDepartment = String(
+    assignment.courseDepartment ?? assignment.department ?? "",
+  ).toUpperCase();
+
+  if (!courseDepartment) {
+    return true;
+  }
+
+  if (["INTERDISCIPLINARY", "INTER-DISCIPLINARY", "ID"].includes(courseDepartment)) {
+    return true;
+  }
+
+  return ["/", "&", ","].some((token) => rawDepartment.includes(token));
+};
+
+const isCommonLectureHall = (room: Record<string, any>) => {
+  if (room.isCommonLectureHallComplex === true || room.commonLectureHallComplex === true) {
+    return true;
+  }
+
+  const name = String(room.name ?? "").toUpperCase();
+  const building = String(room.building ?? room.complex ?? "").toUpperCase();
+  const department = normalizeDepartment(room.department);
+
+  if (department === "COMMON") {
+    return true;
+  }
+
+  return (
+    building.includes("COMMON LECTURE HALL") ||
+    building.includes("CLH") ||
+    name.includes("CLH")
+  );
+};
 
 const assignClassroomsGreedy = async (slotAssignments: any[]) => {
   const availableRooms = await schedulerRepository.getRoomsByCapacityDesc();
@@ -20,24 +101,46 @@ const assignClassroomsGreedy = async (slotAssignments: any[]) => {
 
   for (const assignment of slotAssignments) {
     const { students, day, startTime, endTime } = assignment;
+    const courseDepartment = normalizeDepartment(
+      assignment.courseDepartment ?? assignment.department,
+    );
+    const interdisciplinary = isInterdisciplinaryAssignment(
+      assignment,
+      courseDepartment,
+    );
 
     let bestRoom: any = null;
     let smallestSuitableCapacity = Number.POSITIVE_INFINITY;
 
-    for (const room of availableRooms) {
-      if (room.capacity < students) {
-        continue;
-      }
+    const tryPickRoom = (predicate: (room: Record<string, any>) => boolean) => {
+      for (const room of availableRooms) {
+        if (!predicate(room)) {
+          continue;
+        }
 
-      const bookingKey = `${room._id}|${day}|${startTime}|${endTime}`;
-      if (roomBookings.has(bookingKey)) {
-        continue;
-      }
+        if (room.capacity < students) {
+          continue;
+        }
 
-      if (room.capacity < smallestSuitableCapacity) {
-        smallestSuitableCapacity = room.capacity;
-        bestRoom = room;
+        const bookingKey = `${room._id}|${day}|${startTime}|${endTime}`;
+        if (roomBookings.has(bookingKey)) {
+          continue;
+        }
+
+        if (room.capacity < smallestSuitableCapacity) {
+          smallestSuitableCapacity = room.capacity;
+          bestRoom = room;
+        }
       }
+    };
+
+    if (!interdisciplinary && courseDepartment) {
+      tryPickRoom((room) => roomAllowedForDepartment(room, courseDepartment));
+    }
+
+    if (!bestRoom) {
+      smallestSuitableCapacity = Number.POSITIVE_INFINITY;
+      tryPickRoom((room) => isCommonLectureHall(room));
     }
 
     if (!bestRoom) {
@@ -45,15 +148,25 @@ const assignClassroomsGreedy = async (slotAssignments: any[]) => {
         ...assignment,
         roomName: "UNASSIGNED",
         roomCapacity: 0,
+        roomDepartment: "",
+        roomAssignmentMode: "unassigned",
+        classroomConstraintViolation: true,
       });
       continue;
     }
 
     roomBookings.set(`${bestRoom._id}|${day}|${startTime}|${endTime}`, true);
+    const roomAssignmentMode = isCommonLectureHall(bestRoom)
+      ? "common-lecture-hall"
+      : "department";
+
     assignmentsWithRooms.push({
       ...assignment,
       roomName: bestRoom.name,
       roomCapacity: bestRoom.capacity,
+      roomDepartment: normalizeDepartment(bestRoom.department),
+      roomAssignmentMode,
+      classroomConstraintViolation: false,
     });
   }
 
@@ -75,6 +188,10 @@ export const schedulerService = {
 
     if (!dataset.professors.length) {
       throw new AppError("No professors found in MongoDB", 400);
+    }
+
+    if (!dataset.rooms.length) {
+      throw new AppError("No rooms found in MongoDB", 400);
     }
 
     const solverResult = await runCpSatSolver({
@@ -107,10 +224,16 @@ export const schedulerService = {
     }
 
     const assignmentsWithRooms = await assignClassroomsGreedy(assignments);
+    const unassignedCount = assignmentsWithRooms.filter(
+      (item) => item.roomName === "UNASSIGNED",
+    ).length;
 
     return {
       success: true,
-      message: "Classroom assignments generated successfully",
+      message:
+        unassignedCount > 0
+          ? `Classroom assignments generated with ${unassignedCount} unassigned entries (no department/common hall room available)`
+          : "Classroom assignments generated successfully",
       assignments: assignmentsWithRooms,
     };
   },
