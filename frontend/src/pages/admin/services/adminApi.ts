@@ -20,6 +20,10 @@ import {
 } from "../../../data/adminMockData";
 import { getRequests, updateStatus } from "../../../stores/reschedule.store";
 import { API_BASE_URL } from "../../../config/constants";
+import {
+  SchedulerGenerateEP,
+  SchedulerAssignClassroomsEP,
+} from "../../../constants/Api_constants";
 import { withAuthHeaders } from "../../../services/authInterceptor";
 
 // Simulate network delay
@@ -67,7 +71,7 @@ export async function fetchTimetableEngine() {
 }
 
 export async function generateTimetable(constraints = {}) {
-  const endpoint = `${API_BASE_URL}/scheduler/generate`;
+  const endpoint = SchedulerGenerateEP;
 
   try {
     const startedAt = performance.now();
@@ -112,7 +116,7 @@ export async function generateTimetable(constraints = {}) {
 }
 
 export async function assignClassrooms(slotAssignments = []) {
-  const endpoint = `${API_BASE_URL}/scheduler/assign-classrooms`;
+  const endpoint = SchedulerAssignClassroomsEP;
 
   try {
     if (!slotAssignments || slotAssignments.length === 0) {

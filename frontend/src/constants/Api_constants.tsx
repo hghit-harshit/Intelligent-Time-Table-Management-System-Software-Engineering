@@ -19,6 +19,9 @@ export const RescheduleRejectEP = (id: string) =>
 export const COURSE_DRAFTS_UPLOAD = API_BASE_URL + "/course/drafts/upload";
 export const COURSE_DRAFTS_FILES_LIST = API_BASE_URL + "/course/drafts/files/list";
 
+export const SchedulerGenerateEP = API_BASE_URL + "/scheduler/generate";
+export const SchedulerAssignClassroomsEP = API_BASE_URL + "/scheduler/assign-classrooms";
+
 export const GOOGLE_CLASSROOM_API_URL = "http://localhost:4000/api";
 export const GC_AUTH_URL_EP = GOOGLE_CLASSROOM_API_URL + "/auth/url";
 export const GC_AUTH_STATUS_EP = GOOGLE_CLASSROOM_API_URL + "/auth/status";
