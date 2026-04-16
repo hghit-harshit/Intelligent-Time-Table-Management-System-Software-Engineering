@@ -143,7 +143,8 @@ export const schedulerService = {
       let totalAssignments = 0;
       let totalSoftViolations = 0;
 
-      await session.withTransaction(async () => {
+      const persistSolverOutput = async (activeSession?: mongoose.ClientSession) => {
+        const createOptions = activeSession ? { session: activeSession } : undefined;
         const [runDoc] = await TimetableRunModel.create(
           [
             {
@@ -154,7 +155,7 @@ export const schedulerService = {
               runtime: runtimeSeconds,
             },
           ],
-          { session },
+          createOptions,
         );
 
         runId = String(runDoc._id);
@@ -169,12 +170,13 @@ export const schedulerService = {
           violations: deriveViolationNames(entry),
         }));
 
+        const insertAssignmentOptions = activeSession
+          ? { session: activeSession, ordered: true }
+          : { ordered: true };
+
         const insertedAssignments = await AssignmentModel.insertMany(
           assignmentPayload,
-          {
-            session,
-            ordered: true,
-          },
+          insertAssignmentOptions,
         );
 
         totalAssignments = insertedAssignments.length;
@@ -219,10 +221,14 @@ export const schedulerService = {
         );
 
         if (violationDocs.length > 0) {
-          await SoftConstraintViolationModel.insertMany(violationDocs, {
-            session,
-            ordered: true,
-          });
+          const insertViolationOptions = activeSession
+            ? { session: activeSession, ordered: true }
+            : { ordered: true };
+
+          await SoftConstraintViolationModel.insertMany(
+            violationDocs,
+            insertViolationOptions,
+          );
         }
 
         totalSoftViolations = violationDocs.reduce(
@@ -230,6 +236,7 @@ export const schedulerService = {
           0,
         );
 
+        const updateOptions = activeSession ? { session: activeSession } : undefined;
         await TimetableRunModel.updateOne(
           { _id: runDoc._id },
           {
@@ -238,9 +245,27 @@ export const schedulerService = {
               totalSoftViolations,
             },
           },
-          { session },
+          updateOptions,
         );
-      });
+      };
+
+      try {
+        await session.withTransaction(async () => {
+          await persistSolverOutput(session);
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : "";
+        const isStandaloneMongoError =
+          message.includes("transaction numbers are only allowed") ||
+          message.includes("replica set member or mongos");
+
+        if (!isStandaloneMongoError) {
+          throw error;
+        }
+
+        await persistSolverOutput();
+      }
 
       return {
         runId,
@@ -249,8 +274,10 @@ export const schedulerService = {
         objectiveValue,
         runtime: runtimeSeconds,
       };
-    } catch {
-      throw new Error("Failed to persist solver output");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown persistence error";
+      throw new Error(`Failed to persist solver output: ${message}`);
     } finally {
       await session.endSession();
     }

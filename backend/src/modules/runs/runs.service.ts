@@ -31,10 +31,25 @@ export const runsService = {
 
     const session = await mongoose.startSession();
     try {
-      await session.withTransaction(async () => {
-        await runsRepository.unsetPublishedRuns(session);
-        await runsRepository.publishRunById(runId, session);
-      });
+      try {
+        await session.withTransaction(async () => {
+          await runsRepository.unsetPublishedRuns(session);
+          await runsRepository.publishRunById(runId, session);
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : "";
+        const isStandaloneMongoError =
+          message.includes("transaction numbers are only allowed") ||
+          message.includes("replica set member or mongos");
+
+        if (!isStandaloneMongoError) {
+          throw error;
+        }
+
+        await runsRepository.unsetPublishedRuns();
+        await runsRepository.publishRunById(runId);
+      }
     } finally {
       await session.endSession();
     }
