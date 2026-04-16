@@ -1,10 +1,8 @@
 import { withAuthHeaders } from "../../../services/authInterceptor";
-
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
+import { SlotsEP, SlotByIdEP } from "../../../constants/Api_constants";
 
 export async function fetchTimeSlotsFromApi() {
-  const res = await fetch(`${API_BASE}/slots`, {
+  const res = await fetch(SlotsEP, {
     headers: withAuthHeaders(),
   });
   if (!res.ok) {
@@ -17,7 +15,7 @@ export async function saveTimeSlotToApi(
   slotId: string | null,
   payload: unknown,
 ) {
-  const url = slotId ? `${API_BASE}/slots/${slotId}` : `${API_BASE}/slots`;
+  const url = slotId ? SlotByIdEP(slotId) : SlotsEP;
   const res = await fetch(url, {
     method: slotId ? "PUT" : "POST",
     headers: withAuthHeaders({ "Content-Type": "application/json" }),
@@ -34,7 +32,7 @@ export async function saveTimeSlotToApi(
 }
 
 export async function deleteTimeSlotFromApi(slotId: string) {
-  const res = await fetch(`${API_BASE}/slots/${slotId}`, {
+  const res = await fetch(SlotByIdEP(slotId), {
     method: "DELETE",
     headers: withAuthHeaders(),
   });
