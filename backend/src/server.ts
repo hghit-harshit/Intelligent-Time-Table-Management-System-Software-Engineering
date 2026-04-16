@@ -5,19 +5,33 @@ import { connectDatabase } from "./database/index.js";
 import { authMiddleware } from "./middlewares/auth.middleware.js";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import apiRouter from "./routes/index.js";
+import authRouter from "./modules/auth/auth.routes.js";
 import { logger } from "./shared/logger/index.js";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    logger.info(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+});
 
 app.get("/ping", (_req, res) => {
   res.json({ message: "pong" });
 });
 
-// Public routes (auth)
-app.use("/api/auth", apiRouter);
+// Public routes (auth - no middleware)
+app.use("/api/auth", authRouter);
 
 // Protected routes - require authentication
 app.use("/api", authMiddleware, apiRouter);

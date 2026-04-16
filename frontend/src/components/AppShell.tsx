@@ -37,6 +37,7 @@ export default function AppShell({
   notificationCount = 0,
   notificationPath,
   settingsPath,
+  onLogout,
   extraHeadStyles = "",
   children,
 }) {
@@ -355,7 +356,7 @@ export default function AppShell({
           )}
           {/* Logout — always present */}
           <div
-            onClick={() => navigate("/")}
+            onClick={onLogout || (() => navigate("/"))}
             title={collapsed ? "Logout" : undefined}
             style={{
               display: "flex",
@@ -509,6 +510,7 @@ export default function AppShell({
 
             {/* Profile chip */}
             <div
+              onClick={() => navigate("/profile")}
               style={{
                 display: "flex",
                 alignItems: "center",

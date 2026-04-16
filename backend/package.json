@@ -11,6 +11,7 @@
     "seed:slots:inside": "tsx scripts/seedSlots.ts",
     "seed:scheduler-test:inside": "tsx scripts/seedSchedulerTestData.ts",
     "seed:all:inside": "npm run seed:slots:inside && npm run seed:scheduler-test:inside",
+    "db-setup:inside": "tsx scripts/seedDefaultUsers.ts",
     "seed:slots": "docker compose -f docker-compose.dev.yml exec backend npm run seed:slots:inside",
     "seed:scheduler-test": "docker compose -f docker-compose.dev.yml exec backend npm run seed:scheduler-test:inside",
     "seed:all": "docker compose -f docker-compose.dev.yml exec backend npm run seed:all:inside",

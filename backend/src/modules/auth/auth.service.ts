@@ -80,3 +80,24 @@ export const getProfile = async (userId: string) => {
   }
   return user;
 };
+
+export const updateProfile = async (userId: string, data: { firstName?: string; lastName?: string; email?: string }) => {
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (data.email && data.email !== user.email) {
+    const existing = await UserModel.findOne({ email: data.email.toLowerCase() });
+    if (existing) {
+      throw new AppError("Email already in use", 409);
+    }
+    user.email = data.email.toLowerCase();
+  }
+
+  if (data.firstName) user.firstName = data.firstName;
+  if (data.lastName) user.lastName = data.lastName;
+
+  await user.save();
+  return user.toObject();
+};

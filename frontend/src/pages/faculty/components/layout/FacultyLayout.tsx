@@ -1,10 +1,10 @@
 /**
  * FacultyLayout — Faculty-specific shell wrapping the shared AppShell.
- * WHY: The old FacultyLayout was ~272 lines of sidebar/header code that was 95%
- *      identical to AdminLayout and StudentLayout. Now it's a thin wrapper
- *      that passes faculty-specific config into the shared AppShell component.
  */
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppShell from "../../../../components/AppShell";
+import { useUser } from "../../../../contexts/UserContext";
 import {
   LayoutDashboard,
   CalendarClock,
@@ -16,7 +16,6 @@ import {
   BarChart3,
 } from "lucide-react";
 
-/** navSections — defines the sidebar navigation items for the Faculty role */
 const navSections = [
   {
     label: "OVERVIEW",
@@ -44,21 +43,42 @@ const navSections = [
 ];
 
 export default function FacultyLayout({ children }) {
+  const { user, logout } = useUser();
+  const navigate = useNavigate();
+  const [userData, setUserData] = useState({ initials: "F", name: "Faculty", subtitle: "" });
+
+  useEffect(() => {
+    if (user) {
+      const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase();
+      const name = `Prof. ${user.firstName} ${user.lastName}`;
+      setUserData({
+        initials,
+        name,
+        subtitle: user.email,
+      });
+    }
+  }, [user]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
     <AppShell
       navSections={navSections}
       portalSubtitle="DISHA — Faculty Portal"
-      user={{ initials: "DR", name: "Dr. Rajesh M.", subtitle: "Dept. of ECE", avatarColor: "#7C3AED" }}
+      user={userData}
       roleBadge={{
         text: "FACULTY",
         bg: "rgba(124, 58, 237, 0.08)",
         color: "#7C3AED",
-        borderColor: "rgba(124, 58, 237, 0.25)",
       }}
       searchPlaceholder="Search courses, schedules..."
       notificationCount={2}
       notificationPath="/FacultyPage/notifications"
-      settingsPath="/FacultyPage/settings"
+      settingsPath="/profile"
+      onLogout={handleLogout}
       children={children}
     />
   );
