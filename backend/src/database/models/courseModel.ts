@@ -4,8 +4,13 @@ const courseSchema = new mongoose.Schema(
   {
     name: String,
     code: String,
+    department: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    batchIds: [String],
     professorIds: [mongoose.Schema.Types.ObjectId],
-    facultyIds: [mongoose.Schema.Types.ObjectId],
     sessionsPerWeek: Number,
     students: {
       type: Number,

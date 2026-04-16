@@ -18,7 +18,7 @@ import { Search } from "lucide-react";
  * ClassroomAllocationView
  * Displays classroom assignments for each scheduled course
  *
- * Shows: Course Name | Code | Professor | Room | Capacity
+ * Shows: Course Name | Code | Professor | Room | Capacity | Assignment Mode
  */
 
 const ClassroomAllocationView = ({ assignments = [] }) => {
@@ -220,6 +220,16 @@ const ClassroomAllocationView = ({ assignments = [] }) => {
               >
                 Students
               </TableCell>
+              <TableCell
+                sx={{
+                  fontWeight: 700,
+                  width: "15%",
+                  borderBottom: "1px solid rgba(15, 23, 42, 0.08)",
+                  textAlign: "center",
+                }}
+              >
+                Assignment Mode
+              </TableCell>
             </TableRow>
           </TableHead>
 
@@ -230,6 +240,13 @@ const ClassroomAllocationView = ({ assignments = [] }) => {
                 assignment.students && assignment.roomCapacity
                   ? assignment.students > assignment.roomCapacity * 0.85
                   : false;
+              const assignmentMode = assignment.roomAssignmentMode || (isUnassigned ? "unassigned" : "department");
+              const assignmentModeLabel =
+                assignmentMode === "common-lecture-hall"
+                  ? "Common Lecture Hall"
+                  : assignmentMode === "department"
+                    ? "Department"
+                    : "Unassigned";
 
               return (
                 <TableRow
@@ -278,6 +295,20 @@ const ClassroomAllocationView = ({ assignments = [] }) => {
                     }}
                   >
                     {assignment.students || "—"}
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      textAlign: "center",
+                      fontWeight: 600,
+                      color:
+                        assignmentMode === "common-lecture-hall"
+                          ? "info.main"
+                          : isUnassigned
+                            ? "warning.main"
+                            : "success.main",
+                    }}
+                  >
+                    {assignmentModeLabel}
                   </TableCell>
                 </TableRow>
               );

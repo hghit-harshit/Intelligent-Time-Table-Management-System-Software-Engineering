@@ -5,6 +5,15 @@ const roomSchema = new mongoose.Schema({
         unique: true,
         required: true,
     },
+    department: {
+        type: String,
+        trim: true,
+        uppercase: true,
+    },
+    building: {
+        type: String,
+        trim: true,
+    },
     capacity: {
         type: Number,
         required: true,

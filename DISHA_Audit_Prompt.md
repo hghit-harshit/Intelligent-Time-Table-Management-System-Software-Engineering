@@ -6,8 +6,6 @@ I am working on the **DISHA project** (IIT Hyderabad). My tech lead has defined 
 
 1. The **official standards** (below)
 
-Your job is to **compare my code against every standard**, find every violation or deviation, and produce a detailed Markdown report.
-
 ---
 
 ## OFFICIAL DISHA STANDARDS

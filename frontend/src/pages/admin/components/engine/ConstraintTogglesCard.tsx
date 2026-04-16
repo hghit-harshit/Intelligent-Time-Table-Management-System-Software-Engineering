@@ -6,6 +6,14 @@ const HARD_ROWS = [
     key: "hc1_enabled",
     label: "HC1 — One class per faculty at a time",
   },
+  {
+    key: "hc2_enabled",
+    label: "HC2 — Department-first classroom assignment",
+  },
+  {
+    key: "hc3_enabled",
+    label: "HC3 — No compulsory-course clash per batch",
+  },
 ];
 
 const SOFT_ROWS = [
