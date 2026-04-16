@@ -16,7 +16,12 @@ app.get("/ping", (_req, res) => {
   res.json({ message: "pong" });
 });
 
+// Public routes (auth)
+app.use("/api/auth", apiRouter);
+
+// Protected routes - require authentication
 app.use("/api", authMiddleware, apiRouter);
+
 app.use(errorMiddleware);
 
 const startServer = async () => {

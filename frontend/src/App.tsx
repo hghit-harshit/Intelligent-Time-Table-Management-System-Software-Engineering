@@ -19,6 +19,7 @@ const Login = lazy(() => import("./pages/LoginPage"));
 const StudentPage = lazy(() => import("./pages/student/StudentPage"));
 const FacultyPage = lazy(() => import("./pages/faculty/FacultyPage"));
 const AdminPage = lazy(() => import("./pages/admin/AdminPage"));
+// TODO: Add ApiDocs page when needed const ApiDocsPage = lazy(() => import("./pages/apidocs/ApiDocsPage"));
 
 const RouteFallback = () => (
   <Box sx={{ p: 3, textAlign: "center" }}>Loading...</Box>

@@ -1,5 +1,12 @@
 import { API_BASE_URL } from "../config/constants";
 
+// Auth (Public)
+export const AUTH_REGISTER_EP = API_BASE_URL + "/auth/register";
+export const AUTH_LOGIN_EP = API_BASE_URL + "/auth/login";
+export const AUTH_REFRESH_EP = API_BASE_URL + "/auth/refresh";
+export const AUTH_PROFILE_EP = API_BASE_URL + "/auth/profile";
+
+// Slots
 export const SlotsEP = API_BASE_URL + "/slots";
 export const SlotByIdEP = (id: string) => API_BASE_URL + `/slots/${id}`;
 

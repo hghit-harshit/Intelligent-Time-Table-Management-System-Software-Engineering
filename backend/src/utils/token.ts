@@ -1,69 +1,75 @@
-import { createHmac } from "node:crypto";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { env } from "../config/env.js";
 
-const SECRET = process.env.TOKEN_SECRET ?? "disha-local-secret";
-
-export interface AccessTokenPayload {
+export interface TokenPayload {
   sub: string;
+  userId: string;
   role: string;
-  exp: number;
+  email: string;
 }
 
-const toBase64Url = (value: string) =>
-  Buffer.from(value, "utf8").toString("base64url");
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
 
-const fromBase64Url = (value: string) =>
-  Buffer.from(value, "base64url").toString("utf8");
+const ACCESS_EXPIRES_IN = env.jwtAccessExpiresIn || "15m";
+const REFRESH_EXPIRES_IN = env.jwtRefreshExpiresIn || "7d";
 
-const createSignature = (value: string) => {
-  return createHmac("sha256", SECRET).update(value).digest("hex");
+export const hashPassword = async (password: string): Promise<string> => {
+  return bcrypt.hash(password, 12);
 };
 
-export const signToken = (payload: string) => {
-  return createSignature(payload);
+export const verifyPassword = async (
+  password: string,
+  hashedPassword: string,
+): Promise<boolean> => {
+  return bcrypt.compare(password, hashedPassword);
 };
 
-export const issueAccessToken = (
-  subject: string,
-  role = "service",
-  ttlSeconds = 60 * 60,
-) => {
-  const payload: AccessTokenPayload = {
-    sub: subject,
-    role,
-    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
-  };
+export const generateTokens = (payload: TokenPayload): AuthTokens => {
+  const expiresIn = parseInt(ACCESS_EXPIRES_IN.replace(/\D/g, "")) * 60 * 1000;
 
-  const encodedPayload = toBase64Url(JSON.stringify(payload));
-  const signature = createSignature(encodedPayload);
-  return `${encodedPayload}.${signature}`;
+  const accessToken = jwt.sign(payload, env.jwtSecret, {
+    expiresIn: ACCESS_EXPIRES_IN,
+  });
+
+  const refreshToken = jwt.sign(
+    { sub: payload.sub, type: "refresh" },
+    env.jwtSecret,
+    { expiresIn: REFRESH_EXPIRES_IN },
+  );
+
+  return { accessToken, refreshToken, expiresIn };
 };
 
-export const verifyAccessToken = (token: string): AccessTokenPayload | null => {
-  const [encodedPayload, signature] = token.split(".");
-  if (!encodedPayload || !signature) {
-    return null;
-  }
-
-  const expectedSignature = createSignature(encodedPayload);
-  if (signature !== expectedSignature) {
-    return null;
-  }
-
+export const verifyAccessToken = (token: string): TokenPayload | null => {
   try {
-    const payload = JSON.parse(
-      fromBase64Url(encodedPayload),
-    ) as AccessTokenPayload;
-    const now = Math.floor(Date.now() / 1000);
-    if (!payload.exp || payload.exp < now) {
-      return null;
-    }
-
-    if (!payload.sub || !payload.role) {
-      return null;
-    }
-
-    return payload;
+    const decoded = jwt.verify(token, env.jwtSecret) as TokenPayload;
+    return decoded;
   } catch {
     return null;
   }
+};
+
+export const verifyRefreshToken = (token: string): TokenPayload | null => {
+  try {
+    const decoded = jwt.verify(token, env.jwtSecret) as TokenPayload & {
+      type: string;
+    };
+    if (decoded.type !== "refresh") return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+};
+
+export const refreshAccessToken = (refreshToken: string): AuthTokens | null => {
+  const payload = verifyRefreshToken(refreshToken);
+  if (!payload) return null;
+
+  const { sub, userId, role, email } = payload;
+  return generateTokens({ sub, userId, role, email });
 };
