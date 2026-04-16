@@ -14,4 +14,10 @@ export const env = {
   ortoolsPythonBin: process.env.ORTOOLS_PYTHON_BIN ?? "python3",
   apiAuthToken: process.env.API_AUTH_TOKEN ?? "disha-dev-token",
   authDisabled: parseBoolean(process.env.AUTH_DISABLED, false),
+  jwtSecret: process.env.JWT_SECRET ?? "dev-jwt-secret-key-change-in-production",
+  jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
+  jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
+  adminEmail: process.env.ADMIN_EMAIL ?? "admin@timetable.edu",
+  adminPassword: process.env.ADMIN_PASSWORD ?? "AdminPass123!",
+  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
 };
