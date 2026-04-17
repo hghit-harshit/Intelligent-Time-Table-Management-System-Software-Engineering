@@ -6,6 +6,7 @@ import {
   generateTimetable,
   assignClassrooms,
   publishTimetable,
+  saveTimetableDraft,
 } from "../../../features/admin/services";
 import {
   getSolverResults,
@@ -17,6 +18,7 @@ import { Play, Send, Clock } from "lucide-react";
 import ConstraintTogglesCard from "../components/engine/ConstraintTogglesCard";
 import SlotAllocationView from "../components/engine/SlotAllocationView";
 import ClassroomAllocationView from "../components/engine/ClassroomAllocationView";
+import { toast } from "sonner";
 
 const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -117,6 +119,14 @@ export default function TimetableEngine() {
         version: result.version,
       });
 
+      // Save draft to backend
+      await saveTimetableDraft(
+        result.assignments || [],
+        result.stats || null,
+        constraints,
+        result.version
+      );
+
       // Set slot assignments (classroom will be empty until classroom solver runs)
       setSlotAssignments(result.assignments || []);
       setClassroomAssignments([]); // IMPORTANT: Clear classroom until explicitly assigned
@@ -135,12 +145,23 @@ export default function TimetableEngine() {
         totalSlotsAvailable:
           result.stats?.timeslotCount || prev.totalSlotsAvailable,
       }));
+
+      toast.success("Slot assignment completed!", {
+        description: `Generated ${result.assignments?.length || 0} class assignments in ${result.duration}`,
+      });
+    } else {
+      toast.error("Slot assignment failed", {
+        description: result.warning || "Unknown error occurred",
+      });
     }
   };
 
   const handleAssignClassrooms = async () => {
     if (!slotAssignments || slotAssignments.length === 0) {
       setSolverWarning("No slot assignments found. Run slot assignment first.");
+      toast.warning("No slot assignments", {
+        description: "Run slot assignment first before assigning classrooms",
+      });
       return;
     }
 
@@ -162,6 +183,14 @@ export default function TimetableEngine() {
         version: engine.currentVersion,
       });
 
+      // Save updated draft with classrooms to backend
+      await saveTimetableDraft(
+        result.assignments || [],
+        engine.latestStats || null,
+        engine.latestConstraints || constraints,
+        engine.currentVersion
+      );
+
       // IMPORTANT: Set classroom assignments separately from slot assignments
       setClassroomAssignments(result.assignments || []);
 
@@ -171,6 +200,14 @@ export default function TimetableEngine() {
         classroomAssignmentDuration: result.duration,
         status: "draft",
       }));
+
+      toast.success("Classroom assignment completed!", {
+        description: result.message || `Assigned rooms in ${result.duration}`,
+      });
+    } else {
+      toast.error("Classroom assignment failed", {
+        description: result.warning || "Unknown error occurred",
+      });
     }
   };
 
@@ -188,6 +225,13 @@ export default function TimetableEngine() {
         status: "published",
         lastPublished: result.publishedAt,
       }));
+      toast.success("Timetable published!", {
+        description: `Version ${engine.currentVersion} is now live`,
+      });
+    } else {
+      toast.error("Publish failed", {
+        description: "Failed to publish timetable",
+      });
     }
   };
 
@@ -235,16 +279,20 @@ export default function TimetableEngine() {
             ),
           };
         })
-    : engine.generatedSchedule[0].slots.map((slot, slotIndex) => ({
-        key: `${slot.time}-${slotIndex}`,
-        timeLabel: slot.time,
-        slotsByDay: Object.fromEntries(
-          engine.generatedSchedule.map((day) => [
-            day.day,
-            day.slots[slotIndex] || null,
-          ]),
-        ),
-      }));
+    : (engine.generatedSchedule?.length > 0 && engine.generatedSchedule[0]?.slots?.length > 0
+          ? engine.generatedSchedule[0].slots.map((slot: any, slotIndex: number) => ({
+              key: `${slot.time}-${slotIndex}`,
+              timeLabel: slot.time,
+              slotsByDay: Object.fromEntries(
+                engine.generatedSchedule.map((day: any) => [
+                  day.day,
+                  day.slots[slotIndex] || null,
+                ]),
+              ),
+            }))
+          : []);
+
+  const hasAnyData = hasLatestAssignments || (engine.generatedSchedule?.length > 0 && engine.generatedSchedule[0]?.slots?.length > 0);
 
   return (
     <div>
@@ -346,7 +394,11 @@ export default function TimetableEngine() {
             Schedule Preview — {engine.currentVersion}
           </h3>
           <div style={{ display: "flex", gap: "6px" }}>
-            <Badge variant="info">{engine.totalSlotsFilled} classes</Badge>
+            <Badge variant="info">
+              {hasLatestAssignments
+                ? `${assignments.length} classes`
+                : `${engine.totalSlotsFilled || 0} classes`}
+            </Badge>
             {engine.constraintViolations > 0 && (
               <Badge variant="danger">
                 {engine.constraintViolations} conflicts
@@ -355,18 +407,35 @@ export default function TimetableEngine() {
           </div>
         </div>
 
-        <div
-          style={{
-            marginBottom: "12px",
-            fontSize: fonts.size.xs,
-            color: colors.text.muted,
-          }}
-        >
-          Weekly schedule by day and time. Empty cells indicate no class
-          assigned.
-        </div>
+        {!hasAnyData ? (
+          <div
+            style={{
+              padding: "40px",
+              textAlign: "center",
+              color: colors.text.muted,
+              background: colors.bg.base,
+              borderRadius: radius.md,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: fonts.size.sm }}>
+              No schedule generated yet. Click "Run Slot Assignment" to generate
+              the timetable.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                marginBottom: "12px",
+                fontSize: fonts.size.xs,
+                color: colors.text.muted,
+              }}
+            >
+              Weekly schedule by day and time. Empty cells indicate no class
+              assigned.
+            </div>
 
-        <div
+            <div
           style={{
             overflowX: "auto",
             border: `1px solid ${colors.border.subtle}`,
@@ -520,6 +589,8 @@ export default function TimetableEngine() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </Card>
 
       <Card style={{ padding: "16px", marginTop: "16px" }}>

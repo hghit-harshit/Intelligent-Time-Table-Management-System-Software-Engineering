@@ -474,7 +474,6 @@ export default function AppShell({
               style={{
                 position: "relative",
                 background: colors.bg.raised,
-                border: `1px solid ${colors.border.medium}`,
                 borderRadius: radius.md,
                 padding: "7px",
                 cursor: notificationPath ? "pointer" : "default",
