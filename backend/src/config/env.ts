@@ -11,7 +11,7 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? 5001),
   mongodbUri: process.env.MONGODB_URI ?? "mongodb://localhost:27017/timetable",
-  ortoolsPythonBin: process.env.ORTOOLS_PYTHON_BIN ?? "python3",
+  ortoolsPythonBin: process.env.ORTOOLS_PYTHON_BIN ?? "/home/muqeeth26832/.pyenv/versions/3.10.12/bin/python3",
   apiAuthToken: process.env.API_AUTH_TOKEN ?? "disha-dev-token",
   authDisabled: parseBoolean(process.env.AUTH_DISABLED, false),
   jwtSecret: process.env.JWT_SECRET ?? "dev-jwt-secret-key-change-in-production",

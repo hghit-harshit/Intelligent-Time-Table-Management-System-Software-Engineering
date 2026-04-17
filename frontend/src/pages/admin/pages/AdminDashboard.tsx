@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import MetricsCards from "../components/dashboard/MetricsCards";
-import AlertsPanel from "../components/dashboard/AlertsPanel";
+import TimetablePreview from "../components/dashboard/TimetablePreview";
 import AdminQuickActions from "../components/dashboard/AdminQuickActions";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
@@ -47,24 +47,24 @@ export default function AdminDashboard() {
 
       <MetricsCards metrics={data.metrics} />
 
+      <TimetablePreview />
+
       <div style={{
         display: "grid",
-        gridTemplateColumns: "1fr 280px",
+        gridTemplateColumns: "280px 1fr",
         gap: "16px",
-        marginBottom: "20px",
+        marginTop: "16px",
       }}>
-        <AlertsPanel alerts={data.alerts} />
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <AdminQuickActions />
           <ActivityFeed activities={data.recentActivity} />
         </div>
+        <PendingApprovals
+          requests={data.pendingRequests}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
       </div>
-
-      <PendingApprovals
-        requests={data.pendingRequests}
-        onApprove={handleApprove}
-        onReject={handleReject}
-      />
     </div>
   );
 }

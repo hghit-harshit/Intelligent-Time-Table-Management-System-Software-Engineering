@@ -314,51 +314,18 @@ export const timeSlots = [
 
 // ─── Timetable Engine State ─────────────────────────────────
 export const timetableEngineState = {
-  currentVersion: "v2.5",
+  currentVersion: "v1.0",
   status: "draft",
-  lastGenerated: "2025-03-10T14:30:00Z",
-  lastPublished: "2025-03-02T09:00:00Z",
-  constraintViolations: 3,
-  totalSlotsFilled: 156,
-  totalSlotsAvailable: 200,
-  solverDuration: "2.4s",
-  generatedSchedule: [
-    { day: "Monday", slots: [
-      { time: "8:00 AM", course: "CS201", room: "LHC-2", faculty: "Dr. Mehta" },
-      { time: "9:00 AM", course: "CS305", room: "Lab-3", faculty: "Dr. Rajan" },
-      { time: "10:00 AM", course: null, room: null, faculty: null },
-      { time: "11:00 AM", course: "MA201", room: "LHC-1", faculty: "Dr. Rao" },
-      { time: "2:00 PM", course: "EC401", room: "F-102", faculty: "Dr. Patel" },
-    ]},
-    { day: "Tuesday", slots: [
-      { time: "8:00 AM", course: null, room: null, faculty: null },
-      { time: "9:00 AM", course: "EC301", room: "LHC-5", faculty: "Dr. Singh" },
-      { time: "10:00 AM", course: "EC201", room: "A-301", faculty: "Dr. Kumar" },
-      { time: "11:00 AM", course: null, room: null, faculty: null },
-      { time: "2:00 PM", course: "EC401", room: "F-102", faculty: "Dr. Patel" },
-    ]},
-    { day: "Wednesday", slots: [
-      { time: "8:00 AM", course: "CS201", room: "LHC-2", faculty: "Dr. Mehta" },
-      { time: "9:00 AM", course: null, room: null, faculty: null },
-      { time: "10:00 AM", course: "MA201", room: "LHC-1", faculty: "Dr. Rao" },
-      { time: "11:00 AM", course: null, room: null, faculty: null },
-      { time: "2:00 PM", course: "ME201", room: "LHC-3", faculty: "Dr. Gupta" },
-    ]},
-    { day: "Thursday", slots: [
-      { time: "8:00 AM", course: "EC201", room: "A-301", faculty: "Dr. Kumar" },
-      { time: "9:00 AM", course: "EC301", room: "LHC-5", faculty: "Dr. Singh" },
-      { time: "10:00 AM", course: null, room: null, faculty: null },
-      { time: "11:00 AM", course: "EC201", room: "A-301", faculty: "Dr. Kumar" },
-      { time: "2:00 PM", course: null, room: null, faculty: null },
-    ]},
-    { day: "Friday", slots: [
-      { time: "8:00 AM", course: "CS201", room: "LHC-2", faculty: "Dr. Mehta" },
-      { time: "9:00 AM", course: "ME201", room: "LHC-3", faculty: "Dr. Gupta" },
-      { time: "10:00 AM", course: "CS305", room: "Lab-3", faculty: "Dr. Rajan" },
-      { time: "11:00 AM", course: "MA201", room: "LHC-1", faculty: "Dr. Rao" },
-      { time: "2:00 PM", course: "EC401", room: "F-102", faculty: "Dr. Patel" },
-    ]},
-  ],
+  lastGenerated: null,
+  lastPublished: null,
+  constraintViolations: 0,
+  totalSlotsFilled: 0,
+  totalSlotsAvailable: 30,
+  solverDuration: null,
+  generatedSchedule: [], // Empty initially - real data loaded after running solver
+  latestAssignments: [], // Populated after slot assignment
+  latestStats: null,
+  latestConstraints: null,
 };
 
 // ─── Exam Schedule ──────────────────────────────────────────

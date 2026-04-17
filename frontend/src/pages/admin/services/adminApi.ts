@@ -23,6 +23,10 @@ import { API_BASE_URL } from "../../../config/constants";
 import {
   SchedulerGenerateEP,
   SchedulerAssignClassroomsEP,
+  TimetableSaveDraftEP,
+  TimetablePublishEP,
+  TimetableLatestEP,
+  TimetableVersionsEP,
 } from "../../../constants/Api_constants";
 import { withAuthHeaders } from "../../../services/authInterceptor";
 
@@ -66,6 +70,39 @@ export async function updateRequestStatus(requestId, status) {
 
 // ─── Timetable Engine ───────────────────────────────────────
 export async function fetchTimetableEngine() {
+  try {
+    // First try to get latest timetable (published)
+    const latestResponse = await fetch(TimetableLatestEP + "?t=" + Date.now(), {
+      headers: withAuthHeaders(),
+      cache: "no-store",
+    });
+    
+    if (latestResponse.ok) {
+      const data = await latestResponse.json();
+      const latest = data.result || data.data;
+      
+      if (latest && latest.assignments?.length > 0) {
+        return {
+          currentVersion: latest.version || "v1.0",
+          status: latest.status || "draft",
+          lastGenerated: latest.generatedAt,
+          lastPublished: latest.publishedAt,
+          constraintViolations: 0,
+          totalSlotsFilled: latest.assignments.length,
+          totalSlotsAvailable: 30,
+          solverDuration: latest.stats?.solverDuration || null,
+          generatedSchedule: [],
+          latestAssignments: latest.assignments,
+          latestStats: latest.stats,
+          latestConstraints: latest.constraints,
+        };
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching timetable engine:", error);
+  }
+  
+  // Fallback to mock data if API fails
   await delay(300);
   return { ...timetableEngineState };
 }
@@ -155,9 +192,80 @@ export async function assignClassrooms(slotAssignments = []) {
   }
 }
 
-export async function publishTimetable(versionId) {
-  await delay(800);
-  return { success: true, versionId, publishedAt: new Date().toISOString() };
+export async function saveTimetableDraft(assignments, stats, constraints, version) {
+  try {
+    const response = await fetch(TimetableSaveDraftEP, {
+      method: "POST",
+      headers: withAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ version, assignments, stats, constraints }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to save draft");
+    }
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function publishTimetable(versionId, assignments = []) {
+  try {
+    const response = await fetch(TimetablePublishEP, {
+      method: "POST",
+      headers: withAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ version: versionId }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to publish timetable");
+    }
+    return { success: true, versionId, publishedAt: new Date().toISOString() };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function fetchLatestTimetable() {
+  try {
+    const response = await fetch(TimetableLatestEP + "?t=" + Date.now(), {
+      headers: withAuthHeaders(),
+      cache: "no-store",
+    });
+
+    const data = await response.json();
+    console.log("Latest timetable response:", data);
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to fetch latest timetable");
+    }
+    // Handle different response formats: { result: {...}}, { data: {...}}, or direct object
+    if (data.result) return data.result;
+    if (data.data) return data.data;
+    // Also check if the response itself IS the timetable (has version/assignments)
+    if (data.version && data.assignments) return data;
+    return null;
+  } catch (error) {
+    console.error("fetchLatestTimetable error:", error);
+    return null;
+  }
+}
+
+export async function fetchTimetableVersions() {
+  try {
+    const response = await fetch(TimetableVersionsEP, {
+      headers: withAuthHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || "Failed to fetch versions");
+    }
+    return data.data || [];
+  } catch (error) {
+    return [];
+  }
 }
 
 // ─── Academic Structure ─────────────────────────────────────
@@ -185,12 +293,6 @@ export async function fetchTimeSlots() {
 export async function fetchExamSchedule() {
   await delay(250);
   return [...examSchedule];
-}
-
-// ─── Versions ───────────────────────────────────────────────
-export async function fetchTimetableVersions() {
-  await delay(200);
-  return [...timetableVersions];
 }
 
 // ─── Analytics ──────────────────────────────────────────────
