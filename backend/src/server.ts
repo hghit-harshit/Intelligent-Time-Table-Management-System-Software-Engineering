@@ -10,10 +10,12 @@ import { logger } from "./shared/logger/index.js";
 
 const app = express();
 
-app.use(cors({
-  origin: true,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 // Request logging middleware

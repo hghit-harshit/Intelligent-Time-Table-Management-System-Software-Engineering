@@ -54,7 +54,14 @@ export const getProfile = async (
   next: NextFunction,
 ) => {
   try {
-    const profile = await authService.getProfile(req.user!.userId);
+    if (!req.user?.userId) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+    const profile = await authService.getProfile(req.user.userId);
     res.json({ success: true, data: profile });
   } catch (error) {
     next(error);
@@ -67,8 +74,18 @@ export const updateProfile = async (
   next: NextFunction,
 ) => {
   try {
+    if (!req.user?.userId) {
+      res
+        .status(401)
+        .json({ success: false, message: "Authentication required" });
+      return;
+    }
     const { firstName, lastName, email } = req.body;
-    const profile = await authService.updateProfile(req.user!.userId, { firstName, lastName, email });
+    const profile = await authService.updateProfile(req.user.userId, {
+      firstName,
+      lastName,
+      email,
+    });
     res.json({ success: true, data: profile });
   } catch (error) {
     next(error);
