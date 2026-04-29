@@ -21,7 +21,7 @@ const occurrenceSchema = new mongoose.Schema(
   { _id: true },
 );
 
-const slotSchema = new mongoose.Schema(
+export const slotSchema = new mongoose.Schema(
   {
     label: {
       type: String,
