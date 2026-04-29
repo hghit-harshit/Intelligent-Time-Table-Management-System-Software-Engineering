@@ -16,7 +16,7 @@ rebuild:
 	docker compose -f docker-compose.dev.yml up -d --build
 
 seed:
-	npm run seed:all:inside
+	docker compose -f docker-compose.dev.yml exec backend npm run seed:all:inside
 
 # View logs (follow mode)
 logs:
