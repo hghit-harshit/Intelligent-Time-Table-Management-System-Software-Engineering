@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { loginSchema, refreshSchema, registerSchema } from "./auth.schema.js";
+import { ZodError } from "zod";
+import { fail } from "../../shared/response.js";
 import * as authService from "./auth.service.js";
 import { AppError } from "../../shared/errors/index.js";
 
@@ -13,6 +15,9 @@ export const register = async (
     const tokens = await authService.registerUser(input);
     res.status(201).json({ success: true, ...tokens });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return fail(res, "Validation failed", 400, error.flatten());
+    }
     next(error);
   }
 };
@@ -27,6 +32,9 @@ export const login = async (
     const tokens = await authService.loginUser(input);
     res.json({ success: true, ...tokens });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return fail(res, "Validation failed", 400, error.flatten());
+    }
     next(error);
   }
 };
@@ -44,6 +52,9 @@ export const refresh = async (
     }
     res.json({ success: true, ...tokens });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return fail(res, "Validation failed", 400, error.flatten());
+    }
     next(error);
   }
 };
