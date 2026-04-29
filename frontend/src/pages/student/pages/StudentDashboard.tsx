@@ -1,5 +1,5 @@
-import { useState } from "react"
-import timetableData from "../../../data/timetableData.json"
+import { useEffect, useState } from "react"
+import { fetchStudentDashboard } from "../../../services/studentApi"
 import TopBar from "../components/TopBar"
 import StatsCards from "../components/StatsCards"
 import CalendarCard from "../components/CalendarCard"
@@ -8,13 +8,71 @@ import QuickActions from "../components/QuickActions"
 import UpcomingEvents from "../components/UpcomingEvents"
 import ClassDetailsModal from "../components/ClassDetailsModal"
 
+const buildEmptyDashboard = () => {
+  const now = new Date()
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  return {
+    semester: {
+      name: "Semester",
+      period: "",
+      status: { text: "Loading", type: "info" },
+    },
+    currentDate: {
+      day: now.getDate(),
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      dayName: dayNames[now.getDay()],
+    },
+    stats: [],
+    weekDays: [],
+    weekDates: [],
+    weeklySchedule: [],
+    dailySchedules: {},
+    todaysClasses: [],
+    quickActions: [],
+    upcomingEvents: [],
+    calendar: { monthDaysWithClasses: [], timeSlots: [] },
+  }
+}
+
 export default function StudentDashboard() {
+  const initialDashboard = buildEmptyDashboard()
+  const [dashboardData, setDashboardData] = useState(initialDashboard)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [selectedView, setSelectedView] = useState('week')
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null)
   const [showClassDetails, setShowClassDetails] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(timetableData.currentDate.day)
-  const [selectedMonth, setSelectedMonth] = useState(timetableData.currentDate.month)
-  const [selectedYear, setSelectedYear] = useState(timetableData.currentDate.year)
+  const [selectedDate, setSelectedDate] = useState(initialDashboard.currentDate.day)
+  const [selectedMonth, setSelectedMonth] = useState(initialDashboard.currentDate.month)
+  const [selectedYear, setSelectedYear] = useState(initialDashboard.currentDate.year)
+
+  useEffect(() => {
+    let isMounted = true
+    setIsLoading(true)
+    setLoadError(null)
+
+    fetchStudentDashboard()
+      .then((data) => {
+        if (!isMounted) return
+        setDashboardData(data)
+        setSelectedDate(data.currentDate.day)
+        setSelectedMonth(data.currentDate.month)
+        setSelectedYear(data.currentDate.year)
+      })
+      .catch((error) => {
+        if (!isMounted) return
+        setLoadError(error?.message || "Unable to load dashboard data")
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setIsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handleTimeSlotClick = (timeSlot) => {
     setSelectedTimeSlot(timeSlot)
@@ -64,7 +122,7 @@ export default function StudentDashboard() {
     return months[monthNum - 1]
   }
 
-  const getScheduleForDate = (date) => timetableData.dailySchedules[date.toString()] || []
+  const getScheduleForDate = (date) => dashboardData.dailySchedules[date.toString()] || []
 
   const handleQuickAction = (action) => {
     if (action.onClick.startsWith('/')) {
@@ -78,7 +136,37 @@ export default function StudentDashboard() {
 
   return (
     <>
-      <TopBar semester={timetableData.semester} />
+      <TopBar semester={dashboardData.semester} />
+
+      {isLoading && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(59, 130, 246, 0.1)",
+            color: "#3b82f6",
+            fontSize: "12px",
+          }}
+        >
+          Loading dashboard data...
+        </div>
+      )}
+
+      {loadError && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(239, 68, 68, 0.1)",
+            color: "#ef4444",
+            fontSize: "12px",
+          }}
+        >
+          {loadError}
+        </div>
+      )}
 
       <div style={{
         flex: 1,
@@ -93,7 +181,7 @@ export default function StudentDashboard() {
           overflowY: "auto",
           paddingRight: "8px",
         }}>
-          <StatsCards stats={timetableData.stats} />
+          <StatsCards stats={dashboardData.stats} />
 
           <CalendarCard
             selectedView={selectedView}
@@ -111,12 +199,12 @@ export default function StudentDashboard() {
             getDayName={getDayName}
             getShortDayName={getShortDayName}
             getScheduleForDate={getScheduleForDate}
-            timetableData={timetableData}
+            timetableData={dashboardData}
           />
 
           <TodaysClasses
-            todaysClasses={timetableData.todaysClasses}
-            currentDate={timetableData.currentDate}
+            todaysClasses={dashboardData.todaysClasses}
+            currentDate={dashboardData.currentDate}
             handleTimeSlotClick={handleTimeSlotClick}
             setSelectedView={setSelectedView}
           />
@@ -130,10 +218,10 @@ export default function StudentDashboard() {
           gap: "10px",
         }}>
           <QuickActions
-            quickActions={timetableData.quickActions}
+            quickActions={dashboardData.quickActions}
             handleQuickAction={handleQuickAction}
           />
-          <UpcomingEvents upcomingEvents={timetableData.upcomingEvents} />
+          <UpcomingEvents upcomingEvents={dashboardData.upcomingEvents} />
         </div>
       </div>
 
