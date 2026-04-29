@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 /* WHY: Import shared components to replace duplicated top-bar and stats grid */
 import { SubPageHeader, StatsGrid } from "../../../shared";
+import { fetchStudentExams } from "../../../services/studentApi";
 
 export default function ExamSchedule() {
   const [selectedExam, setSelectedExam] = useState(null);
   const [filterSubject, setFilterSubject] = useState("all");
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   const card = {
     background: colors.bg.base,
@@ -48,96 +52,119 @@ export default function ExamSchedule() {
     fontFamily: fonts.body,
   };
 
-  const exams = [
-    {
-      id: 1,
-      subject: "Digital Circuits",
-      date: "Feb 27, 2025",
-      time: "9:00 AM - 12:00 PM",
-      duration: "3 hours",
-      location: "Exam Hall A",
-      room: "Row 4, Seat 12",
-      invigilator: "Dr. Nair",
-      syllabus: [
-        "Boolean Algebra",
-        "Logic Gates",
-        "Sequential Circuits",
-        "Combinational Circuits",
-      ],
-      status: "upcoming",
-      daysLeft: 8,
-      color: colors.error.main,
-    },
-    {
-      id: 2,
-      subject: "Mathematics III",
-      date: "Mar 4, 2025",
-      time: "2:00 PM - 5:00 PM",
-      duration: "3 hours",
-      location: "LHC-1",
-      room: "Row 2, Seat 8",
-      invigilator: "Dr. Kumar",
-      syllabus: [
-        "Fourier Series",
-        "Laplace Transform",
-        "Partial Differential Equations",
-        "Vector Calculus",
-      ],
-      status: "upcoming",
-      daysLeft: 13,
-      color: colors.warning.main,
-    },
-    {
-      id: 3,
-      subject: "Data Structures & Algorithms",
-      date: "Mar 11, 2025",
-      time: "9:00 AM - 12:00 PM",
-      duration: "3 hours",
-      location: "Exam Hall B",
-      room: "Row 6, Seat 15",
-      invigilator: "Dr. Mehta",
-      syllabus: [
-        "Arrays & Linked Lists",
-        "Stacks & Queues",
-        "Trees & Graphs",
-        "Searching & Sorting",
-      ],
-      status: "upcoming",
-      daysLeft: 20,
-      color: colors.success.main,
-    },
-    {
-      id: 4,
-      subject: "Signals & Systems",
-      date: "Feb 20, 2025",
-      time: "9:00 AM - 12:00 PM",
-      duration: "3 hours",
-      location: "Exam Hall C",
-      room: "Row 1, Seat 5",
-      invigilator: "Dr. Patel",
-      syllabus: [
-        "Signal Analysis",
-        "System Properties",
-        "Fourier Analysis",
-        "Z-Transform",
-      ],
-      status: "completed",
-      daysLeft: 0,
-      score: "85/100",
-      grade: "A",
-      color: colors.primary.main,
-    },
-  ];
+  const toMinutes = (value) => {
+    if (!value) return null;
+    const [hours, minutes] = value.split(":").map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  };
+
+  const formatTime = (value) => {
+    if (!value) return "";
+    const [hours, minutes] = value.split(":").map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+    const suffix = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+  };
+
+  const formatDuration = (startTime, endTime) => {
+    const start = toMinutes(startTime);
+    const end = toMinutes(endTime);
+    if (!start || !end || end <= start) return "";
+    const minutes = end - start;
+    if (minutes % 60 === 0) {
+      const hours = minutes / 60;
+      return `${hours} hour${hours === 1 ? "" : "s"}`;
+    }
+    return `${minutes} min`;
+  };
+
+  const normalizeExam = (exam) => {
+    const examDate = exam.examDate ? new Date(exam.examDate) : exam.date ? new Date(exam.date) : null;
+    const hasDate = examDate && !Number.isNaN(examDate.getTime());
+    const daysLeft = hasDate
+      ? Math.max(0, Math.ceil((examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : 0;
+    const status = exam.status === "completed" || (hasDate && examDate < new Date())
+      ? "completed"
+      : "upcoming";
+
+    const timeRange = exam.time ||
+      (exam.startTime && exam.endTime
+        ? `${formatTime(exam.startTime)} - ${formatTime(exam.endTime)}`
+        : "TBD");
+
+    const durationLabel = exam.duration || formatDuration(exam.startTime, exam.endTime);
+
+    const dateLabel = hasDate
+      ? examDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "TBD";
+    const dateParts = dateLabel.split(" ");
+    const dateMonth = dateParts[0] || "TBD";
+    const dateDay = dateParts[1] ? dateParts[1].replace(",", "") : "";
+
+    return {
+      id: exam.id || exam._id,
+      subject: exam.subject || exam.courseName || exam.courseCode || "Untitled",
+      date: dateLabel,
+      dateMonth,
+      dateDay,
+      time: timeRange,
+      duration: durationLabel || "",
+      location: exam.location || "",
+      room: exam.room || "",
+      invigilator: exam.invigilator || "",
+      syllabus: exam.syllabus || [],
+      status,
+      daysLeft,
+      score: exam.score || "",
+      grade: exam.grade || "",
+      color: status === "completed"
+        ? colors.success.main
+        : daysLeft <= 10
+          ? colors.error.main
+          : colors.warning.main,
+    };
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setLoadError(null);
+
+    fetchStudentExams()
+      .then((data) => {
+        if (!isMounted) return;
+        const normalized = (data || []).map((exam) => normalizeExam(exam));
+        setExams(normalized);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setLoadError(error?.message || "Unable to load exam schedule");
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const upcomingExams = exams.filter((e) => e.status === "upcoming");
   const completedExams = exams.filter((e) => e.status === "completed");
+  const nextExamDays = upcomingExams.length
+    ? Math.min(...upcomingExams.map((e) => e.daysLeft))
+    : 0;
 
   return (
     <>
       {/* WHY: Replaced duplicated accent-bar header with shared SubPageHeader */}
       <SubPageHeader
         title="Exam Schedule"
-        subtitle={`${upcomingExams.length} upcoming · Next in ${Math.min(...upcomingExams.map((e) => e.daysLeft))} days`}
+        subtitle={`${upcomingExams.length} upcoming · Next in ${nextExamDays || "N/A"} days`}
         accentColor={colors.error.main}
         actions={
           <>
@@ -163,6 +190,36 @@ export default function ExamSchedule() {
           </>
         }
       />
+
+      {loading && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(59, 130, 246, 0.1)",
+            color: "#3b82f6",
+            fontSize: "12px",
+          }}
+        >
+          Loading exam schedule...
+        </div>
+      )}
+
+      {loadError && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(239, 68, 68, 0.1)",
+            color: "#ef4444",
+            fontSize: "12px",
+          }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* Content */}
       <div
@@ -190,7 +247,7 @@ export default function ExamSchedule() {
                 color: colors.success.main,
               },
               {
-                num: `${Math.min(...upcomingExams.map((e) => e.daysLeft))} days`,
+                num: upcomingExams.length ? `${nextExamDays} days` : "N/A",
                 label: "Next Exam",
                 color: colors.warning.main,
               },
@@ -266,9 +323,9 @@ export default function ExamSchedule() {
                         fontFamily: fonts.heading,
                       }}
                     >
-                      {exam.date.split(" ")[1].replace(",", "")}
+                      {exam.dateDay || "--"}
                     </div>
-                    <div style={caption}>{exam.date.split(" ")[0]}</div>
+                    <div style={caption}>{exam.dateMonth}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div

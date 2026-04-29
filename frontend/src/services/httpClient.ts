@@ -1,15 +1,28 @@
 import { API_BASE_URL } from "../config/constants";
 import { withAuthHeaders } from "./authInterceptor";
+import { clearAuth, getRefreshToken, setTokens } from "./authApi";
 
-const withJson = async <T>(response: Response): Promise<T> => {
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data?.message || "Request failed");
+const parseJsonSafe = async (response) => {
+  const text = await response.text();
+  if (!text) {
+    return null;
   }
-  return data as T;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
 };
 
-const normalizeHeaders = (headers?: HeadersInit): Record<string, string> => {
+const withJson = async (response) => {
+  const data = await parseJsonSafe(response);
+  if (!response.ok) {
+    throw new Error((data && data.message) || "Request failed");
+  }
+  return data;
+};
+
+const normalizeHeaders = (headers) => {
   if (!headers) return {};
   if (headers instanceof Headers) {
     return Object.fromEntries(headers.entries());
@@ -20,19 +33,56 @@ const normalizeHeaders = (headers?: HeadersInit): Record<string, string> => {
   return headers;
 };
 
-export const httpClient = {
-  get: async <T>(path: string) => {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: withAuthHeaders(),
+const refreshAccessToken = async () => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return false;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const data = await parseJsonSafe(response);
+  if (!response.ok || !data?.accessToken || !data?.refreshToken) {
+    return false;
+  }
+
+  setTokens(data);
+  return true;
+};
+
+const requestWithAuth = async (path, options = undefined) => {
+  const requestOptions = options || {};
+  const runRequest = () =>
+    fetch(`${API_BASE_URL}${path}`, {
+      ...requestOptions,
+      headers: withAuthHeaders(normalizeHeaders(requestOptions.headers)),
     });
-    return withJson<T>(response);
+
+  let response = await runRequest();
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      response = await runRequest();
+    } else {
+      clearAuth();
+    }
+  }
+
+  return response;
+};
+
+export const httpClient = {
+  get: async (path) => {
+    const response = await requestWithAuth(path);
+    return withJson(response);
   },
 
-  request: async <T>(path: string, options: RequestInit) => {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: withAuthHeaders(normalizeHeaders(options.headers)),
-    });
-    return withJson<T>(response);
+  request: async (path, options) => {
+    const response = await requestWithAuth(path, options);
+    return withJson(response);
   },
 };

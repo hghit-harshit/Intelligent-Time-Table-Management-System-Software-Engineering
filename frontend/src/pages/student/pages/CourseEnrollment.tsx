@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 /* WHY: Import shared components to replace duplicated top-bar, stats grid, and modal */
 import { SubPageHeader, StatsGrid, Modal } from "../../../shared";
+import { fetchStudentCourses } from "../../../services/studentApi";
 
 export default function CourseEnrollment() {
   const [selectedSemester, setSelectedSemester] = useState("current");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDept, setFilterDept] = useState("all");
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   const card = {
     background: colors.bg.base,
@@ -59,215 +64,68 @@ export default function CourseEnrollment() {
     fontFamily: fonts.body,
   };
 
-  const [enrolledCourses] = useState([
-    {
-      id: 1,
-      code: "EC301",
-      name: "Digital Signal Processing",
-      credits: 3,
-      instructor: "Dr. Sarah Chen",
-      schedule: "Mon/Wed/Fri 10:00-11:00 AM",
-      room: "E-204",
-      enrolled: 45,
-      capacity: 50,
-      status: "enrolled",
-      grade: "A",
-      completion: 75,
-      department: "ECE",
-      semester: "Spring 2024",
-      assignments: [
-        {
-          name: "Filter Design",
-          due: "Mar 15",
-          status: "submitted",
-          score: "92/100",
-        },
-        { name: "FFT Analysis", due: "Mar 28", status: "pending", score: null },
-        {
-          name: "Final Project",
-          due: "Apr 20",
-          status: "not started",
-          score: null,
-        },
-      ],
-      materials: [
-        { name: "Course Syllabus", type: "pdf", size: "2.3 MB" },
-        { name: "Lecture Notes Ch1-5", type: "pdf", size: "15.7 MB" },
-        { name: "Lab Manual", type: "pdf", size: "4.2 MB" },
-        { name: "Reference Code", type: "zip", size: "8.1 MB" },
-      ],
-    },
-    {
-      id: 2,
-      code: "CS302",
-      name: "Data Structures & Algorithms",
-      credits: 4,
-      instructor: "Prof. Michael Wong",
-      schedule: "Tue/Thu 2:00-3:30 PM",
-      room: "CS-101",
-      enrolled: 38,
-      capacity: 40,
-      status: "enrolled",
-      grade: "A-",
-      completion: 82,
-      department: "CSE",
-      semester: "Spring 2024",
-      assignments: [
-        {
-          name: "Binary Trees",
-          due: "Mar 12",
-          status: "graded",
-          score: "88/100",
-        },
-        {
-          name: "Graph Algorithms",
-          due: "Mar 25",
-          status: "submitted",
-          score: null,
-        },
-        {
-          name: "Dynamic Programming",
-          due: "Apr 8",
-          status: "not started",
-          score: null,
-        },
-      ],
-      materials: [
-        { name: "Algorithm Slides", type: "pdf", size: "22.4 MB" },
-        { name: "Practice Problems", type: "pdf", size: "6.8 MB" },
-        { name: "Code Templates", type: "zip", size: "3.2 MB" },
-      ],
-    },
-    {
-      id: 3,
-      code: "EC305",
-      name: "VLSI Design",
-      credits: 3,
-      instructor: "Dr. Rajesh Patel",
-      schedule: "Mon/Wed 2:00-3:00 PM",
-      room: "F-102",
-      enrolled: 28,
-      capacity: 30,
-      status: "enrolled",
-      grade: "B+",
-      completion: 68,
-      department: "ECE",
-      semester: "Spring 2024",
-      assignments: [
-        {
-          name: "Circuit Layout",
-          due: "Mar 10",
-          status: "graded",
-          score: "85/100",
-        },
-        {
-          name: "Timing Analysis",
-          due: "Mar 24",
-          status: "pending",
-          score: null,
-        },
-        {
-          name: "Final Chip Design",
-          due: "Apr 15",
-          status: "not started",
-          score: null,
-        },
-      ],
-      materials: [
-        { name: "VLSI Fundamentals", type: "pdf", size: "45.2 MB" },
-        { name: "CAD Tools Guide", type: "pdf", size: "12.1 MB" },
-        { name: "Sample Layouts", type: "zip", size: "28.7 MB" },
-      ],
-    },
-  ]);
+  const normalizeCourse = (course, statusOverride) => {
+    const enrolled = Number(course.enrolled ?? course.students ?? 0);
+    const capacity = Number(
+      course.capacity ??
+        course.maxCapacity ??
+        course.maxStudents ??
+        course.students ??
+        0,
+    );
 
-  const [availableCourses] = useState([
-    {
-      id: 101,
-      code: "EC401",
-      name: "Microwave Engineering",
-      credits: 3,
-      instructor: "Dr. Lisa Kumar",
-      schedule: "Tue/Thu 11:00 AM-12:30 PM",
-      room: "E-301",
-      enrolled: 22,
-      capacity: 35,
-      status: "available",
-      prerequisites: ["EC301", "EC204"],
-      department: "ECE",
-      semester: "Spring 2024",
-      description:
-        "Advanced study of microwave circuits, antennas, and propagation.",
-    },
-    {
-      id: 102,
-      code: "CS401",
-      name: "Machine Learning",
-      credits: 4,
-      instructor: "Prof. David Park",
-      schedule: "Mon/Wed/Fri 1:00-2:00 PM",
-      room: "CS-203",
-      enrolled: 35,
-      capacity: 40,
-      status: "available",
-      prerequisites: ["CS302", "MATH301"],
-      department: "CSE",
-      semester: "Spring 2024",
-      description:
-        "Introduction to machine learning algorithms including supervised and deep learning.",
-    },
-    {
-      id: 103,
-      code: "EC403",
-      name: "Digital Communications",
-      credits: 3,
-      instructor: "Dr. Anna Rodriguez",
-      schedule: "Tue/Thu 9:00-10:30 AM",
-      room: "E-205",
-      enrolled: 31,
-      capacity: 35,
-      status: "available",
-      prerequisites: ["EC301", "EC250"],
-      department: "ECE",
-      semester: "Spring 2024",
-      description:
-        "Modern digital communication systems including modulation and coding.",
-    },
-    {
-      id: 104,
-      code: "CS405",
-      name: "Computer Networks",
-      credits: 3,
-      instructor: "Prof. James Wilson",
-      schedule: "Mon/Wed 3:00-4:30 PM",
-      room: "CS-105",
-      enrolled: 28,
-      capacity: 32,
-      status: "available",
-      prerequisites: ["CS302", "CS201"],
-      department: "CSE",
-      semester: "Spring 2024",
-      description:
-        "Network protocols, architectures, security, and performance analysis.",
-    },
-    {
-      id: 105,
-      code: "MATH402",
-      name: "Advanced Statistics",
-      credits: 3,
-      instructor: "Dr. Emily Chen",
-      schedule: "Tue/Thu 1:00-2:30 PM",
-      room: "M-107",
-      enrolled: 33,
-      capacity: 35,
-      status: "waitlist",
-      prerequisites: ["MATH301", "MATH250"],
-      department: "MATH",
-      semester: "Spring 2024",
-      description:
-        "Statistical inference, hypothesis testing, and computational statistics.",
-    },
-  ]);
+    return {
+      id: course.id || course._id,
+      code: course.code || course.id || "",
+      name: course.name || course.title || "Untitled",
+      credits: Number(course.credits ?? course.creditHours ?? course.sessionsPerWeek ?? 0),
+      instructor: course.instructor || course.faculty || "TBA",
+      schedule: course.schedule || "Schedule TBD",
+      room: course.room || "Room TBD",
+      enrolled,
+      capacity,
+      status: statusOverride || course.status || (capacity && enrolled >= capacity ? "waitlist" : "available"),
+      grade: course.grade || "N/A",
+      completion: Number(course.completion ?? 0),
+      department: course.department || "GENERAL",
+      semester: course.semester || "",
+      assignments: course.assignments || [],
+      materials: course.materials || [],
+      description: course.description || "",
+      prerequisites: course.prerequisites || [],
+    };
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setLoadError(null);
+
+    fetchStudentCourses()
+      .then((data) => {
+        if (!isMounted) return;
+        const enrolled = (data?.enrolled || []).map((course) =>
+          normalizeCourse(course, "enrolled"),
+        );
+        const available = (data?.available || []).map((course) =>
+          normalizeCourse(course),
+        );
+        setEnrolledCourses(enrolled);
+        setAvailableCourses(available);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setLoadError(error?.message || "Unable to load courses");
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredAvailableCourses = availableCourses.filter((course) => {
     const matchesSearch =
@@ -305,6 +163,36 @@ export default function CourseEnrollment() {
           </>
         }
       />
+
+      {loading && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(59, 130, 246, 0.1)",
+            color: "#3b82f6",
+            fontSize: "12px",
+          }}
+        >
+          Loading courses...
+        </div>
+      )}
+
+      {loadError && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(239, 68, 68, 0.1)",
+            color: "#ef4444",
+            fontSize: "12px",
+          }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* Content Area */}
       <div
@@ -344,10 +232,14 @@ export default function CourseEnrollment() {
               },
               {
                 num:
-                  (
-                    enrolledCourses.reduce((sum, c) => sum + c.completion, 0) /
-                    enrolledCourses.length
-                  ).toFixed(0) + "%",
+                  (enrolledCourses.length
+                    ? (
+                        enrolledCourses.reduce(
+                          (sum, c) => sum + c.completion,
+                          0,
+                        ) / enrolledCourses.length
+                      ).toFixed(0)
+                    : "0") + "%",
                 label: "Avg Progress",
                 color: colors.warning.main,
               },

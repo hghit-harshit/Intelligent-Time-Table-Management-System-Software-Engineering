@@ -25,66 +25,70 @@ export const authMiddleware = async (
   _res: Response,
   next: NextFunction,
 ) => {
-  if (env.authDisabled) {
+  try {
+    if (env.authDisabled) {
+      next();
+      return;
+    }
+
+    if (req.method === "OPTIONS") {
+      next();
+      return;
+    }
+
+    const token = getBearerToken(req.header("authorization"));
+    if (!token) {
+      return next(new AppError("Missing bearer token", 401));
+    }
+
+    // const staticTokenMatch = token === env.apiAuthToken;
+    const signedTokenPayload = verifyAccessToken(token);
+    // if (!staticTokenMatch && !signedTokenPayload) {
+    //   return next(new AppError("Invalid or expired token", 401));
+    // }
+    if (!signedTokenPayload) {
+      return next(new AppError("Invalid or expired token", 401));
+    }
+
+    // if (staticTokenMatch) {
+    //   const user = await UserModel.findOne({ role: "admin" })
+    //     .select("-password")
+    //     .lean();
+    //   if (user) {
+    //     req.user = {
+    //       sub: "static-token",
+    //       userId: user._id.toString(),
+    //       role: "admin",
+    //       email: "system@admin.local",
+    //       _id: user._id.toString(),
+    //     };
+    //   }
+    // }
+
+    logger.info("value ", signedTokenPayload);
+    if (signedTokenPayload) {
+      req.user = {
+        sub: signedTokenPayload.sub,
+        userId: signedTokenPayload.userId,
+        role: signedTokenPayload.role,
+        email: signedTokenPayload.email,
+        _id: signedTokenPayload.userId,
+      };
+    }
+
     next();
-    return;
+  } catch (error) {
+    next(error);
   }
-
-  if (req.method === "OPTIONS") {
-    next();
-    return;
-  }
-
-  const token = getBearerToken(req.header("authorization"));
-  if (!token) {
-    throw new AppError("Missing bearer token", 401);
-  }
-
-  // const staticTokenMatch = token === env.apiAuthToken;
-  const signedTokenPayload = verifyAccessToken(token);
-  // if (!staticTokenMatch && !signedTokenPayload) {
-  //   throw new AppError("Invalid or expired token", 401);
-  // }
-  if (!signedTokenPayload) {
-    throw new AppError("Invalid or expired token", 401);
-  }
-
-  // if (staticTokenMatch) {
-  //   const user = await UserModel.findOne({ role: "admin" })
-  //     .select("-password")
-  //     .lean();
-  //   if (user) {
-  //     req.user = {
-  //       sub: "static-token",
-  //       userId: user._id.toString(),
-  //       role: "admin",
-  //       email: "system@admin.local",
-  //       _id: user._id.toString(),
-  //     };
-  //   }
-  // }
-
-  logger.info("value ", signedTokenPayload);
-  if (signedTokenPayload) {
-    req.user = {
-      sub: signedTokenPayload.sub,
-      userId: signedTokenPayload.userId,
-      role: signedTokenPayload.role,
-      email: signedTokenPayload.email,
-      _id: signedTokenPayload.userId,
-    };
-  }
-
-  next();
 };
 
 export const requireRole = (...roles: string[]) => {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) {
-      throw new AppError("Authentication required", 401);
+      return next(new AppError("Authentication required", 401));
     }
     if (!roles.includes(req.user.role)) {
-      throw new AppError("Insufficient permissions", 403);
+      return next(new AppError("Insufficient permissions", 403));
     }
     next();
   };

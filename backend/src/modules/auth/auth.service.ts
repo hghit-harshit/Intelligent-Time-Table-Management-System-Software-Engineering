@@ -4,7 +4,7 @@ import {
   hashPassword,
   verifyPassword,
   generateTokens,
-  refreshAccessToken,
+  verifyRefreshToken,
   type AuthTokens,
 } from "../../utils/token.js";
 import type { RegisterInput, LoginInput } from "./auth.schema.js";
@@ -66,11 +66,22 @@ export const loginUser = async (input: LoginInput): Promise<AuthTokens> => {
 export const refreshToken = async (
   refreshTokenInput: string,
 ): Promise<AuthTokens | null> => {
-  const tokens = refreshAccessToken(refreshTokenInput);
-  if (!tokens) {
+  const payload = verifyRefreshToken(refreshTokenInput);
+  if (!payload) {
     throw new AppError("Invalid refresh token", 401);
   }
-  return tokens;
+
+  const user = await UserModel.findOne({ email: payload.sub }).lean();
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  return generateTokens({
+    sub: user.email,
+    userId: user._id.toString(),
+    role: user.role,
+    email: user.email,
+  });
 };
 
 export const getProfile = async (userId: string) => {

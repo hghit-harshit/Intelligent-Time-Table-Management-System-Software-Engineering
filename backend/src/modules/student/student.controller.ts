@@ -1,5 +1,8 @@
 import type { Request, Response } from "express";
 import { CourseModel } from "../../database/models/courseModel.js";
+import { ExamScheduleModel } from "../../database/models/examScheduleModel.js";
+import { NotificationModel } from "../../database/models/notificationModel.js";
+import { ProfessorModel } from "../../database/models/professorModel.js";
 import { StudentEnrollmentModel } from "../../database/models/studentEnrollmentModel.js";
 import { TimetableResultModel } from "../../database/models/timetableResultModel.js";
 import { fail, ok } from "../../shared/response.js";
@@ -92,6 +95,28 @@ const formatDuration = (startTime: string, endTime: string) => {
   return `${durationMinutes} min`;
 };
 
+const formatRelativeTime = (value: Date | string | undefined) => {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? "" : "s"} ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};
+
 const getWeekDates = (today: Date) => {
   const dayOfWeek = today.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -114,8 +139,10 @@ const buildClassItem = (assignment: Record<string, any>) => {
   };
 };
 
+type AssignmentRecord = Record<string, any>;
+
 const buildDashboardPayload = (
-  assignments: Record<string, any>[],
+  assignments: AssignmentRecord[],
   timetable: Record<string, any> | null,
   now: Date,
 ) => {
@@ -124,12 +151,12 @@ const buildDashboardPayload = (
     weekDayNames.map((name, index) => [name, weekDates[index]]),
   );
 
-  const normalizedAssignments = assignments.map((assignment) => ({
+  const normalizedAssignments: AssignmentRecord[] = assignments.map((assignment) => ({
     ...assignment,
     day: normalizeDayName(assignment.day),
   }));
 
-  const assignmentsByDay = new Map<string, Record<string, any>[]>();
+  const assignmentsByDay = new Map<string, AssignmentRecord[]>();
   for (const dayName of weekDayNames) {
     assignmentsByDay.set(dayName, []);
   }
@@ -397,6 +424,289 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
     return fail(
       res,
       "Failed to fetch student dashboard",
+      500,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
+
+const buildCourseSummary = (
+  course: Record<string, any>,
+  professorNames: Map<string, string>,
+  statusOverride?: string,
+) => {
+  const professorIds = Array.isArray(course.professorIds)
+    ? course.professorIds
+    : [];
+  const resolvedProfessors = professorIds
+    .map((id: any) => professorNames.get(String(id)))
+    .filter(Boolean);
+
+  const instructor =
+    course.instructor ||
+    course.faculty ||
+    (resolvedProfessors.length ? resolvedProfessors.join(", ") : "TBA");
+
+  const capacity =
+    course.capacity ??
+    course.maxCapacity ??
+    course.maxStudents ??
+    course.students ??
+    0;
+
+  const enrolled = course.enrolled ?? course.students ?? 0;
+  const status =
+    statusOverride ||
+    course.status ||
+    (capacity && enrolled >= capacity ? "waitlist" : "available");
+
+  return {
+    id: String(course._id ?? course.id ?? ""),
+    code: course.code ?? course.id ?? "",
+    name: course.name ?? course.title ?? "Untitled",
+    credits: Number(course.credits ?? course.creditHours ?? course.sessionsPerWeek ?? 0),
+    instructor,
+    schedule: course.schedule ?? "Schedule TBD",
+    room: course.room ?? "Room TBD",
+    enrolled,
+    capacity,
+    status,
+    grade: course.grade ?? "N/A",
+    completion: Number(course.completion ?? 0),
+    department: course.department ?? "GENERAL",
+    semester: course.semester ?? "",
+    assignments: Array.isArray(course.assignments) ? course.assignments : [],
+    materials: Array.isArray(course.materials) ? course.materials : [],
+    description: course.description ?? "",
+    prerequisites: Array.isArray(course.prerequisites)
+      ? course.prerequisites
+      : [],
+  };
+};
+
+export const getStudentCourses = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return fail(res, "Student authentication required", 401);
+    }
+
+    const enrollment = await StudentEnrollmentModel.findOne({
+      studentId: req.user._id,
+    }).lean();
+
+    const enrolledCourseIds = enrollment?.enrolledCourseIds?.map((id: any) => id.toString()) ?? [];
+
+    const [enrolledCourses, availableCourses] = await Promise.all([
+      enrolledCourseIds.length > 0
+        ? CourseModel.find({ _id: { $in: enrolledCourseIds } }).lean()
+        : Promise.resolve([]),
+      CourseModel.find(
+        enrolledCourseIds.length > 0
+          ? { _id: { $nin: enrolledCourseIds } }
+          : {},
+      ).lean(),
+    ]);
+
+    const professorIds = new Set<string>();
+    for (const course of [...enrolledCourses, ...availableCourses]) {
+      const ids = Array.isArray(course.professorIds)
+        ? course.professorIds
+        : [];
+      ids.forEach((id: any) => professorIds.add(String(id)));
+    }
+
+    const professors = professorIds.size
+      ? await ProfessorModel.find({ _id: { $in: Array.from(professorIds) } })
+          .select("name")
+          .lean()
+      : [];
+
+    const professorMap = new Map(
+      professors.map((professor) => [String(professor._id), professor.name]),
+    );
+
+    const enrolled = enrolledCourses.map((course) =>
+      buildCourseSummary(course, professorMap, "enrolled"),
+    );
+    const available = availableCourses.map((course) =>
+      buildCourseSummary(course, professorMap),
+    );
+
+    return ok(res, { enrolled, available });
+  } catch (error) {
+    return fail(
+      res,
+      "Failed to fetch student courses",
+      500,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
+
+export const getStudentExams = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return fail(res, "Student authentication required", 401);
+    }
+
+    const enrollment = await StudentEnrollmentModel.findOne({
+      studentId: req.user._id,
+    }).lean();
+
+    const enrolledCourseIds = enrollment?.enrolledCourseIds?.map((id: any) => id.toString()) ?? [];
+    const enrolledCourses = enrolledCourseIds.length
+      ? await CourseModel.find({ _id: { $in: enrolledCourseIds } })
+          .select("code")
+          .lean()
+      : [];
+
+    const enrolledCodes = enrolledCourses
+      .map((course) => String(course.code || ""))
+      .filter(Boolean);
+
+    const query: Record<string, any> = {};
+    if (enrolledCourseIds.length || enrolledCodes.length) {
+      query.$or = [
+        ...(enrolledCourseIds.length
+          ? [{ courseId: { $in: enrolledCourseIds } }]
+          : []),
+        ...(enrolledCodes.length
+          ? [{ courseCode: { $in: enrolledCodes } }]
+          : []),
+      ];
+    }
+
+    const exams = await ExamScheduleModel.find(query)
+      .sort({ examDate: 1 })
+      .lean();
+
+    return ok(
+      res,
+      exams.map((exam) => ({
+        id: String(exam._id),
+        courseCode: exam.courseCode,
+        courseName: exam.courseName,
+        subject: exam.courseName || exam.courseCode || "Untitled",
+        examDate: exam.examDate,
+        startTime: exam.startTime,
+        endTime: exam.endTime,
+        location: exam.location,
+        room: exam.room,
+        invigilator: exam.invigilator,
+        syllabus: Array.isArray(exam.syllabus) ? exam.syllabus : [],
+        status: exam.status,
+        score: exam.score,
+        grade: exam.grade,
+      })),
+    );
+  } catch (error) {
+    return fail(
+      res,
+      "Failed to fetch exam schedule",
+      500,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
+
+export const getStudentNotifications = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return fail(res, "Student authentication required", 401);
+    }
+
+    const notifications = await NotificationModel.find({
+      $or: [
+        { studentId: req.user._id },
+        { studentId: null },
+        { studentId: { $exists: false } },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return ok(
+      res,
+      notifications.map((notification) => ({
+        id: String(notification._id),
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        details: notification.details,
+        priority: notification.priority,
+        isRead: notification.isRead,
+        createdAt: notification.createdAt,
+        time: formatRelativeTime(notification.createdAt),
+      })),
+    );
+  } catch (error) {
+    return fail(
+      res,
+      "Failed to fetch notifications",
+      500,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
+
+export const markNotificationRead = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return fail(res, "Student authentication required", 401);
+    }
+
+    const notification = await NotificationModel.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        $or: [
+          { studentId: req.user._id },
+          { studentId: null },
+          { studentId: { $exists: false } },
+        ],
+      },
+      { $set: { isRead: true } },
+      { new: true },
+    ).lean();
+
+    if (!notification) {
+      return fail(res, "Notification not found", 404);
+    }
+
+    return ok(res, { id: String(notification._id), isRead: true });
+  } catch (error) {
+    return fail(
+      res,
+      "Failed to update notification",
+      500,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
+
+export const deleteNotification = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return fail(res, "Student authentication required", 401);
+    }
+
+    const deleted = await NotificationModel.findOneAndDelete({
+      _id: req.params.id,
+      $or: [
+        { studentId: req.user._id },
+        { studentId: null },
+        { studentId: { $exists: false } },
+      ],
+    }).lean();
+
+    if (!deleted) {
+      return fail(res, "Notification not found", 404);
+    }
+
+    return ok(res, { id: String(deleted._id) });
+  } catch (error) {
+    return fail(
+      res,
+      "Failed to delete notification",
       500,
       error instanceof Error ? error.message : error,
     );

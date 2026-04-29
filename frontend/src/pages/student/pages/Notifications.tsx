@@ -1,11 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 /* WHY: Import shared components to replace duplicated top-bar, stats grid, and modal */
 import { SubPageHeader, StatsGrid, Modal } from "../../../shared";
+import {
+  deleteStudentNotification,
+  fetchStudentNotifications,
+  markStudentNotificationRead,
+} from "../../../services/studentApi";
 
 export default function Notifications() {
   const [filterType, setFilterType] = useState("all");
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   const card = {
     background: colors.bg.base,
@@ -48,85 +56,68 @@ export default function Notifications() {
     fontFamily: fonts.body,
   };
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: "class_change",
-      title: "Class Rescheduled",
-      message:
-        "VLSI Design (Wed 2pm) moved to Fri 2pm · F-102. Auto-updated in calendar.",
-      time: "10 min ago",
-      isRead: false,
-      priority: "high",
-      color: colors.warning.main,
-      details:
-        "Due to Dr. Patel's emergency meeting, the VLSI Design class scheduled for Wednesday at 2:00 PM has been moved to Friday at the same time. The classroom remains F-102. All registered students have been notified automatically.",
-    },
-    {
-      id: 2,
-      type: "exam",
-      title: "Exam Hall Published",
-      message:
-        "Digital Circuits exam: Hall A, Row 4, Seat 12. Invigilator: Dr. Nair.",
-      time: "1 hr ago",
-      isRead: false,
-      priority: "high",
-      color: colors.error.main,
-      details:
-        "Your seat assignment for the Digital Circuits examination on February 27th has been published. Please report to Exam Hall A at least 30 minutes before the exam starts. Bring your ID card and hall ticket.",
-    },
-    {
-      id: 3,
-      type: "assignment",
-      title: "Assignment Reminder",
-      message: "DSA Assignment #3 due tomorrow at 11:59 PM. Submit via portal.",
-      time: "2 hrs ago",
-      isRead: true,
-      priority: "medium",
-      color: colors.info.main,
-      details:
-        "Data Structures Assignment #3 on Binary Trees and Graph Algorithms is due tomorrow. Make sure to include proper documentation and test cases. Late submissions will incur penalty.",
-    },
-    {
-      id: 4,
-      type: "grade",
-      title: "Grade Posted",
-      message:
-        "Signals & Systems exam results are now available. You scored 85/100.",
-      time: "3 hrs ago",
-      isRead: true,
-      priority: "low",
-      color: colors.success.main,
-      details:
-        "Congratulations! Your Signals & Systems examination score is 85/100, earning you an A grade. The class average was 78. Detailed score breakdown is available in the student portal.",
-    },
-    {
-      id: 5,
-      type: "announcement",
-      title: "Lab Schedule Update",
-      message:
-        "Networks Lab sessions will now include WiFi security practicals starting next week.",
-      time: "5 hrs ago",
-      isRead: true,
-      priority: "low",
-      color: colors.text.secondary,
-      details:
-        "The Networks Laboratory curriculum has been updated to include hands-on WiFi security practicals. Students should bring their laptops with Wireshark pre-installed starting from next Monday.",
-    },
-    {
-      id: 6,
-      type: "system",
-      title: "System Maintenance",
-      message:
-        "Student portal will be down for maintenance on Saturday 2-4 AM.",
-      time: "1 day ago",
-      isRead: true,
-      priority: "low",
-      color: colors.text.muted,
-      details:
-        "The student portal and related services will undergo scheduled maintenance on Saturday from 2:00 AM to 4:00 AM. Please complete any urgent tasks before this time.",
-    },
-  ]);
+  const formatRelativeTime = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) return "just now";
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? "" : "s"} ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const getNotificationColor = (notification) => {
+    const typeColors = {
+      class_change: colors.warning.main,
+      exam: colors.error.main,
+      assignment: colors.info.main,
+      grade: colors.success.main,
+      announcement: colors.text.secondary,
+      system: colors.text.muted,
+    };
+    if (notification.color) return notification.color;
+    if (typeColors[notification.type]) return typeColors[notification.type];
+    if (notification.priority === "high") return colors.error.main;
+    if (notification.priority === "medium") return colors.warning.main;
+    return colors.primary.main;
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setLoadError(null);
+
+    fetchStudentNotifications()
+      .then((data) => {
+        if (!isMounted) return;
+        const normalized = (data || []).map((notification) => ({
+          ...notification,
+          id: notification.id || notification._id,
+          isRead: Boolean(notification.isRead),
+          priority: notification.priority || "low",
+          time: notification.time || formatRelativeTime(notification.createdAt),
+          color: getNotificationColor(notification),
+        }));
+        setNotifications(normalized);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setLoadError(error?.message || "Unable to load notifications");
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const filteredNotifications =
@@ -134,14 +125,36 @@ export default function Notifications() {
       ? notifications
       : notifications.filter((n) => n.type === filterType);
 
-  const markAsRead = (id) =>
+  const markAsRead = (id) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
     );
+    markStudentNotificationRead(id).catch(() => {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: false } : n)),
+      );
+    });
+  };
   const markAllAsRead = () =>
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  const deleteNotification = (id) =>
+  const removeNotification = (id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    deleteStudentNotification(id).catch(() => {
+      fetchStudentNotifications()
+        .then((data) => {
+          const normalized = (data || []).map((notification) => ({
+            ...notification,
+            id: notification.id || notification._id,
+            isRead: Boolean(notification.isRead),
+            priority: notification.priority || "low",
+            time: notification.time || formatRelativeTime(notification.createdAt),
+            color: getNotificationColor(notification),
+          }));
+          setNotifications(normalized);
+        })
+        .catch(() => {});
+    });
+  };
 
   const getTypeLabel = (type) => {
     const types = {
@@ -193,6 +206,36 @@ export default function Notifications() {
           </>
         }
       />
+
+      {loading && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(59, 130, 246, 0.1)",
+            color: "#3b82f6",
+            fontSize: "12px",
+          }}
+        >
+          Loading notifications...
+        </div>
+      )}
+
+      {loadError && (
+        <div
+          style={{
+            margin: "0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(239, 68, 68, 0.1)",
+            color: "#ef4444",
+            fontSize: "12px",
+          }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* Content */}
       <div
@@ -399,7 +442,7 @@ export default function Notifications() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteNotification(notification.id);
+                              removeNotification(notification.id);
                             }}
                             style={{
                               background: colors.error.ghost,
@@ -679,7 +722,7 @@ export default function Notifications() {
             </button>
             <button
               onClick={() => {
-                deleteNotification(selectedNotification.id);
+                removeNotification(selectedNotification.id);
                 setSelectedNotification(null);
               }}
               style={btnGhost}
