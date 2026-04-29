@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Card } from "../ui/index";
 import { colors, fonts, radius } from "../../../../styles/tokens";
+import { ChevronDown } from "lucide-react";
 
 const HARD_ROWS = [
   {
@@ -135,50 +137,64 @@ function ConstraintGroup({ title, rows, values, onChange }) {
 }
 
 export default function ConstraintTogglesCard({ values, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  const activeCount = Object.values(values).filter(Boolean).length;
+  const totalCount = HARD_ROWS.length + SOFT_ROWS.length;
+
   return (
-    <Card style={{ padding: "16px", marginBottom: "16px" }}>
-      <h3
+    <Card style={{ marginBottom: "16px", overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen((prev) => !prev)}
         style={{
-          margin: "0 0 10px 0",
-          color: colors.text.primary,
-          fontFamily: fonts.heading,
-          fontSize: fonts.size.md,
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 16px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          gap: "12px",
         }}
       >
-        Constraint Toggles
-      </h3>
-
-      <p
-        style={{
-          margin: "0 0 14px 0",
-          color: colors.text.muted,
-          fontSize: fonts.size.xs,
-        }}
-      >
-        Select hard/soft constraints before running the solver.
-      </p>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "14px",
-          alignItems: "start",
-        }}
-      >
-        <ConstraintGroup
-          title="Hard Constraints"
-          rows={HARD_ROWS}
-          values={values}
-          onChange={onChange}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontFamily: fonts.heading, fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, color: colors.text.primary }}>
+            Constraint Toggles
+          </span>
+          <span style={{
+            fontSize: fonts.size.xs,
+            color: colors.text.muted,
+            background: colors.bg.raised,
+            border: `1px solid ${colors.border.subtle}`,
+            borderRadius: 999,
+            padding: "2px 8px",
+          }}>
+            {activeCount}/{totalCount} active
+          </span>
+        </div>
+        <ChevronDown
+          size={16}
+          style={{
+            color: colors.text.muted,
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s ease",
+            flexShrink: 0,
+          }}
         />
-        <ConstraintGroup
-          title="Soft Constraints"
-          rows={SOFT_ROWS}
-          values={values}
-          onChange={onChange}
-        />
-      </div>
+      </button>
+
+      {open && (
+        <div style={{ padding: "0 16px 16px" }}>
+          <p style={{ margin: "0 0 14px 0", color: colors.text.muted, fontSize: fonts.size.xs }}>
+            Select hard/soft constraints before running the solver.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px", alignItems: "start" }}>
+            <ConstraintGroup title="Hard Constraints" rows={HARD_ROWS} values={values} onChange={onChange} />
+            <ConstraintGroup title="Soft Constraints" rows={SOFT_ROWS} values={values} onChange={onChange} />
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

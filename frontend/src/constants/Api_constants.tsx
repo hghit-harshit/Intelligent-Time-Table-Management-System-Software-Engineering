@@ -34,8 +34,10 @@ export const SchedulerAssignClassroomsEP = API_BASE_URL + "/scheduler/assign-cla
 export const TimetableSaveDraftEP = API_BASE_URL + "/timetable/save-draft";
 export const TimetablePublishEP = API_BASE_URL + "/timetable/publish";
 export const TimetableLatestEP = API_BASE_URL + "/timetable/latest";
+export const TimetableLatestDraftEP = API_BASE_URL + "/timetable/latest-draft";
 export const TimetableVersionsEP = API_BASE_URL + "/timetable/versions";
 export const TimetableVersionEP = (version: string) => API_BASE_URL + `/timetable/version/${version}`;
+export const TimetableDeleteVersionEP = (version: string) => API_BASE_URL + `/timetable/version/${version}`;
 
 export const GOOGLE_CLASSROOM_API_URL = "http://localhost:4000/api";
 export const GC_AUTH_URL_EP = GOOGLE_CLASSROOM_API_URL + "/auth/url";

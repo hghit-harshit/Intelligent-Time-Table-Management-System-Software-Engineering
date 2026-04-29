@@ -110,6 +110,16 @@ router.post("/publish", async (req, res) => {
   }
 });
 
+// Get most recently saved timetable (draft or published) — restores state on page refresh
+router.get("/latest-draft", async (req, res) => {
+  try {
+    const result = await TimetableResultModel.findOne().sort({ generatedAt: -1 });
+    return ok(res, result);
+  } catch (error) {
+    return fail(res, "Failed to get latest draft", 500, error instanceof Error ? error.message : error);
+  }
+});
+
 // Get latest published timetable
 router.get("/latest", async (req, res) => {
   try {
@@ -150,6 +160,19 @@ router.get("/versions", async (req, res) => {
     return ok(res, results);
   } catch (error) {
     return fail(res, "Failed to get versions", 500, error instanceof Error ? error.message : error);
+  }
+});
+
+// Delete a version (cannot delete the currently published/latest)
+router.delete("/version/:version", async (req, res) => {
+  try {
+    const doc = await TimetableResultModel.findOne({ version: req.params.version });
+    if (!doc) return fail(res, "Timetable version not found", 404);
+    if (doc.isLatest) return fail(res, "Cannot delete the currently active timetable. Set another version as current first.", 400);
+    await TimetableResultModel.deleteOne({ version: req.params.version });
+    return ok(res, { success: true });
+  } catch (error) {
+    return fail(res, "Failed to delete version", 500, error instanceof Error ? error.message : error);
   }
 });
 

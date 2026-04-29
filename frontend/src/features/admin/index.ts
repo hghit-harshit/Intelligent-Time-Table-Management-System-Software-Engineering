@@ -1,6 +1,5 @@
 export { default as AdminDashboard } from "../../pages/admin/pages/AdminDashboard";
 export { default as TimetableEngine } from "../../pages/admin/pages/TimetableEngine";
-export { default as ConflictMonitor } from "../../pages/admin/pages/ConflictMonitor";
 export { default as AdminRescheduleRequests } from "../../pages/admin/pages/RescheduleRequests";
 export { default as ExamScheduler } from "../../pages/admin/pages/ExamScheduler";
 export { default as CoursesPage } from "../../pages/admin/pages/CoursesPage";

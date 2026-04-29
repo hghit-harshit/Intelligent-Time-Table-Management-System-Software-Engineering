@@ -3,7 +3,6 @@ import AdminLayout from "./components/layout/AdminLayout";
 import {
   AdminDashboard,
   TimetableEngine,
-  ConflictMonitor,
   AdminRescheduleRequests,
   ExamScheduler,
   CoursesPage,
@@ -23,7 +22,6 @@ export default function AdminPage() {
       <Routes>
         <Route index element={<AdminDashboard />} />
         <Route path="engine" element={<TimetableEngine />} />
-        <Route path="conflicts" element={<ConflictMonitor />} />
         <Route path="requests" element={<AdminRescheduleRequests />} />
         <Route path="exams" element={<ExamScheduler />} />
         <Route path="courses" element={<CoursesPage />} />

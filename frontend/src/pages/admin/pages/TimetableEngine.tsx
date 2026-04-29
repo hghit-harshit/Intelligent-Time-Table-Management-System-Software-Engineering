@@ -1,11 +1,10 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
-import { Card, Badge, Button, Loader, PageHeader } from "../../../shared";
+import { Card, Badge, Button, Loader, PageHeader, Modal } from "../../../shared";
 import {
   fetchTimetableEngine,
   generateTimetable,
   assignClassrooms,
-  publishTimetable,
   saveTimetableDraft,
 } from "../../../features/admin/services";
 import {
@@ -14,7 +13,7 @@ import {
   clearSolverResults,
 } from "../../../stores/timetableEngine.store";
 import { colors, fonts, radius } from "../../../styles/tokens";
-import { Play, Send, Clock } from "lucide-react";
+import { Play, Save, Clock } from "lucide-react";
 import ConstraintTogglesCard from "../components/engine/ConstraintTogglesCard";
 import SlotAllocationView from "../components/engine/SlotAllocationView";
 import ClassroomAllocationView from "../components/engine/ClassroomAllocationView";
@@ -32,10 +31,11 @@ export default function TimetableEngine() {
   const [loading, setLoading] = useState(true);
   const [generatingSlots, setGeneratingSlots] = useState(false);
   const [assigningClassrooms, setAssigningClassrooms] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [solverWarning, setSolverWarning] = useState("");
   const [slotAssignments, setSlotAssignments] = useState([]); // Results from slot solver
   const [classroomAssignments, setClassroomAssignments] = useState([]); // Results from classroom solver
+  const [cellModal, setCellModal] = useState(null); // { timeLabel, day, slots[] }
   const [constraints, setConstraints] = useState({
     hc1_enabled: true,
     hc2_enabled: true,
@@ -46,11 +46,13 @@ export default function TimetableEngine() {
 
   useEffect(() => {
     fetchTimetableEngine().then((res) => {
-      // START FRESH: Do NOT load sessionStorage on initial page load
-      // Only use sessionStorage when navigating back to this page
-      // This prevents data contamination from previous solver runs
-
       setEngine(res);
+      // Restore assignment arrays from DB-loaded data on refresh
+      if (res.latestAssignments?.length > 0) {
+        const hasRooms = res.latestAssignments.some((a) => a.roomName);
+        setSlotAssignments(res.latestAssignments);
+        setClassroomAssignments(hasRooms ? res.latestAssignments : []);
+      }
       setLoading(false);
     });
   }, []);
@@ -119,14 +121,6 @@ export default function TimetableEngine() {
         version: result.version,
       });
 
-      // Save draft to backend
-      await saveTimetableDraft(
-        result.assignments || [],
-        result.stats || null,
-        constraints,
-        result.version
-      );
-
       // Set slot assignments (classroom will be empty until classroom solver runs)
       setSlotAssignments(result.assignments || []);
       setClassroomAssignments([]); // IMPORTANT: Clear classroom until explicitly assigned
@@ -183,14 +177,6 @@ export default function TimetableEngine() {
         version: engine.currentVersion,
       });
 
-      // Save updated draft with classrooms to backend
-      await saveTimetableDraft(
-        result.assignments || [],
-        engine.latestStats || null,
-        engine.latestConstraints || constraints,
-        engine.currentVersion
-      );
-
       // IMPORTANT: Set classroom assignments separately from slot assignments
       setClassroomAssignments(result.assignments || []);
 
@@ -215,23 +201,24 @@ export default function TimetableEngine() {
     setConstraints((prev) => ({ ...prev, [key]: checked }));
   };
 
-  const handlePublish = async () => {
-    setPublishing(true);
-    const result = await publishTimetable(engine.currentVersion);
-    setPublishing(false);
+  const handleSaveDraft = async () => {
+    const assignments = classroomAssignments.length > 0 ? classroomAssignments : slotAssignments;
+    if (!assignments.length) return;
+    setSavingDraft(true);
+    const result = await saveTimetableDraft(
+      assignments,
+      engine.latestStats || null,
+      engine.latestConstraints || constraints,
+      engine.currentVersion,
+    );
+    setSavingDraft(false);
     if (result.success) {
-      setEngine((prev) => ({
-        ...prev,
-        status: "published",
-        lastPublished: result.publishedAt,
-      }));
-      toast.success("Timetable published!", {
-        description: `Version ${engine.currentVersion} is now live`,
+      setEngine((prev) => ({ ...prev, status: "draft" }));
+      toast.success("Draft saved!", {
+        description: `Version ${engine.currentVersion} saved. Go to Timetable Versions to publish.`,
       });
     } else {
-      toast.error("Publish failed", {
-        description: "Failed to publish timetable",
-      });
+      toast.error("Failed to save draft");
     }
   };
 
@@ -269,12 +256,12 @@ export default function TimetableEngine() {
             slotsByDay: Object.fromEntries(
               previewDays.map((day) => [
                 day,
-                assignments.find(
+                assignments.filter(
                   (item) =>
                     item.day === day &&
                     item.startTime === startTime &&
                     item.endTime === endTime,
-                ) || null,
+                ),
               ]),
             ),
           };
@@ -339,17 +326,15 @@ export default function TimetableEngine() {
                 )
               }
             >
-              {assigningClassrooms
-                ? "Assigning Rooms..."
-                : "Run Classroom Assignment"}
+              {assigningClassrooms ? "Assigning Rooms..." : "Run Classroom Assignment"}
             </Button>
             <Button
               variant="primary"
-              onClick={handlePublish}
-              disabled={publishing || engine.status === "published"}
-              icon={<Send size={14} />}
+              onClick={handleSaveDraft}
+              disabled={savingDraft || generatingSlots || assigningClassrooms || slotAssignments.length === 0}
+              icon={savingDraft ? <Clock size={14} className="spin" /> : <Save size={14} />}
             >
-              {publishing ? "Publishing..." : "Publish"}
+              {savingDraft ? "Saving..." : "Save Draft"}
             </Button>
           </div>
         }
@@ -510,76 +495,62 @@ export default function TimetableEngine() {
                     {row.timeLabel}
                   </td>
                   {previewDays.map((day) => {
-                    const slot = row.slotsByDay[day];
-                    const empty = hasLatestAssignments ? !slot : !slot?.course;
+                    // slots is now an array (filter result)
+                    const slots = hasLatestAssignments
+                      ? (row.slotsByDay[day] || [])
+                      : (row.slotsByDay[day]?.course ? [row.slotsByDay[day]] : []);
 
-                    if (empty) {
+                    if (slots.length === 0) {
                       return (
-                        <td
-                          key={day}
-                          style={{
-                            padding: "8px",
-                            borderBottom: `1px solid ${colors.border.subtle}`,
-                            textAlign: "center",
-                            background: colors.bg.base,
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: colors.text.disabled,
-                              fontSize: fonts.size.xs,
-                            }}
-                          >
-                            —
-                          </span>
+                        <td key={day} style={{ padding: "8px", borderBottom: `1px solid ${colors.border.subtle}`, textAlign: "center", background: colors.bg.base }}>
+                          <span style={{ color: colors.text.disabled, fontSize: fonts.size.xs }}>—</span>
                         </td>
                       );
                     }
 
-                    const courseTitle = hasLatestAssignments
-                      ? slot.courseName
-                      : slot.course;
-                    const facultyTitle = hasLatestAssignments
-                      ? slot.professorName
-                      : `${slot.room} • ${slot.faculty}`;
+                    const visible = slots.slice(0, 2);
+                    const overflow = slots.length - 2;
 
                     return (
-                      <td
-                        key={day}
-                        style={{
-                          padding: "8px",
-                          borderBottom: `1px solid ${colors.border.subtle}`,
-                          background: colors.bg.base,
-                        }}
-                      >
-                        <div
-                          style={{
-                            background: colors.bg.raised,
-                            border: `1px solid ${colors.primary.border}`,
-                            borderRadius: radius.md,
-                            padding: "8px",
-                            textAlign: "left",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontWeight: fonts.weight.semibold,
-                              color: colors.primary.main,
-                              fontSize: fonts.size.sm,
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {courseTitle}
-                          </div>
-                          <div
-                            style={{
-                              color: colors.text.muted,
-                              fontSize: fonts.size.xs,
-                              marginTop: "4px",
-                            }}
-                          >
-                            {facultyTitle}
-                          </div>
+                      <td key={day} style={{ padding: "8px", borderBottom: `1px solid ${colors.border.subtle}`, background: colors.bg.base, verticalAlign: "top" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          {visible.map((s, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                background: colors.bg.raised,
+                                border: `1px solid ${colors.primary.border}`,
+                                borderRadius: radius.md,
+                                padding: "8px",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => setCellModal({ timeLabel: row.timeLabel, day, slots })}
+                            >
+                              <div style={{ fontWeight: fonts.weight.semibold, color: colors.primary.main, fontSize: fonts.size.sm, lineHeight: 1.3 }}>
+                                {hasLatestAssignments ? s.courseName : s.course}
+                              </div>
+                              <div style={{ color: colors.text.muted, fontSize: fonts.size.xs, marginTop: "3px" }}>
+                                {hasLatestAssignments ? s.professorName : `${s.room} • ${s.faculty}`}
+                              </div>
+                            </div>
+                          ))}
+                          {overflow > 0 && (
+                            <button
+                              onClick={() => setCellModal({ timeLabel: row.timeLabel, day, slots })}
+                              style={{
+                                background: "none",
+                                border: `1px dashed ${colors.border.medium}`,
+                                borderRadius: radius.md,
+                                padding: "4px 8px",
+                                cursor: "pointer",
+                                fontSize: fonts.size.xs,
+                                color: colors.text.muted,
+                                textAlign: "center",
+                              }}
+                            >
+                              +{overflow} more
+                            </button>
+                          )}
                         </div>
                       </td>
                     );
@@ -666,6 +637,41 @@ export default function TimetableEngine() {
           <ClassroomAllocationView assignments={classroomAssignments || []} />
         </div>
       </div>
+
+      {/* Cell detail modal */}
+      <Modal open={!!cellModal} onClose={() => setCellModal(null)} maxWidth="480px">
+        {cellModal && (
+          <div>
+            <div style={{ marginBottom: "16px" }}>
+              <div style={{ fontWeight: fonts.weight.bold, color: colors.text.primary, fontSize: fonts.size.md, fontFamily: fonts.heading }}>
+                {cellModal.day} · {cellModal.timeLabel}
+              </div>
+              <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "2px" }}>
+                {cellModal.slots.length} class{cellModal.slots.length !== 1 ? "es" : ""} scheduled in this slot
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {cellModal.slots.map((s, i) => (
+                <div key={i} style={{
+                  padding: "12px",
+                  border: `1px solid ${colors.primary.border}`,
+                  borderRadius: radius.md,
+                  background: colors.bg.raised,
+                }}>
+                  <div style={{ fontWeight: fonts.weight.semibold, color: colors.primary.main, fontSize: fonts.size.sm }}>
+                    {hasLatestAssignments ? s.courseName : s.course}
+                  </div>
+                  <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "4px" }}>
+                    {hasLatestAssignments ? s.professorName : `${s.room} • ${s.faculty}`}
+                    {s.roomName && <span> · {s.roomName}</span>}
+                    {s.students && <span> · {s.students} students</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

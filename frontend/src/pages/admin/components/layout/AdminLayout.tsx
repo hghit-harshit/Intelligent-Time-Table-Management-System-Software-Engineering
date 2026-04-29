@@ -9,7 +9,6 @@ import { useUser } from "../../../../contexts/UserContext";
 import {
   LayoutDashboard,
   Cpu,
-  AlertTriangle,
   RotateCcw,
   CalendarClock,
   BookOpen,
@@ -29,7 +28,6 @@ const navSections = [
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/AdminPage" },
       { icon: Cpu, label: "Timetable Engine", path: "/AdminPage/engine" },
-      { icon: AlertTriangle, label: "Conflict Monitor", path: "/AdminPage/conflicts" },
       { icon: RotateCcw, label: "Reschedule Requests", path: "/AdminPage/requests", badge: 5 },
       { icon: CalendarClock, label: "Exam Scheduler", path: "/AdminPage/exams" },
     ],

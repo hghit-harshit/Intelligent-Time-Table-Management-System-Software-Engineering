@@ -26,7 +26,10 @@ import {
   TimetableSaveDraftEP,
   TimetablePublishEP,
   TimetableLatestEP,
+  TimetableLatestDraftEP,
   TimetableVersionsEP,
+  TimetableVersionEP,
+  TimetableDeleteVersionEP,
 } from "../../../constants/Api_constants";
 import { withAuthHeaders } from "../../../services/authInterceptor";
 
@@ -69,41 +72,50 @@ export async function updateRequestStatus(requestId, status) {
 }
 
 // ─── Timetable Engine ───────────────────────────────────────
+function buildEngineState(doc) {
+  return {
+    currentVersion: doc.version || "v1.0",
+    status: doc.status || "draft",
+    lastGenerated: doc.generatedAt,
+    lastPublished: doc.publishedAt,
+    constraintViolations: 0,
+    totalSlotsFilled: doc.assignments?.length || 0,
+    totalSlotsAvailable: 30,
+    solverDuration: doc.stats?.solverDuration || null,
+    generatedSchedule: [],
+    latestAssignments: doc.assignments || [],
+    latestStats: doc.stats,
+    latestConstraints: doc.constraints,
+  };
+}
+
 export async function fetchTimetableEngine() {
   try {
-    // First try to get latest timetable (published)
+    // Try latest published first (isLatest: true)
     const latestResponse = await fetch(TimetableLatestEP + "?t=" + Date.now(), {
       headers: withAuthHeaders(),
       cache: "no-store",
     });
-    
     if (latestResponse.ok) {
-      const data = await latestResponse.json();
-      const latest = data.result || data.data;
-      
-      if (latest && latest.assignments?.length > 0) {
-        return {
-          currentVersion: latest.version || "v1.0",
-          status: latest.status || "draft",
-          lastGenerated: latest.generatedAt,
-          lastPublished: latest.publishedAt,
-          constraintViolations: 0,
-          totalSlotsFilled: latest.assignments.length,
-          totalSlotsAvailable: 30,
-          solverDuration: latest.stats?.solverDuration || null,
-          generatedSchedule: [],
-          latestAssignments: latest.assignments,
-          latestStats: latest.stats,
-          latestConstraints: latest.constraints,
-        };
-      }
+      const doc = await latestResponse.json();
+      if (doc && doc.version && doc.assignments?.length > 0) return buildEngineState(doc);
     }
-  } catch (error) {
-    console.error("Error fetching timetable engine:", error);
-  }
-  
-  // Fallback to mock data if API fails
-  await delay(300);
+  } catch (_) {}
+
+  try {
+    // Fall back to most recently saved doc (draft or published) so page refresh restores data
+    const draftResponse = await fetch(TimetableLatestDraftEP + "?t=" + Date.now(), {
+      headers: withAuthHeaders(),
+      cache: "no-store",
+    });
+    if (draftResponse.ok) {
+      const doc = await draftResponse.json();
+      if (doc && doc.version && doc.assignments?.length > 0) return buildEngineState(doc);
+    }
+  } catch (_) {}
+
+  // Nothing in DB yet — return empty state
+  await delay(100);
   return { ...timetableEngineState };
 }
 
@@ -126,7 +138,7 @@ export async function generateTimetable(constraints = {}) {
     const durationMs = performance.now() - startedAt;
     return {
       success: true,
-      version: `v${new Date().toISOString().slice(0, 10)}`,
+      version: `v${new Date().toISOString().slice(0, 19).replace("T", "_").replace(/:/g, "-")}`,
       conflicts:
         data.assignments?.filter(
           (item) =>
@@ -240,14 +252,38 @@ export async function fetchLatestTimetable() {
     if (!response.ok) {
       throw new Error(data?.message || "Failed to fetch latest timetable");
     }
-    // Handle different response formats: { result: {...}}, { data: {...}}, or direct object
-    if (data.result) return data.result;
-    if (data.data) return data.data;
-    // Also check if the response itself IS the timetable (has version/assignments)
-    if (data.version && data.assignments) return data;
+    // ok() returns the document directly
+    if (data && data.version) return data;
     return null;
   } catch (error) {
     console.error("fetchLatestTimetable error:", error);
+    return null;
+  }
+}
+
+export async function deleteTimetableVersion(version: string) {
+  try {
+    const response = await fetch(TimetableDeleteVersionEP(version), {
+      method: "DELETE",
+      headers: withAuthHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.message || "Failed to delete version");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function fetchTimetableByVersion(version: string) {
+  try {
+    const response = await fetch(TimetableVersionEP(version), {
+      headers: withAuthHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.message || "Failed to fetch version");
+    return data;
+  } catch (error) {
     return null;
   }
 }
@@ -262,7 +298,8 @@ export async function fetchTimetableVersions() {
     if (!response.ok) {
       throw new Error(data?.message || "Failed to fetch versions");
     }
-    return data.data || [];
+    // Backend ok() returns the array directly (no wrapper)
+    return Array.isArray(data) ? data : (data.data || data.result || []);
   } catch (error) {
     return [];
   }
