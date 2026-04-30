@@ -1,14 +1,25 @@
 export type RequestStatus = "pending" | "approved" | "rejected";
 
 export interface RescheduleRequestInput {
-  facultyId: string;
-  facultyName: string;
-  currentSlotId: string;
-  requestedSlotId: string;
+  professorId: string;
+  courseId: string;
+  currentSlotId?: string;
+  requestedSlotId?: string;
+  currentSlot?: {
+    day: string;
+    time: string;
+    room?: string;
+  };
+  requestedSlot?: {
+    day: string;
+    time: string;
+    room?: string;
+  };
   reason: string;
+  conflictStatus?: string;
 }
 
 export interface RescheduleQuery {
   status?: RequestStatus;
-  facultyId?: string;
+  professorId?: string;
 }

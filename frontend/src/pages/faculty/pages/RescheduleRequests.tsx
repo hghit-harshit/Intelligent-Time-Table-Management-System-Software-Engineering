@@ -1,7 +1,11 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
-import { getRequests, addRequest } from "../../../stores/reschedule.store";
+import { useUser } from "../../../contexts/UserContext";
+import {
+  createRescheduleRequest,
+  fetchRescheduleRequests,
+} from "../../../services/facultyApi";
 import {
   RotateCcw,
   Plus,
@@ -12,7 +16,15 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const FACULTY_NAME = "Dr. Rajesh M.";
+const formatTime12 = (value) => {
+  if (!value) return "";
+  if (/am|pm/i.test(value)) return value;
+  const [hours, minutes] = value.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+};
 
 const statusConfig = {
   pending: {
@@ -39,7 +51,10 @@ const statusConfig = {
 };
 
 export default function RescheduleRequests() {
+  const { user } = useUser();
   const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     currentDay: "",
@@ -49,21 +64,64 @@ export default function RescheduleRequests() {
     reason: "",
   });
 
-  const reload = () => {
-    const all = getRequests();
-    setRequests(all.filter((r) => r.facultyName === FACULTY_NAME));
+  const normalizeRequest = (request) => {
+    const currentSlot = request.currentSlot || {};
+    const requestedSlot = request.requestedSlot || {};
+
+    return {
+      id: request.id || request._id,
+      facultyName: request.facultyName || "",
+      facultyDept: request.facultyDept || "",
+      course: request.course || "—",
+      courseCode: request.courseCode || "—",
+      currentSlot: {
+        day: currentSlot.day || "—",
+        time: formatTime12(currentSlot.time || ""),
+        room: currentSlot.room || "—",
+      },
+      requestedSlot: {
+        day: requestedSlot.day || "—",
+        time: formatTime12(requestedSlot.time || ""),
+        room: requestedSlot.room || "—",
+      },
+      reason: request.reason || "",
+      status: request.status || "pending",
+      conflictStatus: request.conflictStatus || "No conflicts",
+      createdAt: request.createdAt,
+    };
+  };
+
+  const reload = async () => {
+    if (!user?._id) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await fetchRescheduleRequests(user._id);
+      const normalized = Array.isArray(data)
+        ? data.map((item) => normalizeRequest(item))
+        : [];
+      setRequests(normalized);
+    } catch (error) {
+      setLoadError(error?.message || "Unable to load requests");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     reload();
-  }, []);
+  }, [user?._id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (
       !form.currentDay ||
@@ -73,17 +131,32 @@ export default function RescheduleRequests() {
       !form.reason.trim()
     )
       return;
-    addRequest({
-      facultyName: FACULTY_NAME,
-      facultyDept: "ECE",
-      currentSlot: { day: form.currentDay, time: form.currentTime, room: "—" },
-      requestedSlot: {
-        day: form.requestedDay,
-        time: form.requestedTime,
-        room: "—",
-      },
-      reason: form.reason.trim(),
-    });
+    if (!user?._id) {
+      setLoadError("Please sign in again to submit a request");
+      return;
+    }
+
+    const facultyName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+    try {
+      await createRescheduleRequest({
+        professorId: user._id,
+        currentSlot: {
+          day: form.currentDay,
+          time: form.currentTime,
+          room: "—",
+        },
+        requestedSlot: {
+          day: form.requestedDay,
+          time: form.requestedTime,
+          room: "—",
+        },
+        reason: form.reason.trim(),
+      });
+      await reload();
+    } catch (error) {
+      setLoadError(error?.message || "Unable to submit request");
+      return;
+    }
     setForm({
       currentDay: "",
       currentTime: "",
@@ -92,7 +165,6 @@ export default function RescheduleRequests() {
       reason: "",
     });
     setShowForm(false);
-    reload();
   };
 
   const card = {
@@ -208,6 +280,36 @@ export default function RescheduleRequests() {
           {showForm ? "Close" : "New Request"}
         </button>
       </div>
+
+      {loading && (
+        <div
+          style={{
+            margin: "0 0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(59, 130, 246, 0.1)",
+            color: "#3b82f6",
+            fontSize: "12px",
+          }}
+        >
+          Loading requests...
+        </div>
+      )}
+
+      {loadError && (
+        <div
+          style={{
+            margin: "0 0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(239, 68, 68, 0.1)",
+            color: "#ef4444",
+            fontSize: "12px",
+          }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* Inline form */}
       {showForm && (

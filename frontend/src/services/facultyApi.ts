@@ -1,0 +1,30 @@
+import { httpClient } from "./httpClient";
+
+export const fetchTimetableLatest = async () => {
+  const latest = await httpClient.get("/timetable/latest");
+  if (latest) return latest;
+  return httpClient.get("/timetable/latest-draft");
+};
+
+export const fetchRescheduleRequests = (facultyId) => {
+  const query = facultyId ? `?professorId=${encodeURIComponent(facultyId)}` : "";
+  return httpClient.get(`/requests${query}`);
+};
+
+export const createRescheduleRequest = (payload) => {
+  return httpClient.request("/requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+};
+
+export const fetchCatalogCourses = async () => {
+  const response = await httpClient.get("/catalog/courses");
+  return response?.data ?? response ?? [];
+};
+
+export const fetchCatalogProfessors = async () => {
+  const response = await httpClient.get("/catalog/professors");
+  return response?.data ?? response ?? [];
+};
