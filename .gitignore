@@ -20,3 +20,5 @@ pnpm-debug.log*
 .turbo/
 coverage/
 .nyc_output/
+google-classroom-service/credentials.json
+google-classroom-service/token.json
