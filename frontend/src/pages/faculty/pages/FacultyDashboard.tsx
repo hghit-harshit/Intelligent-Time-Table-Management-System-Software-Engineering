@@ -1,9 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CalendarView from "../../../components/CalendarView";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
-import { addRequest } from "../../../stores/reschedule.store";
+import { useUser } from "../../../contexts/UserContext";
+import {
+  createRescheduleRequest,
+  fetchCatalogCourses,
+  fetchCatalogProfessors,
+  fetchRescheduleRequests,
+  fetchTimetableLatest,
+} from "../../../services/facultyApi";
 
 export default function FacultyDashboard() {
+  const { user } = useUser();
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [stats, setStats] = useState({
+    totalClasses: "0",
+    completed: "0",
+    thisWeek: "0",
+    pendingRequests: "0",
+  });
+  const [resolvedProfessorId, setResolvedProfessorId] = useState(null);
+  const [courseByCode, setCourseByCode] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [rescheduleForm, setRescheduleForm] = useState({
@@ -14,50 +33,155 @@ export default function FacultyDashboard() {
     reason: "",
   });
 
-  const calendarEvents = [
-    {
-      day: "Monday",
-      time: "9:00 AM",
-      title: "Data Structures",
-      location: "Room 301",
-      color: colors.primary.ghost,
-      textColor: colors.primary.main,
-    },
-    {
-      day: "Tuesday",
-      time: "10:00 AM",
-      title: "Digital Electronics",
-      location: "Lab 2",
-      color: colors.warning.ghost,
-      textColor: colors.warning.main,
-    },
-    {
-      day: "Wednesday",
-      time: "11:00 AM",
-      title: "Signals & Systems",
-      location: "Room 205",
-      color: colors.success.ghost,
-      textColor: colors.success.main,
-    },
-    {
-      day: "Thursday",
-      time: "2:00 PM",
-      title: "Network Analysis",
-      location: "Room 101",
-      color: colors.info.ghost,
-      textColor: colors.info.main,
-    },
-    {
-      day: "Friday",
-      time: "9:00 AM",
-      title: "Engineering Math",
-      location: "Room 302",
-      color: colors.secondary.ghost,
-      textColor: colors.secondary.main,
-    },
-  ];
+  const normalizeName = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/^dr\.?\s+/, "")
+      .trim();
 
-  const handleSlotClick = (slot) => setSelectedSlot(slot);
+  const formatTime12 = (value) => {
+    if (!value) return "";
+    if (/am|pm/i.test(value)) return value;
+    const [hours, minutes] = value.split(":").map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+    const suffix = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+  };
+
+  const formatTime24 = (value) => {
+    if (!value) return "";
+    if (!/am|pm/i.test(value)) return value;
+    const match = value.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
+    if (!match) return value;
+    let hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const period = match[3].toLowerCase();
+    if (period === "pm" && hours !== 12) hours += 12;
+    if (period === "am" && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  };
+
+  const parseTimeMinutes = (value) => {
+    if (!value) return null;
+    const time24 = formatTime24(value);
+    const [hours, minutes] = time24.split(":").map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  };
+
+  const buildCalendarEvents = (assignments) => {
+    const palette = [
+      { bg: colors.primary.ghost, fg: colors.primary.main },
+      { bg: colors.warning.ghost, fg: colors.warning.main },
+      { bg: colors.success.ghost, fg: colors.success.main },
+      { bg: colors.info.ghost, fg: colors.info.main },
+      { bg: colors.secondary.ghost, fg: colors.secondary.main },
+    ];
+
+    return assignments.map((assignment, index) => {
+      const pick = palette[index % palette.length];
+      return {
+        day: assignment.day,
+        time: formatTime12(assignment.startTime || assignment.time),
+        title: assignment.courseName || assignment.courseCode || "Untitled",
+        location: assignment.roomName || "TBD",
+        color: pick.bg,
+        textColor: pick.fg,
+        raw: assignment,
+      };
+    });
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const [timetable, requestData] = await Promise.all([
+          fetchTimetableLatest(),
+          user?._id ? fetchRescheduleRequests(user._id) : Promise.resolve([]),
+        ]);
+
+        const assignments = Array.isArray(timetable?.assignments)
+          ? timetable.assignments
+          : [];
+        const facultyName = user
+          ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+          : "";
+        let filtered = assignments;
+
+        if (facultyName) {
+          const target = normalizeName(facultyName);
+          const matches = assignments.filter((assignment) => {
+            const value = normalizeName(assignment.professorName || "");
+            return value && (value.includes(target) || target.includes(value));
+          });
+          if (matches.length) {
+            filtered = matches;
+          }
+        }
+
+        const events = buildCalendarEvents(filtered);
+        const pendingRequests = Array.isArray(requestData)
+          ? requestData.filter((req) => req.status === "pending").length
+          : 0;
+
+        const today = new Date();
+        const dayIndex = {
+          Sunday: 0,
+          Monday: 1,
+          Tuesday: 2,
+          Wednesday: 3,
+          Thursday: 4,
+          Friday: 5,
+          Saturday: 6,
+        };
+        const nowDay = today.getDay();
+        const nowMinutes = today.getHours() * 60 + today.getMinutes();
+        const completed = filtered.filter((assignment) => {
+          const day = dayIndex[assignment.day] ?? null;
+          if (day === null) return false;
+          if (day < nowDay) return true;
+          if (day > nowDay) return false;
+          const startMinutes = parseTimeMinutes(assignment.startTime);
+          return startMinutes !== null && startMinutes < nowMinutes;
+        }).length;
+
+        if (!isMounted) return;
+        setCalendarEvents(events);
+        setStats({
+          totalClasses: String(filtered.length),
+          completed: String(completed),
+          thisWeek: String(filtered.length),
+          pendingRequests: String(pendingRequests),
+        });
+      } catch (error) {
+        if (!isMounted) return;
+        setLoadError(error?.message || "Unable to load faculty dashboard");
+      } finally {
+        if (!isMounted) return;
+        setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?._id, user?.firstName, user?.lastName]);
+
+  const handleSlotClick = (slot) => {
+    const match = calendarEvents.find(
+      (event) => event.day === slot.day && event.time === slot.time,
+    );
+    setSelectedSlot(
+      match
+        ? { ...slot, title: match.title, location: match.location }
+        : slot,
+    );
+  };
 
   const handleRequestReschedule = () => {
     if (selectedSlot) {
@@ -77,7 +201,7 @@ export default function FacultyDashboard() {
     setRescheduleForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmitReschedule = () => {
+  const handleSubmitReschedule = async () => {
     if (
       !rescheduleForm.requestedDay ||
       !rescheduleForm.requestedTime ||
@@ -86,33 +210,44 @@ export default function FacultyDashboard() {
       alert("Please fill in all fields");
       return;
     }
-    addRequest({
-      facultyName: "Dr. Rajesh M.",
-      facultyDept: "ECE",
-      course: selectedSlot?.title || "—",
-      courseCode: "—",
-      currentSlot: {
-        day: selectedSlot?.day || rescheduleForm.currentDay,
-        time: selectedSlot?.time || rescheduleForm.currentTime,
-        room: selectedSlot?.location || "—",
-      },
-      requestedSlot: {
-        day: rescheduleForm.requestedDay,
-        time: rescheduleForm.requestedTime,
-        room: "—",
-      },
-      reason: rescheduleForm.reason,
-    });
-    alert("Reschedule request submitted successfully! Pending admin approval.");
-    setShowRescheduleModal(false);
-    setRescheduleForm({
-      currentDay: "",
-      currentTime: "",
-      requestedDay: "",
-      requestedTime: "",
-      reason: "",
-    });
-    setSelectedSlot(null);
+    if (!user?._id) {
+      alert("Please sign in again to submit a request.");
+      return;
+    }
+
+    const facultyName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+    try {
+      await createRescheduleRequest({
+        professorId: user._id,
+        currentSlot: {
+          day: selectedSlot?.day || rescheduleForm.currentDay,
+          time: formatTime24(
+            selectedSlot?.time || rescheduleForm.currentTime,
+          ),
+          room: selectedSlot?.location || "—",
+        },
+        requestedSlot: {
+          day: rescheduleForm.requestedDay,
+          time: formatTime24(rescheduleForm.requestedTime),
+          room: "—",
+        },
+        reason: rescheduleForm.reason,
+        conflictStatus: "",
+      });
+
+      alert("Reschedule request submitted successfully! Pending admin approval.");
+      setShowRescheduleModal(false);
+      setRescheduleForm({
+        currentDay: "",
+        currentTime: "",
+        requestedDay: "",
+        requestedTime: "",
+        reason: "",
+      });
+      setSelectedSlot(null);
+    } catch (error) {
+      alert(error?.message || "Unable to submit reschedule request");
+    }
   };
 
   const card = {
@@ -196,6 +331,36 @@ export default function FacultyDashboard() {
         </button>
       </div>
 
+      {loading && (
+        <div
+          style={{
+            marginBottom: "12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(59, 130, 246, 0.1)",
+            color: "#3b82f6",
+            fontSize: "12px",
+          }}
+        >
+          Loading faculty schedule...
+        </div>
+      )}
+
+      {loadError && (
+        <div
+          style={{
+            marginBottom: "12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(239, 68, 68, 0.1)",
+            color: "#ef4444",
+            fontSize: "12px",
+          }}
+        >
+          {loadError}
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div
         style={{
@@ -206,10 +371,18 @@ export default function FacultyDashboard() {
         }}
       >
         {[
-          { label: "Total Classes", value: "12", color: colors.primary.main },
-          { label: "Completed", value: "8", color: colors.success.main },
-          { label: "This Week", value: "5", color: colors.secondary.main },
-          { label: "Pending Requests", value: "1", color: colors.warning.main },
+          {
+            label: "Total Classes",
+            value: stats.totalClasses,
+            color: colors.primary.main,
+          },
+          { label: "Completed", value: stats.completed, color: colors.success.main },
+          { label: "This Week", value: stats.thisWeek, color: colors.secondary.main },
+          {
+            label: "Pending Requests",
+            value: stats.pendingRequests,
+            color: colors.warning.main,
+          },
         ].map((stat, i) => (
           <div
             key={i}

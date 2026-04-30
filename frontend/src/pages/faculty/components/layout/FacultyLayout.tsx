@@ -11,7 +11,6 @@ import {
   Bell,
   RotateCcw,
   BookOpen,
-  Users,
   ClipboardList,
   BarChart3,
 } from "lucide-react";
@@ -30,7 +29,6 @@ const navSections = [
     items: [
       { icon: BookOpen, label: "My Courses", path: "/FacultyPage/courses" },
       { icon: ClipboardList, label: "Exam Schedule", path: "/FacultyPage/exams" },
-      { icon: Users, label: "Student Lists", path: "/FacultyPage/students" },
     ],
   },
   {
