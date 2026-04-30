@@ -30,6 +30,9 @@ import {
   TimetableVersionsEP,
   TimetableVersionEP,
   TimetableDeleteVersionEP,
+  BulkRescheduleEP,
+  BulkRescheduleAvailableRoomsEP,
+  BulkRescheduleRoomCoursesEP,
 } from "../../../constants/Api_constants";
 import { withAuthHeaders } from "../../../services/authInterceptor";
 
@@ -336,4 +339,163 @@ export async function fetchExamSchedule() {
 export async function fetchAnalytics() {
   await delay(300);
   return { ...analyticsData };
+}
+
+// ─── Bulk Rescheduling ──────────────────────────────────────
+/**
+ * Loads everything the Bulk Rescheduling page needs on mount:
+ * - The latest published timetable (source of truth for current assignments)
+ * - All rooms from the catalog (for BR-2 room picker)
+ */
+export async function fetchBulkRescheduleContext() {
+  try {
+    const [timetableRes, roomsRes] = await Promise.all([
+      fetch(TimetableLatestEP + "?t=" + Date.now(), {
+        headers: withAuthHeaders(),
+        cache: "no-store",
+      }),
+      fetch(API_BASE_URL + "/catalog/rooms", { headers: withAuthHeaders() }),
+    ]);
+
+    const timetable = timetableRes.ok ? await timetableRes.json() : null;
+    const roomsData = roomsRes.ok ? await roomsRes.json() : null;
+
+    return {
+      timetable: timetable || null,
+      assignments: timetable?.assignments || [],
+      rooms: roomsData?.data || [],
+      sourceVersion: timetable?.version || null,
+    };
+  } catch (error) {
+    console.error("fetchBulkRescheduleContext error:", error);
+    return { timetable: null, assignments: [], rooms: [], sourceVersion: null };
+  }
+}
+
+/**
+ * BR-1: Returns rooms that are free at ALL time slots occupied by a course.
+ * Backend computes this — frontend just shows the filtered list.
+ */
+export async function fetchAvailableRoomsForCourse(courseCode: string) {
+  try {
+    const res = await fetch(BulkRescheduleAvailableRoomsEP(courseCode), {
+      headers: withAuthHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Failed to fetch available rooms");
+    return data; // { availableRooms: Room[], courseSlots: Assignment[] }
+  } catch (error: any) {
+    return { availableRooms: [], courseSlots: [], error: error.message };
+  }
+}
+
+/**
+ * BR-2: Returns all assignments currently in a given room.
+ */
+export async function fetchCoursesInRoom(roomName: string) {
+  try {
+    const res = await fetch(BulkRescheduleRoomCoursesEP(roomName), {
+      headers: withAuthHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Failed to fetch room courses");
+    return data; // { assignments: Assignment[] }
+  } catch (error: any) {
+    return { assignments: [], error: error.message };
+  }
+}
+
+export type BulkOperationType = "BR-1" | "BR-2" | "BR-4" | "BR-7";
+
+export interface BulkReschedulePayload {
+  operationType: BulkOperationType;
+  sourceVersion: string;
+  dryRun: boolean;
+  reason?: string; // required when dryRun: false
+  parameters: Record<string, any>;
+}
+
+export interface BulkChangeItem {
+  courseCode: string;
+  courseName: string;
+  professorName: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+  change: { field: string; from: string | null; to: string | null };
+  conflict: { type: "blocking" | "warning"; description: string } | null;
+}
+
+export interface BulkPreviewResult {
+  success: boolean;
+  dryRun: true;
+  affectedCount: number;
+  changes: BulkChangeItem[];
+  hasBlockingConflicts: boolean;
+  message?: string;
+}
+
+export interface BulkApplyResult {
+  success: boolean;
+  dryRun: false;
+  newVersion: string;
+  affectedCount: number;
+  message?: string;
+}
+
+/**
+ * Step 1 — dryRun: true
+ * Returns a full preview of what will change, with conflict annotations.
+ * Does NOT write anything to the database.
+ */
+export async function previewBulkReschedule(
+  payload: Omit<BulkReschedulePayload, "dryRun">
+): Promise<BulkPreviewResult> {
+  try {
+    const res = await fetch(BulkRescheduleEP, {
+      method: "POST",
+      headers: withAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ ...payload, dryRun: true }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Preview failed");
+    return data;
+  } catch (error: any) {
+    return {
+      success: false,
+      dryRun: true,
+      affectedCount: 0,
+      changes: [],
+      hasBlockingConflicts: true,
+      message: error.message,
+    };
+  }
+}
+
+/**
+ * Step 2 — dryRun: false
+ * Clones the source version, applies the transformation, saves as a new draft.
+ * Returns the new version string to display in the success CTA.
+ */
+export async function applyBulkReschedule(
+  payload: BulkReschedulePayload & { dryRun: false; reason: string }
+): Promise<BulkApplyResult> {
+  try {
+    const res = await fetch(BulkRescheduleEP, {
+      method: "POST",
+      headers: withAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Apply failed");
+    return data;
+  } catch (error: any) {
+    return {
+      success: false,
+      dryRun: false,
+      newVersion: "",
+      affectedCount: 0,
+      message: error.message,
+    };
+  }
 }

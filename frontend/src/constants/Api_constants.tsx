@@ -45,3 +45,10 @@ export const GC_AUTH_STATUS_EP = GOOGLE_CLASSROOM_API_URL + "/auth/status";
 export const GC_AUTH_LOGOUT_EP = GOOGLE_CLASSROOM_API_URL + "/auth/logout";
 export const GC_ASSIGNMENTS_EP = GOOGLE_CLASSROOM_API_URL + "/assignments";
 export const GC_CLASSROOM_LINK_EP = GOOGLE_CLASSROOM_API_URL + "/classroom-link";
+
+// Bulk Rescheduling
+export const BulkRescheduleEP = API_BASE_URL + "/timetable/bulk-reschedule";
+export const BulkRescheduleAvailableRoomsEP = (courseCode: string) =>
+  API_BASE_URL + `/timetable/bulk-reschedule/available-rooms?courseCode=${encodeURIComponent(courseCode)}`;
+export const BulkRescheduleRoomCoursesEP = (roomName: string) =>
+  API_BASE_URL + `/timetable/bulk-reschedule/room-courses?roomName=${encodeURIComponent(roomName)}`;
