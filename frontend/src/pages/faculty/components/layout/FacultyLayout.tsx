@@ -11,9 +11,7 @@ import {
   Bell,
   RotateCcw,
   BookOpen,
-  Users,
   ClipboardList,
-  BarChart3,
 } from "lucide-react";
 
 const navSections = [
@@ -30,14 +28,12 @@ const navSections = [
     items: [
       { icon: BookOpen, label: "My Courses", path: "/FacultyPage/courses" },
       { icon: ClipboardList, label: "Exam Schedule", path: "/FacultyPage/exams" },
-      { icon: Users, label: "Student Lists", path: "/FacultyPage/students" },
     ],
   },
   {
     label: "INSIGHTS",
     items: [
       { icon: Bell, label: "Notifications", path: "/FacultyPage/notifications", badge: 2 },
-      { icon: BarChart3, label: "Analytics", path: "/FacultyPage/analytics" },
     ],
   },
 ];
@@ -74,7 +70,6 @@ export default function FacultyLayout({ children }) {
         bg: "rgba(124, 58, 237, 0.08)",
         color: "#7C3AED",
       }}
-      searchPlaceholder="Search courses, schedules..."
       notificationCount={2}
       notificationPath="/FacultyPage/notifications"
       settingsPath="/profile"

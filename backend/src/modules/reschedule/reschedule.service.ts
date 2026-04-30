@@ -41,8 +41,8 @@ export const rescheduleService = {
     if (query.status) {
       filter.status = query.status;
     }
-    if (query.facultyId) {
-      filter.facultyId = query.facultyId;
+    if (query.professorId) {
+      filter.professorId = query.professorId;
     }
 
     return rescheduleRepository.findAll(filter);

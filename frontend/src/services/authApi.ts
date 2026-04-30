@@ -21,6 +21,7 @@ interface User {
   lastLogin: string;
   createdAt: string;
   updatedAt: string;
+  profileId?: string;
 }
 
 interface LoginResponse {

@@ -11,6 +11,8 @@ export const rescheduleRepository = {
     return RequestModel.find(filter)
       .populate("currentSlotId")
       .populate("requestedSlotId")
+      .populate("professorId")
+      .populate("courseId")
       .sort({ createdAt: -1 })
       .lean();
   },
@@ -19,6 +21,8 @@ export const rescheduleRepository = {
     return RequestModel.findById(id)
       .populate("currentSlotId")
       .populate("requestedSlotId")
+      .populate("professorId")
+      .populate("courseId")
       .lean();
   },
 

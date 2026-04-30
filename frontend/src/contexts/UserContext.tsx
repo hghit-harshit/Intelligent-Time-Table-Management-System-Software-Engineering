@@ -9,6 +9,7 @@ interface User {
   role: "admin" | "professor" | "student";
   isActive: boolean;
   createdAt: string;
+  profileId?: string;
 }
 
 interface UserContextType {

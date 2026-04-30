@@ -1,24 +1,8 @@
 // @ts-nocheck
 // ============================================================
-// ADMIN API SERVICE — Mock API layer with simulated latency
-// Replace with real axios calls when backend is ready
+// ADMIN API SERVICE — Connected to MongoDB backend
 // ============================================================
 
-import {
-  dashboardMetrics,
-  systemAlerts,
-  activityFeed,
-  conflicts,
-  courses,
-  faculty,
-  rooms,
-  timeSlots,
-  timetableEngineState,
-  examSchedule,
-  timetableVersions,
-  analyticsData,
-} from "../../../data/adminMockData";
-import { getRequests, updateStatus } from "../../../stores/reschedule.store";
 import { API_BASE_URL } from "../../../config/constants";
 import {
   SchedulerGenerateEP,
@@ -35,42 +19,133 @@ import {
   BulkRescheduleRoomCoursesEP,
 } from "../../../constants/Api_constants";
 import { withAuthHeaders } from "../../../services/authInterceptor";
+import { httpClient } from "../../../services/httpClient";
 
-// Simulate network delay
-const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
+// ─── Helpers ────────────────────────────────────────────────
+
+/**
+ * Normalize a reschedule request from the MongoDB schema
+ * into the shape the admin UI components expect.
+ * professorId / courseId are populated by the backend repository.
+ */
+function normalizeRequest(raw) {
+  const currentSlot = raw.currentSlot || {};
+  const requestedSlot = raw.requestedSlot || {};
+
+  const professor =
+    raw.professorId && typeof raw.professorId === "object"
+      ? raw.professorId
+      : null;
+  const course =
+    raw.courseId && typeof raw.courseId === "object" ? raw.courseId : null;
+
+  return {
+    id: raw._id || raw.id,
+    facultyName: professor?.name || "Faculty Member",
+    facultyDept: professor?.department || "—",
+    course: course?.name || "—",
+    courseCode: course?.code || "—",
+    currentSlot: {
+      day: currentSlot.day || "—",
+      time: currentSlot.time || "—",
+      room: currentSlot.room || "—",
+    },
+    requestedSlot: {
+      day: requestedSlot.day || "—",
+      time: requestedSlot.time || "—",
+      room: requestedSlot.room || "—",
+    },
+    reason: raw.reason || "",
+    status: raw.status || "pending",
+    conflictStatus: raw.conflictStatus || "No conflicts",
+    createdAt: raw.createdAt,
+  };
+}
 
 // ─── Dashboard ──────────────────────────────────────────────
 export async function fetchDashboard() {
-  await delay(200);
-  const allRequests = getRequests();
+  // Fetch real data from multiple endpoints in parallel
+  const [coursesData, roomsData, requestsRaw, timetable] = await Promise.all([
+    httpClient.get("/catalog/courses").catch(() => ({ data: [] })),
+    httpClient.get("/catalog/rooms").catch(() => ({ data: [] })),
+    httpClient.get("/requests").catch(() => []),
+    httpClient.get("/timetable/latest").catch(() => null),
+  ]);
+
+  const coursesList = coursesData?.data ?? coursesData ?? [];
+  const roomsList = roomsData?.data ?? roomsData ?? [];
+  const allRequests = (Array.isArray(requestsRaw) ? requestsRaw : []).map(
+    normalizeRequest
+  );
+  const pendingRequests = allRequests.filter((r) => r.status === "pending");
+
+  const timetableStatus = timetable?.status || "No timetable";
+  const publishedAt = timetable?.publishedAt
+    ? new Date(timetable.publishedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : "Never";
+
   return {
-    metrics: dashboardMetrics,
-    alerts: systemAlerts,
-    recentActivity: activityFeed,
-    pendingRequests: allRequests.filter((r) => r.status === "pending"),
+    metrics: {
+      activeCourses: {
+        value: Array.isArray(coursesList) ? coursesList.length : 0,
+        trend: "from database",
+        trendDirection: "neutral",
+      },
+      roomsAvailable: {
+        value: Array.isArray(roomsList) ? roomsList.length : 0,
+        trend: "total rooms",
+        trendDirection: "neutral",
+      },
+      pendingRequests: {
+        value: pendingRequests.length,
+        trend: `${allRequests.length} total`,
+        trendDirection: pendingRequests.length > 0 ? "up" : "neutral",
+      },
+      detectedConflicts: {
+        value: 0,
+        trend: "—",
+        trendDirection: "neutral",
+      },
+      timetableStatus: {
+        value: timetableStatus.charAt(0).toUpperCase() + timetableStatus.slice(1),
+        trend: `Last published: ${publishedAt}`,
+        trendDirection: "neutral",
+      },
+    },
+    alerts: [],
+    recentActivity: [],
+    pendingRequests,
   };
 }
 
 // ─── Conflicts ──────────────────────────────────────────────
+// NOTE: No dedicated conflict backend exists yet.
+// Return empty array so the page doesn't break; this can be wired up later.
 export async function fetchConflicts() {
-  await delay(250);
-  return [...conflicts];
+  return [];
 }
 
 export async function resolveConflict(conflictId, action) {
-  await delay(400);
   return { success: true, conflictId, action };
 }
 
 // ─── Reschedule Requests ────────────────────────────────────
 export async function fetchRescheduleRequests() {
-  await delay(200);
-  return getRequests();
+  const data = await httpClient.get("/requests");
+  const items = Array.isArray(data) ? data : [];
+  return items.map(normalizeRequest);
 }
 
 export async function updateRequestStatus(requestId, status) {
-  await delay(400);
-  updateStatus(requestId, status);
+  const action = status === "approved" ? "approve" : "reject";
+  await httpClient.request(`/requests/${requestId}/${action}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
   return { success: true, requestId, status };
 }
 
@@ -92,9 +167,23 @@ function buildEngineState(doc) {
   };
 }
 
+const emptyEngineState = {
+  currentVersion: "v1.0",
+  status: "draft",
+  lastGenerated: null,
+  lastPublished: null,
+  constraintViolations: 0,
+  totalSlotsFilled: 0,
+  totalSlotsAvailable: 30,
+  solverDuration: null,
+  generatedSchedule: [],
+  latestAssignments: [],
+  latestStats: null,
+  latestConstraints: null,
+};
+
 export async function fetchTimetableEngine() {
   try {
-    // Try latest published first (isLatest: true)
     const latestResponse = await fetch(TimetableLatestEP + "?t=" + Date.now(), {
       headers: withAuthHeaders(),
       cache: "no-store",
@@ -106,7 +195,6 @@ export async function fetchTimetableEngine() {
   } catch (_) {}
 
   try {
-    // Fall back to most recently saved doc (draft or published) so page refresh restores data
     const draftResponse = await fetch(TimetableLatestDraftEP + "?t=" + Date.now(), {
       headers: withAuthHeaders(),
       cache: "no-store",
@@ -117,9 +205,7 @@ export async function fetchTimetableEngine() {
     }
   } catch (_) {}
 
-  // Nothing in DB yet — return empty state
-  await delay(100);
-  return { ...timetableEngineState };
+  return { ...emptyEngineState };
 }
 
 export async function generateTimetable(constraints = {}) {
@@ -308,37 +394,119 @@ export async function fetchTimetableVersions() {
   }
 }
 
-// ─── Academic Structure ─────────────────────────────────────
+// ─── Academic Structure (now from MongoDB) ──────────────────
 export async function fetchCourses() {
-  await delay(200);
-  return [...courses];
+  const response = await httpClient.get("/catalog/courses");
+  const items = response?.data ?? response ?? [];
+  // Adapt MongoDB course shape → admin table shape
+  return (Array.isArray(items) ? items : []).map((c) => ({
+    id: c.code || c._id,
+    name: c.name || "—",
+    department: c.department || "—",
+    credits: c.credits ?? 0,
+    faculty: c.professorIds?.length
+      ? `${c.professorIds.length} assigned`
+      : "—",
+    semester: c.segmentName || "—",
+    students: c.students ?? 0,
+    status: "active",
+  }));
 }
 
 export async function fetchFaculty() {
-  await delay(200);
-  return [...faculty];
+  const response = await httpClient.get("/catalog/professors");
+  const items = response?.data ?? response ?? [];
+  return (Array.isArray(items) ? items : []).map((p) => ({
+    id: p._id,
+    name: p.name || "—",
+    department: p.department || "—",
+    designation: p.designation || "Professor",
+    courses: p.courseMappings || [],
+    email: p.email || "—",
+    maxSlots: p.maxSlots ?? 5,
+    currentSlots: p.courseMappings?.length ?? 0,
+    status: "active",
+  }));
 }
 
 export async function fetchRooms() {
-  await delay(200);
-  return [...rooms];
+  const response = await httpClient.get("/catalog/rooms");
+  const items = response?.data ?? response ?? [];
+  return (Array.isArray(items) ? items : []).map((r) => ({
+    id: r._id,
+    name: r.name || "—",
+    capacity: r.capacity ?? 0,
+    type: r.type || "Classroom",
+    building: r.building || "—",
+    floor: r.floor ?? 1,
+    equipment: r.equipment || [],
+    status: r.status || "available",
+  }));
 }
 
 export async function fetchTimeSlots() {
-  await delay(200);
-  return [...timeSlots];
+  // Time slots are loaded from the Slot collection via the dedicated service
+  // (timeSlots.service.ts). Return empty so the shared page can fall through
+  // to fetchTimeSlotsFromApi().
+  return [];
 }
 
 // ─── Exams ──────────────────────────────────────────────────
+// NOTE: No dedicated exam schedule backend exists yet. Return empty.
 export async function fetchExamSchedule() {
-  await delay(250);
-  return [...examSchedule];
+  return [];
 }
 
 // ─── Analytics ──────────────────────────────────────────────
+// Compute basic analytics from real data rather than hardcoded mock
 export async function fetchAnalytics() {
-  await delay(300);
-  return { ...analyticsData };
+  const [roomsData, professorsData, requestsRaw] = await Promise.all([
+    httpClient.get("/catalog/rooms").catch(() => ({ data: [] })),
+    httpClient.get("/catalog/professors").catch(() => ({ data: [] })),
+    httpClient.get("/requests").catch(() => []),
+  ]);
+
+  const rooms = roomsData?.data ?? roomsData ?? [];
+  const professors = professorsData?.data ?? professorsData ?? [];
+  const requests = Array.isArray(requestsRaw) ? requestsRaw : [];
+
+  return {
+    roomUtilization: (Array.isArray(rooms) ? rooms : []).map((r) => ({
+      room: r.name || "—",
+      utilization: Math.floor(Math.random() * 60 + 20), // placeholder until real usage data
+    })),
+    facultyLoad: (Array.isArray(professors) ? professors : []).map((p) => ({
+      name: p.name || "—",
+      load: Math.floor(
+        ((p.courseMappings?.length ?? 0) / (p.maxSlots ?? 5)) * 100
+      ),
+    })),
+    weeklyRequestTrend: buildWeeklyTrend(requests),
+    conflictsByType: [
+      { type: "Room", count: 0 },
+      { type: "Faculty", count: 0 },
+      { type: "Student", count: 0 },
+      { type: "Exam", count: 0 },
+    ],
+  };
+}
+
+function buildWeeklyTrend(requests) {
+  // Group requests by ISO week for the last 6 weeks
+  const now = new Date();
+  const weeks = [];
+  for (let i = 5; i >= 0; i--) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - i * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    const count = requests.filter((r) => {
+      const d = new Date(r.createdAt);
+      return d >= start && d < end;
+    }).length;
+    weeks.push({ week: `W${6 - i}`, count });
+  }
+  return weeks;
 }
 
 // ─── Bulk Rescheduling ──────────────────────────────────────

@@ -6,6 +6,7 @@ import { authMiddleware } from "./middlewares/auth.middleware.js";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import apiRouter from "./routes/index.js";
 import authRouter from "./modules/auth/auth.routes.js";
+import { autoCleanupPastExams } from "./modules/exam/exam.controller.js";
 import { logger } from "./shared/logger/index.js";
 
 const app = express();
@@ -43,6 +44,9 @@ app.use(errorMiddleware);
 const startServer = async () => {
   await connectDatabase();
 
+  // Auto-cleanup past exams on server startup
+  await autoCleanupPastExams();
+
   app.listen(env.port, () => {
     logger.info(`Server is running on port ${env.port}`);
   });
@@ -52,3 +56,4 @@ startServer().catch((error) => {
   logger.error("Unable to start server", error);
   process.exit(1);
 });
+

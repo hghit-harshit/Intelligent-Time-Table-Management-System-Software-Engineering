@@ -14,6 +14,15 @@ const examScheduleSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    examName: {
+      type: String,
+      trim: true,
+      default: "End Semester Exam",
+    },
+    professorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Professor",
+    },
     examDate: {
       type: Date,
       required: true,
