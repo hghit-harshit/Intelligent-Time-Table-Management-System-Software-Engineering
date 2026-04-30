@@ -39,6 +39,19 @@ export const TimetableVersionsEP = API_BASE_URL + "/timetable/versions";
 export const TimetableVersionEP = (version: string) => API_BASE_URL + `/timetable/version/${version}`;
 export const TimetableDeleteVersionEP = (version: string) => API_BASE_URL + `/timetable/version/${version}`;
 
+// Exam Scheduler
+export const ExamDateWindowEP = API_BASE_URL + "/exam/date-window";
+export const ExamRequestsEP = API_BASE_URL + "/exam/requests";
+export const ExamRequestApproveEP = (id: string) => API_BASE_URL + `/exam/requests/${id}/approve`;
+export const ExamRequestRejectEP = (id: string) => API_BASE_URL + `/exam/requests/${id}/reject`;
+export const ExamScheduleEP = API_BASE_URL + "/exam/schedule";
+export const ExamScheduleDeleteEP = (id: string) => API_BASE_URL + `/exam/schedule/${id}`;
+export const ExamAvailableSlotsEP = API_BASE_URL + "/exam/available-slots";
+export const ExamSubmitRequestEP = API_BASE_URL + "/exam/request";
+export const ExamMyRequestsEP = API_BASE_URL + "/exam/my-requests";
+export const ExamFacultyCoursesEP = API_BASE_URL + "/exam/faculty-courses";
+export const ExamCleanupEP = API_BASE_URL + "/exam/cleanup";
+
 export const GOOGLE_CLASSROOM_API_URL = "http://localhost:4000/api";
 export const GC_AUTH_URL_EP = GOOGLE_CLASSROOM_API_URL + "/auth/url";
 export const GC_AUTH_STATUS_EP = GOOGLE_CLASSROOM_API_URL + "/auth/status";

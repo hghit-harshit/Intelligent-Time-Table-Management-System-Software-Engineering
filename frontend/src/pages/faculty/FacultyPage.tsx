@@ -4,9 +4,9 @@ import {
   FacultyDashboard,
   FacultyRescheduleRequests,
   FacultyMyCourses,
+  FacultyExamScheduler,
 } from "../../features/faculty";
 import {
-  StudentExamSchedule,
   StudentNotifications,
 } from "../../features/student";
 
@@ -17,9 +17,10 @@ export default function FacultyPage() {
         <Route index element={<FacultyDashboard />} />
         <Route path="requests" element={<FacultyRescheduleRequests />} />
         <Route path="courses" element={<FacultyMyCourses />} />
-        <Route path="exams" element={<StudentExamSchedule />} />
+        <Route path="exams" element={<FacultyExamScheduler />} />
         <Route path="notifications" element={<StudentNotifications />} />
       </Routes>
     </FacultyLayout>
   );
 }
+

@@ -4,6 +4,7 @@ import { CourseModel } from "../src/database/models/courseModel.js";
 import { ProfessorModel } from "../src/database/models/professorModel.js";
 import { RoomModel } from "../src/database/models/roomModel.js";
 import { SlotModel } from "../src/database/models/slotModel.js";
+import { UserModel } from "../src/database/models/userModel.js";
 
 const courseBlueprints = [
   {
@@ -123,7 +124,7 @@ const courseBlueprints = [
 const professorBlueprints = [
   {
     name: "Dr. Arun Kumar",
-    email: "arun.kumar@demo.edu",
+    email: "prof@gmail.com",
     teaches: ["CSE101", "CSE201"],
     preferredDaysOff: ["Friday"],
     blocked: [
@@ -320,6 +321,9 @@ const run = async () => {
     );
   }
 
+  // Find default faculty user to link professor record
+  const facultyUser = await UserModel.findOne({ email: "prof@gmail.com" }).lean();
+
   const professorDocs: any[] = [];
   for (const prof of professorBlueprints) {
     const courseMappings = prof.teaches
@@ -333,20 +337,25 @@ const run = async () => {
       )
       .filter(Boolean);
 
+    const updateData: any = {
+      name: prof.name,
+      email: prof.email,
+      preferredDaysOff: prof.preferredDaysOff,
+      courseMappings,
+      availability: {
+        unavailableSlotIds,
+      },
+      seededBy: "scheduler-test-v2",
+    };
+
+    // Link the first professor to the default faculty user
+    if (prof.email === "prof@gmail.com" && facultyUser) {
+      updateData.userId = facultyUser._id;
+    }
+
     const professorDoc = await ProfessorModel.findOneAndUpdate(
       { email: prof.email },
-      {
-        $set: {
-          name: prof.name,
-          email: prof.email,
-          preferredDaysOff: prof.preferredDaysOff,
-          courseMappings,
-          availability: {
-            unavailableSlotIds,
-          },
-          seededBy: "scheduler-test-v2",
-        },
-      },
+      { $set: updateData },
       { new: true, upsert: true },
     );
 
