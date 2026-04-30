@@ -586,6 +586,7 @@ export const getStudentExams = async (req: Request, res: Response) => {
         id: String(exam._id),
         courseCode: exam.courseCode,
         courseName: exam.courseName,
+        examName: (exam as any).examName || "End Semester Exam",
         subject: exam.courseName || exam.courseCode || "Untitled",
         examDate: exam.examDate,
         startTime: exam.startTime,
