@@ -14,6 +14,7 @@
     "seed:exams:inside": "tsx scripts/seedExamSchedules.ts",
     "seed:enrollments:inside": "tsx scripts/seedStudentEnrollments.ts",
     "seed:all:inside": "npm run db-setup:inside && npm run seed:slots:inside && npm run seed:scheduler-test:inside && npm run seed:enrollments:inside && npm run seed:notifications:inside && npm run seed:exams:inside",
+    "seed:nice-timetable:inside": "tsx scripts/seedNiceTimetable.ts",
     "db-setup:inside": "tsx scripts/seedDefaultUsers.ts",
     "seed:slots": "docker compose -f docker-compose.dev.yml exec backend npm run seed:slots:inside",
     "seed:scheduler-test": "docker compose -f docker-compose.dev.yml exec backend npm run seed:scheduler-test:inside",
