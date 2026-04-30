@@ -33,7 +33,7 @@ export default function AppShell({
   portalSubtitle,
   user,
   roleBadge,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = null,
   notificationCount = 0,
   notificationPath,
   settingsPath,
@@ -407,58 +407,62 @@ export default function AppShell({
             flexShrink: 0,
           }}
         >
-          {/* Global Search */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              background: searchFocused ? colors.bg.base : colors.bg.raised,
-              border: searchFocused
-                ? `1px solid ${colors.primary.border}`
-                : `1px solid ${colors.border.medium}`,
-              borderRadius: radius.md,
-              padding: "7px 14px",
-              width: "340px",
-              transition: transitions.smooth,
-              boxShadow: searchFocused
-                ? `0 0 0 3px ${colors.primary.ghost}`
-                : "none",
-            }}
-          >
-            <Search
-              size={14}
-              style={{ color: colors.text.muted, flexShrink: 0 }}
-            />
-            <input
-              type="text"
-              aria-label="Global search"
-              placeholder={searchPlaceholder}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
+          {/* Global Search — only rendered when searchPlaceholder is provided */}
+          {searchPlaceholder ? (
+            <div
               style={{
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                color: colors.text.primary,
-                fontSize: fonts.size.sm,
-                fontFamily: fonts.body,
-                width: "100%",
-              }}
-            />
-            <span
-              style={{
-                fontSize: fonts.size.xs,
-                color: colors.text.muted,
-                border: `1px solid ${colors.border.medium}`,
-                borderRadius: radius.sm,
-                padding: "1px 5px",
-                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: searchFocused ? colors.bg.base : colors.bg.raised,
+                border: searchFocused
+                  ? `1px solid ${colors.primary.border}`
+                  : `1px solid ${colors.border.medium}`,
+                borderRadius: radius.md,
+                padding: "7px 14px",
+                width: "340px",
+                transition: transitions.smooth,
+                boxShadow: searchFocused
+                  ? `0 0 0 3px ${colors.primary.ghost}`
+                  : "none",
               }}
             >
-              Ctrl+K
-            </span>
-          </div>
+              <Search
+                size={14}
+                style={{ color: colors.text.muted, flexShrink: 0 }}
+              />
+              <input
+                type="text"
+                aria-label="Global search"
+                placeholder={searchPlaceholder}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: colors.text.primary,
+                  fontSize: fonts.size.sm,
+                  fontFamily: fonts.body,
+                  width: "100%",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: fonts.size.xs,
+                  color: colors.text.muted,
+                  border: `1px solid ${colors.border.medium}`,
+                  borderRadius: radius.sm,
+                  padding: "1px 5px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Ctrl+K
+              </span>
+            </div>
+          ) : (
+            <div />
+          )}
 
           {/* Right side — notifications + profile chip */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
