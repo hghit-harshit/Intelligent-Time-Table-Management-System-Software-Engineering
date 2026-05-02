@@ -20,7 +20,7 @@ const LAST_NAMES = [
 ];
 
 const generateEmail = (firstName: string, lastName: string, idx: number) => 
-  `${firstName.toLowerCase()}.${lastName.toLowerCase()}${idx}@student.disha.edu`;
+  `s${idx}@gmail.com`;
 
 const getCoursesForBatch = (batchId: string, courses: any[]): string[] => {
   const batchCourses = courses.filter((c) => c.batchIds?.includes(batchId));
@@ -54,7 +54,7 @@ const run = async () => {
       return;
     }
   } else {
-    await UserModel.deleteMany({ role: "student" });
+    await UserModel.deleteMany({ role: "student", email: { $ne: "student@gmail.com" } });
     console.log("Cleared existing students");
   }
 
@@ -77,7 +77,7 @@ const run = async () => {
       const firstName = FIRST_NAMES[nameIdx];
       const lastName = LAST_NAMES[nameIdx % LAST_NAMES.length];
       const email = generateEmail(firstName, lastName, nameIdx + 1);
-      const hashedPassword = await bcrypt.hash("password123", 12);
+      const hashedPassword = await bcrypt.hash("password", 12);
 
       const userDoc = await UserModel.create({
         firstName,
@@ -111,8 +111,8 @@ const run = async () => {
   console.log(`Total enrollments: ${totalEnrollments}`);
   
   console.log("\nSample student credentials:");
-  console.log("Email: aarav.sharma1@student.disha.edu");
-  console.log("Password: password123");
+  console.log("Email: s1@gmail.com");
+  console.log("Password: password");
 };
 
 run()

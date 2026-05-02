@@ -28,6 +28,7 @@ export const slotSchema = new mongoose.Schema(
       required: true,
       trim: true,
       unique: true,
+      sparse: true,
     },
     occurrences: {
       type: [occurrenceSchema],
