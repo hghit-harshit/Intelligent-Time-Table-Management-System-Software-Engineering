@@ -20,6 +20,7 @@ import { colors, fonts, radius, shadows, transitions } from "../../../styles/tok
 import {
   DoorOpen,
   ArrowRightLeft,
+  ArrowLeftRight,
   Clock,
   CalendarX,
   AlertTriangle,
@@ -34,6 +35,7 @@ import {
 import { toast } from "sonner";
 import BR1_MoveCourseRoom from "./bulk-ops/BR1_MoveCourseRoom";
 import BR2_EvacuateRoom from "./bulk-ops/BR2_EvacuateRoom";
+import BR3_SwapCourses from "./bulk-ops/BR3_SwapCourses";
 import BR4_MoveCourseTime from "./bulk-ops/BR4_MoveCourseTime";
 import BR7_CancelDate from "./bulk-ops/BR7_CancelDate";
 
@@ -57,6 +59,15 @@ const TABS = [
     shortDesc: "Move every course out of a room (maintenance, closure)",
     longDesc:
       "The system will auto-assign the best available alternative room for each displaced course using the same greedy algorithm as the scheduler. Unassigned courses are flagged as warnings.",
+  },
+  {
+    id: "BR-3",
+    label: "Swap Courses",
+    icon: ArrowLeftRight,
+    accent: "#0891B2",
+    shortDesc: "Swap the day/time/room of two courses",
+    longDesc:
+      "Select two courses and exchange their complete schedules. Useful when two courses need to trade timeslots or rooms. Conflicts are detected for both directions.",
   },
   {
     id: "BR-4",
@@ -663,6 +674,7 @@ function ActiveOperationForm({
   };
   if (tab === "BR-1") return <BR1_MoveCourseRoom {...sharedProps} />;
   if (tab === "BR-2") return <BR2_EvacuateRoom {...sharedProps} />;
+  if (tab === "BR-3") return <BR3_SwapCourses {...sharedProps} />;
   if (tab === "BR-4") return <BR4_MoveCourseTime {...sharedProps} />;
   if (tab === "BR-7") return <BR7_CancelDate {...sharedProps} />;
   return null;

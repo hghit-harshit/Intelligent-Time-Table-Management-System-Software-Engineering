@@ -146,12 +146,12 @@ export async function fetchPendingRequestCount() {
 
 export async function updateRequestStatus(requestId, status) {
   const action = status === "approved" ? "approve" : "reject";
-  await httpClient.request(`/requests/${requestId}/${action}`, {
+  const data = await httpClient.request(`/requests/${requestId}/${action}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
   });
-  return { success: true, requestId, status };
+  return data;
 }
 
 // ─── Timetable Engine ───────────────────────────────────────

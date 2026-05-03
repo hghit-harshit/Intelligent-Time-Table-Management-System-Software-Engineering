@@ -3,6 +3,7 @@ import { Card, Badge, Button, SearchInput, TabBar, Loader, PageHeader } from "..
 import { fetchRescheduleRequests, updateRequestStatus } from "../../../features/admin/services";
 import { colors, fonts, radius } from "../../../styles/tokens";
 import { Check, X, Eye } from "lucide-react";
+import { toast } from "sonner";
 
 const statusVariant = { pending: "warning", approved: "success", rejected: "danger" };
 
@@ -21,13 +22,29 @@ export default function RescheduleRequests() {
   }, []);
 
   const handleApprove = async (id) => {
-    await updateRequestStatus(id, "approved");
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
+    try {
+      const result = await updateRequestStatus(id, "approved");
+      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
+      if (result?.timetableVersion) {
+        toast.success(`Request approved. New draft version "${result.timetableVersion}" created with ${result.assignmentsChanged} changes.`, {
+          duration: 5000,
+        });
+      } else {
+        toast.success("Request approved successfully");
+      }
+    } catch (error) {
+      toast.error(error?.message || "Failed to approve request");
+    }
   };
 
   const handleReject = async (id) => {
-    await updateRequestStatus(id, "rejected");
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+    try {
+      await updateRequestStatus(id, "rejected");
+      setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+      toast.success("Request rejected");
+    } catch (error) {
+      toast.error(error?.message || "Failed to reject request");
+    }
   };
 
   const filtered = requests.filter((r) => {
