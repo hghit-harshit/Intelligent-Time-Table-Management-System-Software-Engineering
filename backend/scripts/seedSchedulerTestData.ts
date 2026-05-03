@@ -324,6 +324,11 @@ const run = async () => {
   // Find default faculty user to link professor record
   const facultyUser = await UserModel.findOne({ email: "prof@gmail.com" }).lean();
 
+  // Clean up all previously seeded professors to avoid stale/duplicate records
+  await ProfessorModel.deleteMany({ seededBy: "scheduler-test-v2" });
+  // Also clean up any leftover professor with old email
+  await ProfessorModel.deleteMany({ email: "arun.kumar@demo.edu" });
+
   const professorDocs: any[] = [];
   for (const prof of professorBlueprints) {
     const courseMappings = prof.teaches

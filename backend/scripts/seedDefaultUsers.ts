@@ -11,8 +11,8 @@ const defaultUsers = [
     role: "student",
   },
   {
-    firstName: "Prof",
-    lastName: "Work",
+    firstName: "Dr. Arun",
+    lastName: "Kumar",
     email: "prof@gmail.com",
     password: "password",
     role: "professor",
@@ -32,6 +32,16 @@ async function seedDefaultUsers() {
     console.log("Connected to database");
 
     for (const user of defaultUsers) {
+      const existing = await UserModel.findOne({ email: user.email });
+      if (existing) {
+        // Update name in case it changed
+        existing.firstName = user.firstName;
+        existing.lastName = user.lastName;
+        await existing.save();
+        console.log(`User ${user.email} already exists, updated name`);
+        continue;
+      }
+
       const hashedPassword = await bcrypt.hash(user.password, 12);
       await UserModel.create({
         ...user,
