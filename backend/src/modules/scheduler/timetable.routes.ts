@@ -7,6 +7,7 @@ const router = Router();
 
 const saveDraftSchema = z.object({
   version: z.string(),
+  commitMessage: z.string().optional(),
   assignments: z.array(z.object({
     courseId: z.string().optional(),
     courseCode: z.string(),
@@ -43,6 +44,7 @@ const saveDraftSchema = z.object({
 
 const publishSchema = z.object({
   version: z.string(),
+  commitMessage: z.string().optional(),
 });
 
 // Save draft timetable
@@ -57,6 +59,7 @@ router.post("/save-draft", async (req, res) => {
           assignments: payload.assignments,
           stats: payload.stats,
           constraints: payload.constraints,
+          commitMessage: payload.commitMessage || "",
           status: "draft",
           generatedAt: new Date(),
         },
@@ -85,15 +88,18 @@ router.post("/publish", async (req, res) => {
     );
 
     // Then publish the requested version and mark as latest
+    const updateData: Record<string, unknown> = {
+      status: "published",
+      isLatest: true,
+      publishedAt: new Date(),
+    };
+    if (payload.commitMessage) {
+      updateData.commitMessage = payload.commitMessage;
+    }
+
     const result = await TimetableResultModel.findOneAndUpdate(
       { version: payload.version },
-      {
-        $set: {
-          status: "published",
-          isLatest: true,
-          publishedAt: new Date(),
-        },
-      },
+      { $set: updateData },
       { new: true }
     );
 
@@ -155,7 +161,7 @@ router.get("/versions", async (req, res) => {
   try {
     const results = await TimetableResultModel.find()
       .sort({ generatedAt: -1 })
-      .select("version status isLatest generatedAt publishedAt stats");
+      .select("version status isLatest generatedAt publishedAt stats commitMessage");
 
     return ok(res, results);
   } catch (error) {

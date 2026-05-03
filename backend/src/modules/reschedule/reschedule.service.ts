@@ -63,4 +63,8 @@ export const rescheduleService = {
   reject: async (id: string, adminId?: string) => {
     return updateRequestStatus(id, "rejected", adminId);
   },
+
+  getPendingCount: async () => {
+    return rescheduleRepository.countByStatus("pending");
+  },
 };

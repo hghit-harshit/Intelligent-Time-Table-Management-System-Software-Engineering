@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, Badge, Loader } from "../../../../shared";
 import { fetchLatestTimetable } from "../../../../features/admin/services";
 import { colors, fonts, radius } from "../../../../styles/tokens";
-import { Search, X } from "lucide-react";
+import { Search, X, ExternalLink } from "lucide-react";
 
 const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -12,6 +13,7 @@ const timeToMinutes = (time = "00:00") => {
 };
 
 export default function TimetablePreview() {
+  const navigate = useNavigate();
   const [timetable, setTimetable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -129,13 +131,33 @@ export default function TimetablePreview() {
         marginBottom: "16px" 
       }}>
         <h3 style={{ margin: 0, fontSize: fonts.size.md, fontFamily: fonts.heading }}>
-          Published Timetable — {version}
+          <span
+            onClick={() => navigate("/AdminPage/versions")}
+            style={{ cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: "3px" }}
+            title="View all timetable versions"
+          >
+            Published Timetable — {version}
+          </span>
         </h3>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <Badge variant="success">{status}</Badge>
           <span style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>
             {assignments.length} classes
           </span>
+          <button
+            onClick={() => navigate("/AdminPage/versions")}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+            }}
+            title="View all versions"
+          >
+            <ExternalLink size={14} style={{ color: colors.text.muted }} />
+          </button>
         </div>
       </div>
 

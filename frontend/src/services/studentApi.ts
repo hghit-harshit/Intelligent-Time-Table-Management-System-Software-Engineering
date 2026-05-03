@@ -28,3 +28,7 @@ export const deleteStudentNotification = (id) => {
       method: "DELETE",
     });
 };
+
+export const fetchNotificationUnreadCount = () => {
+  return httpClient.get("/student/notifications/unread-count");
+};

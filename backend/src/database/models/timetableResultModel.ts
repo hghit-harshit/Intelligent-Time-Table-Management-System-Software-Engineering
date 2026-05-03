@@ -111,6 +111,10 @@ const timetableResultSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    commitMessage: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,

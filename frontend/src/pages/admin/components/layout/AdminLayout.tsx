@@ -21,6 +21,7 @@ import {
   Settings,
   ChevronsLeftRight,
 } from "lucide-react";
+import { fetchPendingRequestCount } from "../../services/adminApi";
 
 const navSections = [
   {
@@ -28,8 +29,17 @@ const navSections = [
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/AdminPage" },
       { icon: Cpu, label: "Timetable Engine", path: "/AdminPage/engine" },
-      { icon: RotateCcw, label: "Reschedule Requests", path: "/AdminPage/requests", badge: 5 },
-      { icon: CalendarClock, label: "Exam Scheduler", path: "/AdminPage/exams" },
+      {
+        icon: RotateCcw,
+        label: "Reschedule Requests",
+        path: "/AdminPage/requests",
+        badge: 5,
+      },
+      {
+        icon: CalendarClock,
+        label: "Exam Scheduler",
+        path: "/AdminPage/exams",
+      },
     ],
   },
   {
@@ -44,8 +54,16 @@ const navSections = [
   {
     label: "OPERATIONS",
     items: [
-      { icon: ChevronsLeftRight, label: "Bulk Rescheduling", path: "/AdminPage/bulk" },
-      { icon: Layers, label: "Timetable Versions", path: "/AdminPage/versions" },
+      {
+        icon: ChevronsLeftRight,
+        label: "Bulk Rescheduling",
+        path: "/AdminPage/bulk",
+      },
+      {
+        icon: Layers,
+        label: "Timetable Versions",
+        path: "/AdminPage/versions",
+      },
     ],
   },
   {
@@ -66,11 +84,17 @@ const navSections = [
 export default function AdminLayout({ children }) {
   const { user, logout } = useUser();
   const navigate = useNavigate();
-  const [userData, setUserData] = useState({ initials: "A", name: "Admin", subtitle: "Administrator" });
+  const [userData, setUserData] = useState({
+    initials: "A",
+    name: "Admin",
+    subtitle: "Administrator",
+  });
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     if (user) {
-      const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase();
+      const initials =
+        `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase();
       const name = `${user.firstName} ${user.lastName}`;
       setUserData({
         initials,
@@ -79,6 +103,12 @@ export default function AdminLayout({ children }) {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    fetchPendingRequestCount()
+      .then(setNotificationCount)
+      .catch(() => setNotificationCount(0));
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -91,8 +121,8 @@ export default function AdminLayout({ children }) {
       portalSubtitle="DISHA — Admin Console"
       user={userData}
       roleBadge={{ text: "ADMIN", bg: colors.primary.main, color: "#fff" }}
-      searchPlaceholder="Search courses, faculty, rooms..."
-      notificationCount={3}
+      notificationCount={notificationCount}
+      notificationPath="/AdminPage/requests"
       settingsPath="/profile"
       onLogout={handleLogout}
       children={children}

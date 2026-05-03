@@ -713,3 +713,38 @@ export const deleteNotification = async (req: Request, res: Response) => {
     );
   }
 };
+
+export const getNotificationUnreadCount = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return fail(res, "Student authentication required", 401);
+    }
+
+    const [unread, total] = await Promise.all([
+      NotificationModel.countDocuments({
+        $or: [
+          { studentId: req.user._id },
+          { studentId: null },
+          { studentId: { $exists: false } },
+        ],
+        isRead: false,
+      }),
+      NotificationModel.countDocuments({
+        $or: [
+          { studentId: req.user._id },
+          { studentId: null },
+          { studentId: { $exists: false } },
+        ],
+      }),
+    ]);
+
+    return ok(res, { unread, total });
+  } catch (error) {
+    return fail(
+      res,
+      "Failed to fetch notification count",
+      500,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
