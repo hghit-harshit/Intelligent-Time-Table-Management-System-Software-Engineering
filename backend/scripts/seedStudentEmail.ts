@@ -17,6 +17,8 @@ const assignRandomCourses = (courseIds: string[], min: number, max: number): str
   return shuffled.slice(0, count);
 };
 
+import { TimetableResultModel } from "../src/database/models/timetableResultModel.js";
+
 const run = async () => {
   await connectDatabase();
 
@@ -25,35 +27,41 @@ const run = async () => {
     throw new Error("Student student@gmail.com not found. Run db-setup first.");
   }
 
-  const courses = await CourseModel.find().lean();
-  if (!courses.length) {
-    throw new Error("No courses found. Run seedSchedulerTestData.ts first.");
+  const timetable = await TimetableResultModel.findOne({ isLatest: true }).lean();
+  if (!timetable || !Array.isArray(timetable.assignments)) {
+    throw new Error("No latest timetable found. Run seed:faculty-timetable:inside first.");
   }
 
-  console.log(`Found ${courses.length} courses`);
+  // Get unique course codes from the timetable assignments
+  const courseCodesInTimetable = Array.from(
+    new Set(timetable.assignments.map((a: any) => a.courseCode).filter(Boolean))
+  );
+
+  console.log(`Found ${courseCodesInTimetable.length} unique courses in the latest timetable: ${courseCodesInTimetable.join(", ")}`);
+
+  const courses = await CourseModel.find({ code: { $in: courseCodesInTimetable } }).lean();
+  
+  if (!courses.length) {
+    throw new Error("No matching courses found in the database for the timetable.");
+  }
 
   await StudentEnrollmentModel.deleteMany({ studentId: student._id });
   console.log("Cleared existing enrollments for student@gmail.com");
 
-  const batchCourseIds = getCoursesForBatch(BATCH, courses);
-  console.log(`Batch ${BATCH} has ${batchCourseIds.length} courses`);
+  const enrolledCourseIds = courses.map((c) => new mongoose.Types.ObjectId(c._id as string));
 
-  // If batchCourseIds is empty, just use all courses
-  const sourceCourses = batchCourseIds.length > 0 ? batchCourseIds : courses.map(c => c._id.toString());
-
-  const enrolledCourseIds = assignRandomCourses(sourceCourses, 3, 6).map(
-    (id) => new mongoose.Types.ObjectId(id)
-  );
+  // Determine a primary batchId from the courses if possible
+  const primaryBatch = courses[0]?.batchIds?.[0] || "CS-SY";
 
   await StudentEnrollmentModel.create({
     studentId: student._id,
-    batchId: BATCH,
+    batchId: primaryBatch,
     enrolledCourseIds,
-    academicYear: "2025-2026",
-    semester: 1,
+    academicYear: timetable.academicYear || "2025-2026",
+    semester: timetable.semester || 1,
   });
 
-  console.log(`\nSeeded student@gmail.com with ${enrolledCourseIds.length} enrollments in batch ${BATCH}`);
+  console.log(`\nSeeded student@gmail.com with ${enrolledCourseIds.length} enrollments (courses: ${courses.map(c => c.code).join(", ")})`);
 };
 
 run()
