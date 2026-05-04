@@ -1,78 +1,108 @@
 /**
  * StudentLayout — Student-specific shell wrapping the shared AppShell.
+ *
+ * Revamped per DISHA UI Guide:
+ * - Single flat nav list: My Timetable, Courses, Google Classroom, My Notes, AI Assistant
+ * - No MAIN / WORKSPACE / TOOLS section headers
+ * - Google auth state passed down for profile popover
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../../../../components/AppShell";
 import { colors } from "../../../../styles/tokens";
 import { useUser } from "../../../../contexts/UserContext";
 import {
   LayoutDashboard,
-  CalendarClock,
-  Bell,
   BookOpen,
   GraduationCap,
   StickyNote,
-  CheckSquare,
-  AlarmClock,
   Sparkles,
-  Plug,
 } from "lucide-react";
-import { fetchNotificationUnreadCount } from "../../../../services/studentApi";
+
+// Google Classroom service (port 4000)
+const GCS_BASE = "http://localhost:4000";
+
+async function checkAuthStatus(): Promise<boolean> {
+  try {
+    const res = await fetch(`${GCS_BASE}/api/auth/status`, { credentials: "include" });
+    const data = await res.json();
+    return data?.isAuthenticated === true;
+  } catch {
+    return false;
+  }
+}
+
+async function getAuthUrl(): Promise<string | null> {
+  try {
+    const res = await fetch(`${GCS_BASE}/api/auth/url`, { credentials: "include" });
+    const data = await res.json();
+    return data?.url || null;
+  } catch {
+    return null;
+  }
+}
+
+async function googleLogout(): Promise<void> {
+  try {
+    await fetch(`${GCS_BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function StudentLayout({ children }) {
   const { user, logout } = useUser();
   const navigate = useNavigate();
   const [userData, setUserData] = useState({ initials: "U", name: "User", subtitle: "" });
-  const [notificationCount, setNotificationCount] = useState(0);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   useEffect(() => {
     if (user) {
       const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase();
       const name = `${user.firstName} ${user.lastName}`;
-      setUserData({
-        initials,
-        name,
-        subtitle: user.email,
-      });
+      setUserData({ initials, name, subtitle: user.email });
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchNotificationUnreadCount()
-      .then((data) => setNotificationCount(data?.unread ?? 0))
-      .catch(() => setNotificationCount(0));
+
+  // Check Google auth status on mount and on global event
+  const refreshGoogleAuth = useCallback(async () => {
+    const status = await checkAuthStatus();
+    setIsGoogleConnected(status);
   }, []);
+
+  useEffect(() => {
+    refreshGoogleAuth();
+    window.addEventListener("google-auth-changed", refreshGoogleAuth);
+    return () => window.removeEventListener("google-auth-changed", refreshGoogleAuth);
+  }, [refreshGoogleAuth]);
+
+  const handleConnectGoogle = async () => {
+    const url = await getAuthUrl();
+    if (url) window.location.href = url;
+  };
+
+  const handleDisconnectGoogle = async () => {
+    await googleLogout();
+    setIsGoogleConnected(false);
+    window.dispatchEvent(new Event("google-auth-changed"));
+  };
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
+  // Single flat nav — no section headers per spec
   const navSections = [
     {
-      label: "MAIN",
+      label: "",
       items: [
         { icon: LayoutDashboard, label: "My Timetable", path: "/StudentPage" },
-        { icon: CalendarClock, label: "Exam Schedule", path: "/StudentPage/exams" },
-        { icon: Bell, label: "Notifications", path: "/StudentPage/notifications", badge: notificationCount > 0 ? notificationCount : undefined },
         { icon: BookOpen, label: "Courses", path: "/StudentPage/courses" },
         { icon: GraduationCap, label: "Google Classroom", path: "/StudentPage/google-classroom" },
-      ],
-    },
-    {
-      label: "WORKSPACE",
-      items: [
         { icon: StickyNote, label: "My Notes", path: "/StudentPage/notes" },
-        { icon: CheckSquare, label: "Tasks", path: "/StudentPage/tasks" },
-        { icon: AlarmClock, label: "Reminders", path: "/StudentPage/reminders" },
-      ],
-    },
-    {
-      label: "TOOLS",
-      items: [
         { icon: Sparkles, label: "AI Assistant", path: "/StudentPage/ai" },
-        { icon: Plug, label: "Integrations", path: "/StudentPage/integrations" },
       ],
     },
   ];
@@ -83,17 +113,21 @@ export default function StudentLayout({ children }) {
       portalSubtitle="DISHA — Student Portal"
       user={userData}
       roleBadge={{
-        text: user?.role === "student" ? "Student" : user?.role?.toUpperCase() || "USER",
+        text: "Student",
         bg: colors.primary.ghost,
         color: colors.primary.main,
         borderColor: colors.primary.border,
       }}
-      searchPlaceholder="Search courses, assignments..."
-      notificationCount={notificationCount}
-      notificationPath="/StudentPage/notifications"
+      searchPlaceholder={null}
+      notificationCount={0}
       settingsPath="/profile"
       onLogout={handleLogout}
-      children={children}
-    />
+      isGoogleConnected={isGoogleConnected}
+      onConnectGoogle={handleConnectGoogle}
+      onDisconnectGoogle={handleDisconnectGoogle}
+      userEmail={user?.email || ""}
+    >
+      {children}
+    </AppShell>
   );
 }

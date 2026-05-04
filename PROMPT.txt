@@ -1,0 +1,95 @@
+ am attacing the images for the revamped UI for the student frontend.  I will give as per the requirements.
+
+I am also pasting the UI GUIDE for the student user 
+Here :
+This document serves as the Master Architectural Blueprint for the DISHA Student Portal. It
+synthesizes our "Zen" design philosophy with the interactive requirements needed to meet our
+Sprint V deadline on April 15. Use this guide to ensure 100% visual and functional fidelity
+when re-implementing the UI on the main branch.
+1. Global Design & Branding Standards
+The "Academic OS" moves away from administrative clutter toward a high-signal productivity
+environment.
+●​ Corner Radius: Universal use of rounded-xl (12px–16px) for all tiles, modals, and input
+fields.
+●​ Shadow Depth: Soft shadow-sm for interactive tiles; shadow-lg with backdrop-blur-sm
+for functional overlays.
+●​ Typography:
+○​ Scaling: 15–20% font scale increase across all components for superior readability.
+○​ Casing: Strict Proper Title Case for all UI labels, headers, and buttons (e.g.,
+"Attendance," "Next Exam," "Connect Google Account").
+●​ Color Palette:
+○​ Background: Neutral #F8FAFC (Off-white/Grey).
+○​ Category Pastels: Desaturated Lavender (Math), Mint (Signals), Peach (Circuits), and
+Soft Blue (Networks).
+○​ Status Green: Emerald #10B981 for active sync indicators.
+2. The Identity Hub & Navigation (Sidebar)
+We have flattened the hierarchy to eliminate "Panel Fatigue" and redundant section headers.
+A. The Profile Card (Interactive Control Center)
+●​ Sidebar View: Displays the user's name in Bold Title Case and a "Student" badge.​
+●​ The Sync Dot: A small Google "G" icon sits next to the name. It features a 2px green dot
+if isGoogleConnected is true, providing persistent visual confirmation of the backendtoken status.
+●​ The Popover (On Click): Triggered by clicking the card.
+○​ Displays the student's full email address.
+○​ Contains the primary "Connect Google Account" toggle. This single trigger
+manages the OAuth2 handshake for both Google Classroom and the automated
+Notes system.​
+B. Navigation List
+●​ Structure: A single, continuous list of links: My Timetable, Courses, Google Classroom,
+My Notes, AI Assistant.
+●​ Refinement: No "MAIN" or "TOOLS" headers. Padding between items is increased to
+create a breathable vertical flow.
+3. My Timetable: Operational Nerve Center
+The central grid manages the student's 24-hour cycle through real-time tracking and task
+integration.
+A. Header & Switcher Logic
+●​ Segmented Control: A button group to toggle between Day, Week, and Month views.
+●​ Month-to-Day Navigation: In the Monthly Grid, clicking a specific date automatically
+switches the OS to Day View and scrolls to the first event of that date.
+●​ Global Triggers:
+○​ "+ Add Task" Button: Primary blue button that launches the task creation overlay.
+○​ "View Exams" Button: Desaturated button that swaps the right-hand info pane to
+the exam countdown state.
+B. The 24-Hour Interactive Grid
+●​ Scrollable Axis: A vertical grid spanning 00:00 to 23:59.
+●​ The Red Line Indicator: A 1px horizontal red line that tracks the current system time. It
+features a 6px circular "knob" on the left-hand time axis and updates every 60 seconds.
+●​ Event Block Interactivity:
+○​ Classes: Tapping a class tile opens the "Class Details" Modal, showing the
+professor's contact and a link to the syllabus.​
+○​ Tasks: Features a completion checkmark icon.
+○​ Task Strikethrough Logic: Marking a task as "Completed" triggers a visual update:
+the tile opacity drops to 60% and the title receives a line-through decoration.4. The Contextual Right Pane (Info-Switcher)
+A dynamic column on the right side of the screen that toggles based on user focus:
+●​ State 1: Today’s Classes (Default): A vertical list of the current day's schedule with room
+assignments and a "View Full Day" shortcut.
+●​ State 2: Notifications: Triggered by the Bell Icon. Shows recent system updates (e.g.,
+"Class Rescheduled") with status dots and time-ago stamps.
+●​ State 3: Upcoming Exams: Triggered by "View Exams." Shows a countdown list (e.g.,
+"Mathematics III - 13d left") with Hall and Seat metadata.
+5. Educational Management (Courses & Notes)
+Unified pages for tracking attendance and accessing academic output.
+A. Courses Page Interaction
+●​ Tile Design: Each tile shows a desaturated Attendance Ratio (e.g., "Attendance: 27 / 36")
+and a "Next Exam" status pill.
+●​ Action: "View Details" opens a modal containing the full weekly schedule and professor
+email.
+B. My Notes Hub Interaction
+●​ Tile Design: Gallery of course cards labeled with "X Sessions in History."
+●​ History View (Drill-Down): Clicking a tile leads to a chronological list of past lectures.
+●​ The File Bridge:
+○​ "View Notes": Opens the Google Doc via webViewLink if it exists in the database.
+○​ "Add Notes": Appears if no doc exists. This button triggers the Port 4000
+microservice to create the [Code]_[Date] Doc and folder structure before redirecting
+the student.​
+6. Modal Overlays
+●​ Add Task Modal: A centered white overlay with fields for Title, Description, Category
+(Academic/Personal/Social), and a Reminder Toggle. Checking the reminder opens a
+sub-dropdown for "Reminder Time" (e.g., "15 min before").
+●​ Class Details: A structured list of metadata including Professor, Location, and a PDF
+Syllabus button.
+
+UR TASK : Chnage the UI for the student user as per what i have given you as the information. IT IS VERY IMPORTANT FOR YOU TO NOT BREAK ANYTHING WHICH IS WORKING ALREADY. ANY THING IN BACKEND THAT IS THERE, SHOULD BE INTEGRTED WITH NEW FRONTEND. FOR THE NEW FEATURES THAT WILL BEADDED, WE WILL DO BACKEND SEPARATELY.
+
+YOU HAVE GIVEN FRONTEND_STRUCTURE.MD to refer to in the docs for any spefication regarding the implementation you need.
+
+Got, dont break anything any where. I am willing to give next images if u want ones u are done with this.

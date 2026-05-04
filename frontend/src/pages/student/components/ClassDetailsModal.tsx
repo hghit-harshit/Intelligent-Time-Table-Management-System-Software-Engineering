@@ -1,23 +1,35 @@
 /**
- * ClassDetailsModal.jsx — Class Info Popup Modal
+ * ClassDetailsModal — Class Info Modal (triggered by clicking a class tile in the calendar)
  *
- * PURPOSE: Shows detailed info about a selected class when clicked
- * in any calendar view. Displays class name, time, location, and
- * professor. Has actions for adding notes or setting reminders.
+ * Per DISHA UI Guide §6:
+ * - Shows: class name, time, professor, location, and course syllabus button
+ * - Matches the same section layout as the Courses "View Details" modal
  */
 
-import { Box, Typography, Button } from "@mui/material"
-import { colors, fonts, radius, shadows } from "../../../styles/tokens"
+import { colors, fonts, radius, shadows } from "../../../styles/tokens";
+import { MapPin, Mail, FileText, Clock } from "lucide-react";
 
 export default function ClassDetailsModal({ selectedTimeSlot, onClose }) {
+  if (!selectedTimeSlot) return null;
+
+  const profEmail = selectedTimeSlot.professor
+    ? selectedTimeSlot.professor
+        .toLowerCase()
+        .replace(/^dr\.\s*/i, "")
+        .replace(/^prof\.\s*/i, "")
+        .trim()
+        .replace(/\s+/g, ".")
+        .replace(/[^a-z.]/g, "") + "@disha.edu"
+    : null;
+
   return (
-    // Overlay backdrop — clicking it closes the modal
-    <Box
+    <div
       onClick={onClose}
-      sx={{
+      style={{
         position: "fixed",
         inset: 0,
-        bgcolor: "rgba(0,0,0,0.7)",
+        background: "rgba(0,0,0,0.45)",
+        backdropFilter: "blur(3px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -25,78 +37,218 @@ export default function ClassDetailsModal({ selectedTimeSlot, onClose }) {
         animation: "fadeIn 0.2s ease",
       }}
     >
-      {/* Modal content — stopPropagation prevents closing when clicking inside */}
-      <Box
+      <div
         onClick={(e) => e.stopPropagation()}
-        sx={{
-          bgcolor: colors.bg.raised,
+        style={{
+          background: colors.bg.base,
           border: `1px solid ${colors.border.medium}`,
-          borderRadius: radius.xl,
-          p: 3,
-          maxWidth: 400,
-          width: "90%",
+          borderRadius: "16px",
+          padding: "24px",
+          width: "100%",
+          maxWidth: "460px",
           boxShadow: shadows.xl,
-          animation: "fadeUp 0.3s ease",
+          animation: "fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both",
+          position: "relative",
         }}
       >
         {/* Header */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography
-            variant="h4"
-            sx={{ fontFamily: fonts.heading, fontSize: fonts.size.lg }}
-          >
-            Class Details
-          </Typography>
-          <Box
-            component="button"
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            marginBottom: "20px",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                margin: "0 0 4px",
+                fontSize: fonts.size.xl,
+                fontWeight: fonts.weight.bold,
+                color: colors.text.primary,
+                fontFamily: fonts.heading,
+              }}
+            >
+              {selectedTimeSlot.name}
+            </h2>
+            <p style={{ margin: 0, fontSize: fonts.size.sm, color: colors.text.muted }}>
+              {selectedTimeSlot.day}
+              {selectedTimeSlot.time ? ` · ${selectedTimeSlot.time}` : ""}
+            </p>
+          </div>
+          <button
             onClick={onClose}
-            sx={{
+            style={{
               background: "none",
               border: "none",
               color: colors.text.muted,
-              fontSize: "20px",
+              fontSize: fonts.size.sm,
+              fontWeight: fonts.weight.medium,
               cursor: "pointer",
-              p: 0.5,
-              "&:hover": { color: colors.text.primary },
+              fontFamily: fonts.body,
+              padding: "4px 8px",
+              flexShrink: 0,
             }}
           >
-            ×
-          </Box>
-        </Box>
+            Close
+          </button>
+        </div>
 
-        {/* Details */}
-        <Box sx={{ color: colors.text.secondary, lineHeight: 1.8, fontSize: fonts.size.base }}>
-          <Typography sx={{ fontSize: fonts.size.base, mb: 0.5 }}>
-            <Box component="strong" sx={{ color: colors.text.primary }}>Class:</Box> {selectedTimeSlot.name}
-          </Typography>
-          <Typography sx={{ fontSize: fonts.size.base, mb: 0.5 }}>
-            <Box component="strong" sx={{ color: colors.text.primary }}>Time:</Box> {selectedTimeSlot.time}
-          </Typography>
-          <Typography sx={{ fontSize: fonts.size.base, mb: 0.5 }}>
-            <Box component="strong" sx={{ color: colors.text.primary }}>Day:</Box> {selectedTimeSlot.day}
-          </Typography>
+        {/* Section: Schedule */}
+        <div
+          style={{
+            background: colors.bg.raised,
+            border: `1px solid ${colors.border.subtle}`,
+            borderRadius: radius.md,
+            padding: "14px 16px",
+            marginBottom: "10px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: fonts.size.xs,
+              fontWeight: fonts.weight.semibold,
+              color: colors.text.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: "8px",
+            }}
+          >
+            Schedule
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: fonts.size.md,
+              fontWeight: fonts.weight.medium,
+              color: colors.text.primary,
+              marginBottom: selectedTimeSlot.location ? "6px" : 0,
+            }}
+          >
+            <Clock size={14} style={{ color: colors.text.muted }} />
+            {selectedTimeSlot.time || "See schedule"}
+            {selectedTimeSlot.duration ? ` · ${selectedTimeSlot.duration}` : ""}
+          </div>
           {selectedTimeSlot.location && (
-            <Typography sx={{ fontSize: fonts.size.base, mb: 0.5 }}>
-              <Box component="strong" sx={{ color: colors.text.primary }}>Location:</Box> {selectedTimeSlot.location}
-            </Typography>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                fontSize: fonts.size.xs,
+                color: colors.text.muted,
+              }}
+            >
+              <MapPin size={12} />
+              {selectedTimeSlot.location}
+            </div>
           )}
-          {selectedTimeSlot.professor && (
-            <Typography sx={{ fontSize: fonts.size.base, mb: 0.5 }}>
-              <Box component="strong" sx={{ color: colors.text.primary }}>Professor:</Box> {selectedTimeSlot.professor}
-            </Typography>
-          )}
-        </Box>
+        </div>
 
-        {/* Action buttons */}
-        <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-          <Button variant="contained" size="small">
-            Add Note
-          </Button>
-          <Button variant="outlined" size="small">
-            Set Reminder
-          </Button>
-        </Box>
-      </Box>
-    </Box>
-  )
+        {/* Section: Professor Contact */}
+        {selectedTimeSlot.professor && (
+          <div
+            style={{
+              background: colors.bg.raised,
+              border: `1px solid ${colors.border.subtle}`,
+              borderRadius: radius.md,
+              padding: "14px 16px",
+              marginBottom: "10px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: fonts.size.xs,
+                fontWeight: fonts.weight.semibold,
+                color: colors.text.muted,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: "8px",
+              }}
+            >
+              Professor Contact
+            </div>
+            <div
+              style={{
+                fontSize: fonts.size.md,
+                fontWeight: fonts.weight.bold,
+                color: colors.text.primary,
+                marginBottom: profEmail ? "6px" : 0,
+              }}
+            >
+              {selectedTimeSlot.professor}
+            </div>
+            {profEmail && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  fontSize: fonts.size.xs,
+                  color: colors.text.muted,
+                }}
+              >
+                <Mail size={12} />
+                {profEmail}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Section: Course Resources */}
+        <div
+          style={{
+            background: colors.bg.raised,
+            border: `1px solid ${colors.border.subtle}`,
+            borderRadius: radius.md,
+            padding: "14px 16px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: fonts.size.xs,
+              fontWeight: fonts.weight.semibold,
+              color: colors.text.muted,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: "10px",
+            }}
+          >
+            Course Resources
+          </div>
+          <button
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "7px 14px",
+              background: "rgba(37, 99, 235, 0.06)",
+              border: "1px solid rgba(37, 99, 235, 0.2)",
+              borderRadius: radius.md,
+              color: "#2563EB",
+              fontSize: fonts.size.sm,
+              fontWeight: fonts.weight.medium,
+              cursor: "pointer",
+              fontFamily: fonts.body,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "rgba(37, 99, 235, 0.12)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "rgba(37, 99, 235, 0.06)";
+            }}
+          >
+            <FileText size={14} />
+            Course Syllabus
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

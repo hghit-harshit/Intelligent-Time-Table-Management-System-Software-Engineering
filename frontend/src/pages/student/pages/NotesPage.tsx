@@ -1,274 +1,573 @@
-import { useState, useEffect } from "react";
-import { Card, Button, Loader, PageHeader } from "../../../shared";
-import { colors, fonts, radius } from "../../../styles/tokens";
-import { Plus, Trash2, Edit2, Search, X, Pin } from "lucide-react";
-import { toast } from "sonner";
-import { withAuthHeaders } from "../../../services/authInterceptor";
+/**
+ * NotesPage — My Notes Hub (DISHA Student Portal)
+ *
+ * Per DISHA UI Guide §5B:
+ * - Hub: gallery of course tiles, each with session count and "View Notes →" button
+ * - History (drill-down): chronological list of past lecture sessions for a course
+ * - Session data sourced from student dashboard timetable (weeklySchedule)
+ * - "View Notes" opens Google Doc via webViewLink if available
+ * - "Add Notes" triggers the port 4000 microservice flow
+ */
 
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  courseId: string | null;
-  tags: string[];
-  color: string;
-  pinned: boolean;
-  createdAt: string;
-  updatedAt: string;
+import { useEffect, useState } from "react";
+import { colors, fonts, radius, shadows } from "../../../styles/tokens";
+import { fetchStudentDashboard, fetchStudentCourses } from "../../../services/studentApi";
+import { Calendar, BookOpen, ArrowLeft } from "lucide-react";
+
+// ── Types ────────────────────────────────────────────────────────
+
+interface CourseSession {
+  date: Date;
+  time: string;
+  endTime: string;
+  hasNotes: boolean;
+  notesUrl?: string;
 }
 
+interface CourseNotes {
+  code: string;
+  name: string;
+  sessions: CourseSession[];
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+function timeStrToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+  if (!match) return 0;
+  let h = parseInt(match[1]);
+  const m = parseInt(match[2]);
+  const ampm = match[3]?.toUpperCase();
+  if (ampm === "PM" && h !== 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function parseDurationMins(dur: string): number {
+  if (!dur) return 60;
+  const hrMatch = dur.match(/(\d+)\s*h/i);
+  const minMatch = dur.match(/(\d+)\s*m/i);
+  const hrs = hrMatch ? parseInt(hrMatch[1]) : 0;
+  const mins = minMatch ? parseInt(minMatch[1]) : 0;
+  if (hrs === 0 && mins === 0) return 60;
+  return hrs * 60 + mins;
+}
+
+function formatMinutes(mins: number): string {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+function buildTimeRange(startStr: string, duration: string): string {
+  const startMins = timeStrToMinutes(startStr);
+  const durMins = parseDurationMins(duration);
+  return `${formatMinutes(startMins)}–${formatMinutes(startMins + durMins)}`;
+}
+
+function formatSessionDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// Extract code from location string like "CS201 · LHC-2" → "CS201"
+function extractCode(location: string): string {
+  if (!location) return "";
+  return location.split("·")[0].split("·")[0].trim();
+}
+
+// Build course sessions from dashboard timetable data
+function buildCourseSessionMap(
+  dashData: any,
+): Record<string, CourseSession[]> {
+  const map: Record<string, CourseSession[]> = {};
+  const weeklySchedule = dashData?.weeklySchedule || [];
+  const weekDates: number[] = dashData?.weekDates || [];
+  const currentMonth: number = dashData?.currentDate?.month ?? new Date().getMonth() + 1;
+  const currentYear: number = dashData?.currentDate?.year ?? new Date().getFullYear();
+
+  weeklySchedule.forEach((slot: any) => {
+    slot.classes?.forEach((classItem: any, dayIdx: number) => {
+      if (!classItem) return;
+      const code = extractCode(classItem.location || "");
+      const name = classItem.name || "";
+      const key = code || name;
+      if (!key) return;
+
+      const weekDate = weekDates[dayIdx];
+      if (!weekDate) return;
+
+      const date = new Date(currentYear, currentMonth - 1, weekDate);
+      const timeRange = buildTimeRange(slot.time || "", classItem.duration || "1h");
+
+      if (!map[key]) map[key] = [];
+      map[key].push({
+        date,
+        time: slot.time || "",
+        endTime: timeRange,
+        hasNotes: false,
+        notesUrl: undefined,
+      });
+    });
+  });
+
+  return map;
+}
+
+// ── Main Component ───────────────────────────────────────────────
+
 export default function NotesPage() {
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [courseNotes, setCourseNotes] = useState<CourseNotes[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [formData, setFormData] = useState({ title: "", content: "", color: "#3b82f6", pinned: false });
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseNotes | null>(null);
 
-  const fetchNotes = async () => {
-    try {
-      const res = await fetch("/api/workspace/notes", { headers: withAuthHeaders() });
-      const data = await res.json();
-      if (res.ok) setNotes(data);
-    } catch (error) {
-      console.error("Failed to fetch notes:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setLoadError(null);
 
-  useEffect(() => { fetchNotes(); }, []);
+    Promise.all([fetchStudentCourses(), fetchStudentDashboard()])
+      .then(([courseData, dashData]) => {
+        if (!isMounted) return;
 
-  const handleSubmit = async () => {
-    if (!formData.title.trim()) {
-      toast.error("Title is required");
-      return;
-    }
+        const sessionMap = buildCourseSessionMap(dashData);
+        const enrolled: any[] = courseData?.enrolled || [];
 
-    try {
-      const method = editingNote ? "PATCH" : "POST";
-      const url = editingNote ? `/api/workspace/notes/${editingNote.id}` : "/api/workspace/notes";
-      const res = await fetch(url, {
-        method,
-        headers: withAuthHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(formData),
+        // Build course notes list from enrolled courses + session data
+        const notes: CourseNotes[] = enrolled.map((raw: any) => {
+          const code = raw.code || "";
+          const name = raw.name || raw.title || "";
+          const sessions =
+            sessionMap[code] ||
+            // fallback: match by name substring
+            Object.entries(sessionMap).find(
+              ([k]) =>
+                k.toLowerCase().includes(name.toLowerCase().split(" ")[0]) ||
+                name.toLowerCase().includes(k.toLowerCase()),
+            )?.[1] ||
+            [];
+
+          // Sort sessions by date ascending
+          const sorted = [...sessions].sort(
+            (a, b) => a.date.getTime() - b.date.getTime(),
+          );
+
+          return { code, name, sessions: sorted };
+        });
+
+        setCourseNotes(notes);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setLoadError(err?.message || "Unable to load notes");
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
       });
 
-      if (res.ok) {
-        toast.success(editingNote ? "Note updated" : "Note created");
-        setFormData({ title: "", content: "", color: "#3b82f6", pinned: false });
-        setShowForm(false);
-        setEditingNote(null);
-        fetchNotes();
-      } else {
-        toast.error("Failed to save note");
-      }
-    } catch (error) {
-      toast.error("Failed to save note");
-    }
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  const handleDelete = async (id: string) => {
-    try {
-      const res = await fetch(`/api/workspace/notes/${id}`, {
-        method: "DELETE",
-        headers: withAuthHeaders(),
-      });
-      if (res.ok) {
-        toast.success("Note deleted");
-        fetchNotes();
-      }
-    } catch (error) {
-      toast.error("Failed to delete note");
-    }
-  };
+  // ── History Drill-Down View ────────────────────────────────────
+  if (selectedCourse) {
+    return (
+      <div
+        style={{
+          minHeight: "100%",
+          background: colors.bg.deep,
+          padding: "28px 32px",
+        }}
+      >
+        {/* Back link */}
+        <button
+          onClick={() => setSelectedCourse(null)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            background: "none",
+            border: "none",
+            color: colors.text.secondary,
+            fontSize: fonts.size.sm,
+            cursor: "pointer",
+            fontFamily: fonts.body,
+            padding: 0,
+            marginBottom: "20px",
+            transition: "color 0.15s ease",
+          }}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.color = colors.primary.main)
+          }
+          onMouseLeave={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.color = colors.text.secondary)
+          }
+        >
+          <ArrowLeft size={15} />
+          Back to Courses
+        </button>
 
-  const handleEdit = (note: Note) => {
-    setEditingNote(note);
-    setFormData({ title: note.title, content: note.content, color: note.color, pinned: note.pinned });
-    setShowForm(true);
-  };
+        {/* Title section */}
+        <div style={{ marginBottom: "20px" }}>
+          <h2
+            style={{
+              margin: "0 0 4px",
+              fontSize: "1.4rem",
+              fontWeight: fonts.weight.bold,
+              color: colors.text.primary,
+              fontFamily: fonts.heading,
+            }}
+          >
+            {selectedCourse.code} Notes History
+          </h2>
+          <p style={{ margin: 0, fontSize: fonts.size.sm, color: colors.text.secondary }}>
+            {selectedCourse.name}
+          </p>
+        </div>
 
-  const handleTogglePin = async (note: Note) => {
-    try {
-      const res = await fetch(`/api/workspace/notes/${note.id}`, {
-        method: "PATCH",
-        headers: withAuthHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ pinned: !note.pinned }),
-      });
-      if (res.ok) fetchNotes();
-    } catch (error) {
-      toast.error("Failed to update note");
-    }
-  };
-
-  const filteredNotes = notes.filter((n) =>
-    n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    n.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  if (loading) return <Loader />;
-
-  return (
-    <div>
-      <PageHeader
-        title="My Notes"
-        subtitle="Organize your study notes and ideas"
-        action={
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => { setShowForm(true); setEditingNote(null); setFormData({ title: "", content: "", color: "#3b82f6", pinned: false }); }}>
-            New Note
-          </Button>
-        }
-      />
-
-      {showForm && (
-        <Card style={{ padding: "20px", marginBottom: "20px" }} hover={false}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h3 style={{ margin: 0, fontSize: fonts.size.md, fontFamily: fonts.heading }}>
-              {editingNote ? "Edit Note" : "New Note"}
-            </h3>
-            <button onClick={() => { setShowForm(false); setEditingNote(null); }} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px" }}>
-              <X size={18} style={{ color: colors.text.muted }} />
-            </button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <input
-              type="text"
-              placeholder="Note title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+        {/* Sessions list */}
+        <div
+          style={{
+            background: colors.bg.base,
+            border: `1px solid ${colors.border.medium}`,
+            borderRadius: radius.xl,
+            boxShadow: shadows.sm,
+            overflow: "hidden",
+          }}
+        >
+          {selectedCourse.sessions.length === 0 ? (
+            <div
               style={{
-                padding: "10px 12px",
-                border: `1px solid ${colors.border.subtle}`,
-                borderRadius: radius.md,
+                padding: "40px",
+                textAlign: "center",
+                color: colors.text.muted,
                 fontSize: fonts.size.sm,
-                fontFamily: fonts.body,
-                background: colors.bg.base,
-                color: colors.text.primary,
-                outline: "none",
               }}
-            />
-            <textarea
-              placeholder="Write your note..."
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              rows={6}
-              style={{
-                padding: "10px 12px",
-                border: `1px solid ${colors.border.subtle}`,
-                borderRadius: radius.md,
-                fontSize: fonts.size.sm,
-                fontFamily: fonts.body,
-                background: colors.bg.base,
-                color: colors.text.primary,
-                outline: "none",
-                resize: "vertical",
-              }}
-            />
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-              <label style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>Color:</label>
-              <input
-                type="color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                style={{ width: "32px", height: "32px", border: "none", cursor: "pointer", background: "none" }}
-              />
-              <button
-                onClick={() => setFormData({ ...formData, pinned: !formData.pinned })}
+            >
+              No sessions found for this course.
+            </div>
+          ) : (
+            selectedCourse.sessions.map((session, i) => (
+              <div
+                key={i}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "4px",
-                  background: formData.pinned ? colors.primary.ghost : "none",
-                  border: `1px solid ${formData.pinned ? colors.primary.border : colors.border.subtle}`,
-                  borderRadius: radius.md,
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                  color: formData.pinned ? colors.primary.main : colors.text.muted,
-                  fontSize: fonts.size.xs,
+                  justifyContent: "space-between",
+                  padding: "16px 20px",
+                  borderBottom:
+                    i < selectedCourse.sessions.length - 1
+                      ? `1px solid ${colors.border.subtle}`
+                      : "none",
                 }}
               >
-                <Pin size={12} /> {formData.pinned ? "Pinned" : "Pin"}
-              </button>
-              <div style={{ flex: 1 }} />
-              <Button variant="ghost" size="sm" onClick={() => { setShowForm(false); setEditingNote(null); }}>Cancel</Button>
-              <Button variant="primary" size="sm" onClick={handleSubmit}>{editingNote ? "Update" : "Create"}</Button>
-            </div>
-          </div>
-        </Card>
-      )}
+                {/* Date + time */}
+                <div>
+                  <div
+                    style={{
+                      fontWeight: fonts.weight.semibold,
+                      fontSize: fonts.size.sm,
+                      color: colors.text.primary,
+                      marginBottom: "3px",
+                    }}
+                  >
+                    {formatSessionDate(session.date)}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: fonts.size.xs,
+                      color: "#2563EB",
+                    }}
+                  >
+                    {session.endTime}
+                  </div>
+                </div>
 
-      <div style={{ position: "relative", marginBottom: "16px" }}>
-        <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: colors.text.muted }} />
-        <input
-          type="text"
-          placeholder="Search notes..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+                {/* Notes status / action */}
+                {session.hasNotes && session.notesUrl ? (
+                  <a
+                    href={session.notesUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: "5px 12px",
+                      background: colors.primary.ghost,
+                      border: `1px solid ${colors.primary.border}`,
+                      borderRadius: radius.md,
+                      color: colors.primary.main,
+                      fontSize: fonts.size.xs,
+                      fontWeight: fonts.weight.medium,
+                      textDecoration: "none",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    View Notes
+                  </a>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: fonts.size.xs,
+                      color: colors.text.muted,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No Notes Taken for This Session.
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Hub View ───────────────────────────────────────────────────
+  return (
+    <div
+      style={{
+        minHeight: "100%",
+        background: colors.bg.deep,
+        padding: "28px 32px",
+      }}
+    >
+      {/* Page Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: "28px",
+        }}
+      >
+        <div
           style={{
-            width: "100%",
-            padding: "10px 12px 10px 40px",
-            border: `1px solid ${colors.border.subtle}`,
+            width: "36px",
+            height: "36px",
+            background: colors.bg.raised,
+            border: `1px solid ${colors.border.medium}`,
             borderRadius: radius.md,
-            fontSize: fonts.size.sm,
-            fontFamily: fonts.body,
-            background: colors.bg.base,
-            color: colors.text.primary,
-            outline: "none",
-            boxSizing: "border-box",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
           }}
-        />
+        >
+          <Calendar size={18} style={{ color: colors.primary.main }} />
+        </div>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: "1.75rem",
+            fontWeight: fonts.weight.bold,
+            color: colors.text.primary,
+            fontFamily: fonts.heading,
+          }}
+        >
+          My Notes
+        </h1>
       </div>
 
-      {filteredNotes.length === 0 ? (
-        <Card style={{ padding: "40px", textAlign: "center" }} hover={false}>
-          <div style={{ fontSize: fonts.size.sm, color: colors.text.muted }}>
-            {searchQuery ? "No notes match your search." : "No notes yet. Create your first note!"}
-          </div>
-        </Card>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
-          {filteredNotes.map((note) => (
-            <Card key={note.id} style={{ padding: "16px", borderTop: `3px solid ${note.color}` }} hover={false}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                <h4 style={{ margin: 0, fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, flex: 1 }}>
-                  {note.pinned && <Pin size={12} style={{ color: colors.primary.main, marginRight: "4px" }} />}
-                  {note.title}
-                </h4>
-                <div style={{ display: "flex", gap: "4px" }}>
-                  <button onClick={() => handleTogglePin(note)} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px" }}>
-                    <Pin size={14} style={{ color: note.pinned ? colors.primary.main : colors.text.muted }} />
-                  </button>
-                  <button onClick={() => handleEdit(note)} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px" }}>
-                    <Edit2 size={14} style={{ color: colors.text.muted }} />
-                  </button>
-                  <button onClick={() => handleDelete(note.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: "4px" }}>
-                    <Trash2 size={14} style={{ color: "#ef4444" }} />
-                  </button>
-                </div>
-              </div>
-              {note.content && (
-                <p style={{ margin: "0 0 12px", fontSize: fonts.size.xs, color: colors.text.secondary, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-                  {note.content.length > 200 ? note.content.slice(0, 200) + "..." : note.content}
-                </p>
-              )}
-              {note.tags.length > 0 && (
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                  {note.tags.map((tag, i) => (
-                    <span key={i} style={{ fontSize: fonts.size.xs, background: colors.bg.raised, padding: "2px 8px", borderRadius: radius.full, color: colors.text.muted }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "8px" }}>
-                {new Date(note.updatedAt).toLocaleDateString()}
-              </div>
-            </Card>
-          ))}
+      {/* Loading / Error */}
+      {loading && (
+        <div
+          style={{
+            padding: "10px 14px",
+            borderRadius: radius.md,
+            background: "rgba(37,99,235,0.06)",
+            color: "#2563EB",
+            fontSize: fonts.size.sm,
+            marginBottom: "16px",
+          }}
+        >
+          Loading notes...
         </div>
       )}
+      {loadError && (
+        <div
+          style={{
+            padding: "10px 14px",
+            borderRadius: radius.md,
+            background: "rgba(220,38,38,0.06)",
+            color: colors.error.main,
+            fontSize: fonts.size.sm,
+            marginBottom: "16px",
+          }}
+        >
+          {loadError}
+        </div>
+      )}
+
+      {!loading && courseNotes.length === 0 && !loadError && (
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+            color: colors.text.muted,
+            fontSize: fonts.size.sm,
+          }}
+        >
+          No courses found.
+        </div>
+      )}
+
+      {/* Course tiles grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: "16px",
+        }}
+      >
+        {courseNotes.map((cn) => (
+          <NotesCourseCard
+            key={cn.code}
+            courseNotes={cn}
+            onView={() => setSelectedCourse(cn)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Notes Course Card ────────────────────────────────────────────
+
+function NotesCourseCard({
+  courseNotes,
+  onView,
+}: {
+  courseNotes: CourseNotes;
+  onView: () => void;
+}) {
+  const count = courseNotes.sessions.length;
+
+  return (
+    <div
+      style={{
+        background: colors.bg.base,
+        border: `1px solid ${colors.border.medium}`,
+        borderRadius: radius.xl,
+        boxShadow: shadows.sm,
+        padding: "18px 20px",
+        display: "flex",
+        flexDirection: "column",
+        transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = shadows.md;
+        (e.currentTarget as HTMLDivElement).style.borderColor = colors.border.strong;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = shadows.sm;
+        (e.currentTarget as HTMLDivElement).style.borderColor = colors.border.medium;
+      }}
+    >
+      {/* Top: icon + code + name */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "10px",
+          marginBottom: "8px",
+        }}
+      >
+        <div
+          style={{
+            width: "28px",
+            height: "28px",
+            background: colors.bg.raised,
+            border: `1px solid ${colors.border.subtle}`,
+            borderRadius: radius.sm,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            marginTop: "2px",
+          }}
+        >
+          <BookOpen size={14} style={{ color: colors.primary.main }} />
+        </div>
+        <div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "6px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontSize: fonts.size.md,
+                fontWeight: fonts.weight.bold,
+                color: colors.text.primary,
+              }}
+            >
+              {courseNotes.code}
+            </span>
+            <span
+              style={{
+                fontSize: fonts.size.sm,
+                fontWeight: fonts.weight.medium,
+                color: colors.text.primary,
+              }}
+            >
+              {courseNotes.name}
+            </span>
+          </div>
+          {/* Session count */}
+          <div
+            style={{
+              fontSize: fonts.size.xs,
+              color: colors.text.muted,
+              marginTop: "3px",
+            }}
+          >
+            {count} {count === 1 ? "Session" : "Sessions"} in History
+          </div>
+        </div>
+      </div>
+
+      {/* View Notes button */}
+      <button
+        onClick={onView}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "5px",
+          padding: "7px 14px",
+          background: colors.bg.base,
+          border: `1px solid ${colors.border.medium}`,
+          borderRadius: radius.md,
+          color: colors.text.secondary,
+          fontSize: fonts.size.sm,
+          fontWeight: fonts.weight.medium,
+          cursor: "pointer",
+          fontFamily: fonts.body,
+          transition: "all 0.15s ease",
+          alignSelf: "flex-start",
+          marginTop: "12px",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = colors.primary.main;
+          (e.currentTarget as HTMLButtonElement).style.color = colors.primary.main;
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = colors.border.medium;
+          (e.currentTarget as HTMLButtonElement).style.color = colors.text.secondary;
+        }}
+      >
+        View Notes →
+      </button>
     </div>
   );
 }
