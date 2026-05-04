@@ -1,5 +1,6 @@
 import { Router } from "express";
 import aiRouter from "../modules/ai/ai.routes.js";
+import analyticsRouter from "../modules/analytics/analytics.routes.js";
 import examRouter from "../modules/exam/exam.routes.js";
 import rescheduleRouter from "../modules/reschedule/reschedule.routes.js";
 import schedulerRouter from "../modules/scheduler/scheduler.routes.js";
@@ -20,6 +21,7 @@ apiRouter.use("/catalog", catalogRouter);
 apiRouter.use("/student", studentRouter);
 apiRouter.use("/exam", examRouter);
 apiRouter.use("/workspace", workspaceRouter);
+apiRouter.use("/analytics", analyticsRouter);
 
 export default apiRouter;
 

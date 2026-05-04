@@ -17,69 +17,10 @@ import {
   Clock,
   Layers,
   BarChart3,
-  Plug,
-  Settings,
   ChevronsLeftRight,
+  Settings,
 } from "lucide-react";
 import { fetchPendingRequestCount } from "../../services/adminApi";
-
-const navSections = [
-  {
-    label: "OVERVIEW",
-    items: [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/AdminPage" },
-      { icon: Cpu, label: "Timetable Engine", path: "/AdminPage/engine" },
-      {
-        icon: RotateCcw,
-        label: "Reschedule Requests",
-        path: "/AdminPage/requests",
-        badge: 5,
-      },
-      {
-        icon: CalendarClock,
-        label: "Exam Scheduler",
-        path: "/AdminPage/exams",
-      },
-    ],
-  },
-  {
-    label: "ACADEMIC STRUCTURE",
-    items: [
-      { icon: BookOpen, label: "Courses", path: "/AdminPage/courses" },
-      { icon: Users, label: "Faculty", path: "/AdminPage/faculty" },
-      { icon: DoorOpen, label: "Rooms", path: "/AdminPage/rooms" },
-      { icon: Clock, label: "Time Slots", path: "/AdminPage/timeslots" },
-    ],
-  },
-  {
-    label: "OPERATIONS",
-    items: [
-      {
-        icon: ChevronsLeftRight,
-        label: "Bulk Rescheduling",
-        path: "/AdminPage/bulk",
-      },
-      {
-        icon: Layers,
-        label: "Timetable Versions",
-        path: "/AdminPage/versions",
-      },
-    ],
-  },
-  {
-    label: "INSIGHTS",
-    items: [
-      { icon: BarChart3, label: "Analytics", path: "/AdminPage/analytics" },
-    ],
-  },
-  {
-    label: "PLATFORM",
-    items: [
-      { icon: Plug, label: "Integrations", path: "/AdminPage/integrations" },
-      { icon: Settings, label: "System Settings", path: "/AdminPage/settings" },
-    ],
-  },
-];
 
 export default function AdminLayout({ children }) {
   const { user, logout } = useUser();
@@ -90,6 +31,63 @@ export default function AdminLayout({ children }) {
     subtitle: "Administrator",
   });
   const [notificationCount, setNotificationCount] = useState(0);
+
+  const navSections = [
+    {
+      label: "OVERVIEW",
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/AdminPage" },
+        { icon: Cpu, label: "Timetable Engine", path: "/AdminPage/engine" },
+        {
+          icon: RotateCcw,
+          label: "Reschedule Requests",
+          path: "/AdminPage/requests",
+          badge: notificationCount > 0 ? notificationCount : undefined,
+        },
+        {
+          icon: CalendarClock,
+          label: "Exam Scheduler",
+          path: "/AdminPage/exams",
+        },
+      ],
+    },
+    {
+      label: "ACADEMIC STRUCTURE",
+      items: [
+        { icon: BookOpen, label: "Courses", path: "/AdminPage/courses" },
+        { icon: Users, label: "Faculty", path: "/AdminPage/faculty" },
+        { icon: DoorOpen, label: "Rooms", path: "/AdminPage/rooms" },
+        { icon: Clock, label: "Time Slots", path: "/AdminPage/timeslots" },
+      ],
+    },
+    {
+      label: "OPERATIONS",
+      items: [
+        {
+          icon: ChevronsLeftRight,
+          label: "Bulk Rescheduling",
+          path: "/AdminPage/bulk",
+        },
+        {
+          icon: Layers,
+          label: "Timetable Versions",
+          path: "/AdminPage/versions",
+        },
+      ],
+    },
+    {
+      label: "INSIGHTS",
+      items: [
+        { icon: BarChart3, label: "Analytics", path: "/AdminPage/analytics" },
+      ],
+    },
+    {
+      label: "PLATFORM",
+      items: [
+        { icon: Settings, label: "System Settings", path: "/AdminPage/settings" },
+      ],
+    },
+  ];
 
   useEffect(() => {
     if (user) {
@@ -123,7 +121,6 @@ export default function AdminLayout({ children }) {
       roleBadge={{ text: "ADMIN", bg: colors.primary.main, color: "#fff" }}
       notificationCount={notificationCount}
       notificationPath="/AdminPage/requests"
-      settingsPath="/profile"
       onLogout={handleLogout}
       children={children}
     />

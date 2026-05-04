@@ -79,6 +79,32 @@ export const getProfile = async (
   }
 };
 
+export const changePassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user?.userId) {
+      res.status(401).json({ success: false, message: "Authentication required" });
+      return;
+    }
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ success: false, message: "currentPassword and newPassword are required" });
+      return;
+    }
+    if (newPassword.length < 8) {
+      res.status(400).json({ success: false, message: "New password must be at least 8 characters" });
+      return;
+    }
+    await authService.changePassword(req.user.userId, currentPassword, newPassword);
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateProfile = async (
   req: Request,
   res: Response,

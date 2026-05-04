@@ -92,6 +92,21 @@ export const getProfile = async (userId: string) => {
   return user;
 };
 
+export const changePassword = async (userId: string, currentPassword: string, newPassword: string) => {
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const isValid = await verifyPassword(currentPassword, user.password);
+  if (!isValid) {
+    throw new AppError("Current password is incorrect", 401);
+  }
+
+  user.password = await hashPassword(newPassword);
+  await user.save();
+};
+
 export const updateProfile = async (userId: string, data: { firstName?: string; lastName?: string; email?: string }) => {
   const user = await UserModel.findById(userId);
   if (!user) {

@@ -463,55 +463,13 @@ export async function fetchExamSchedule() {
 }
 
 // ─── Analytics ──────────────────────────────────────────────
-// Compute basic analytics from real data rather than hardcoded mock
 export async function fetchAnalytics() {
-  const [roomsData, professorsData, requestsRaw] = await Promise.all([
-    httpClient.get("/catalog/rooms").catch(() => ({ data: [] })),
-    httpClient.get("/catalog/professors").catch(() => ({ data: [] })),
-    httpClient.get("/requests").catch(() => []),
-  ]);
-
-  const rooms = roomsData?.data ?? roomsData ?? [];
-  const professors = professorsData?.data ?? professorsData ?? [];
-  const requests = Array.isArray(requestsRaw) ? requestsRaw : [];
-
-  return {
-    roomUtilization: (Array.isArray(rooms) ? rooms : []).map((r) => ({
-      room: r.name || "—",
-      utilization: Math.floor(Math.random() * 60 + 20), // placeholder until real usage data
-    })),
-    facultyLoad: (Array.isArray(professors) ? professors : []).map((p) => ({
-      name: p.name || "—",
-      load: Math.floor(
-        ((p.courseMappings?.length ?? 0) / (p.maxSlots ?? 5)) * 100
-      ),
-    })),
-    weeklyRequestTrend: buildWeeklyTrend(requests),
-    conflictsByType: [
-      { type: "Room", count: 0 },
-      { type: "Faculty", count: 0 },
-      { type: "Student", count: 0 },
-      { type: "Exam", count: 0 },
-    ],
-  };
-}
-
-function buildWeeklyTrend(requests) {
-  // Group requests by ISO week for the last 6 weeks
-  const now = new Date();
-  const weeks = [];
-  for (let i = 5; i >= 0; i--) {
-    const start = new Date(now);
-    start.setDate(start.getDate() - i * 7);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
-    const count = requests.filter((r) => {
-      const d = new Date(r.createdAt);
-      return d >= start && d < end;
-    }).length;
-    weeks.push({ week: `W${6 - i}`, count });
-  }
-  return weeks;
+  const res = await fetch(API_BASE_URL + "/analytics", {
+    headers: withAuthHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch analytics");
+  const data = await res.json();
+  return data?.data ?? data;
 }
 
 // ─── Bulk Rescheduling ──────────────────────────────────────

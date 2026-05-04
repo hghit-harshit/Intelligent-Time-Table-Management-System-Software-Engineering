@@ -9,5 +9,4 @@ export { default as TimeSlotsPage } from "../../pages/admin/pages/TimeSlotsPage"
 export { default as BulkRescheduling } from "../../pages/admin/pages/BulkRescheduling";
 export { default as TimetableVersions } from "../../pages/admin/pages/TimetableVersions";
 export { default as AnalyticsPage } from "../../pages/admin/pages/AnalyticsPage";
-export { default as IntegrationsPage } from "../../pages/admin/pages/IntegrationsPage";
 export { default as SettingsPage } from "../../pages/admin/pages/SettingsPage";
