@@ -12,7 +12,6 @@ import {
   BulkRescheduling,
   TimetableVersions,
   AnalyticsPage,
-  IntegrationsPage,
   SettingsPage,
 } from "../../features/admin";
 
@@ -31,7 +30,6 @@ export default function AdminPage() {
         <Route path="bulk" element={<BulkRescheduling />} />
         <Route path="versions" element={<TimetableVersions />} />
         <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Routes>
     </AdminLayout>

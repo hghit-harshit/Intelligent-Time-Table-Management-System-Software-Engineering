@@ -6,6 +6,7 @@ export const AUTH_LOGIN_EP = API_BASE_URL + "/auth/login";
 export const AUTH_REFRESH_EP = API_BASE_URL + "/auth/refresh";
 export const AUTH_PROFILE_EP = API_BASE_URL + "/auth/profile";
 export const AUTH_PROFILE_UPDATE_EP = API_BASE_URL + "/auth/profile";
+export const AUTH_CHANGE_PASSWORD_EP = API_BASE_URL + "/auth/change-password";
 
 // Slots
 export const SlotsEP = API_BASE_URL + "/slots";
