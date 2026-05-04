@@ -1,8 +1,10 @@
+import mongoose from "mongoose";
 import type { Request, Response } from "express";
 import { CourseModel } from "../../database/models/courseModel.js";
 import { ExamScheduleModel } from "../../database/models/examScheduleModel.js";
 import { NotificationModel } from "../../database/models/notificationModel.js";
 import { ProfessorModel } from "../../database/models/professorModel.js";
+import { RequestModel } from "../../database/models/requestModel.js";
 import { StudentEnrollmentModel } from "../../database/models/studentEnrollmentModel.js";
 import { TimetableResultModel } from "../../database/models/timetableResultModel.js";
 import { fail, ok } from "../../shared/response.js";
@@ -145,6 +147,7 @@ const buildDashboardPayload = (
   assignments: AssignmentRecord[],
   timetable: Record<string, any> | null,
   now: Date,
+  baseAssignments?: AssignmentRecord[],
 ) => {
   const weekDates = getWeekDates(now);
   const weekDateMap = new Map(
@@ -336,6 +339,29 @@ const buildDashboardPayload = (
     weekDays,
     weekDates: weekDates.map((date) => date.getDate()),
     weeklySchedule,
+    // Base schedule without date-specific overlays — used as fallback for month/day navigation
+    baseWeeklySchedule: (() => {
+      const base = (baseAssignments ?? assignments).map((a) => ({
+        ...a,
+        day: normalizeDayName(a.day),
+      }));
+      const baseByDay = new Map<string, AssignmentRecord[]>();
+      for (const d of weekDayNames) baseByDay.set(d, []);
+      for (const a of base) {
+        const d = normalizeDayName(a.day);
+        if (!baseByDay.has(d)) baseByDay.set(d, []);
+        baseByDay.get(d)?.push(a);
+      }
+      const baseTimeslots = Array.from(new Set(base.map((a) => a.startTime).filter(Boolean)))
+        .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+      return baseTimeslots.map((time) => ({
+        time: formatTime24(time),
+        classes: weekDayNames.map((dayName) => {
+          const match = baseByDay.get(dayName)?.find((a) => a.startTime === time);
+          return match ? buildClassItem(match) : null;
+        }),
+      }));
+    })(),
     dailySchedules,
     todaysClasses,
     quickActions: [
@@ -358,7 +384,11 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
       return fail(res, "Student authentication required", 401);
     }
 
-    const now = new Date();
+    const realNow = new Date();
+    const weekDateParam = typeof req.query.weekDate === "string" ? req.query.weekDate : undefined;
+    const weekAnchor = weekDateParam ? new Date(weekDateParam) : realNow;
+    // Use weekAnchor for week-relative calculations; realNow for live-class detection
+    const now = isNaN(weekAnchor.getTime()) ? realNow : weekAnchor;
     const academicYear = typeof req.query.academicYear === "string" ? req.query.academicYear : undefined;
     const semester = typeof req.query.semester === "string" ? Number(req.query.semester) : undefined;
 
@@ -403,7 +433,7 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
       ? timetable?.assignments
       : [];
 
-    const assignments = enrollment
+    let assignments: Record<string, any>[] = enrollment
       ? rawAssignments.filter((assignment) => {
           if (enrolledBatch && assignment.batchId) {
             return String(assignment.batchId).toUpperCase() === enrolledBatch;
@@ -418,7 +448,70 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
         })
       : rawAssignments;
 
-    const payload = buildDashboardPayload(assignments, timetable, now);
+    // Snapshot the base (pre-overlay) enrolled assignments so the frontend can derive
+    // the repeating weekly pattern for month/day view dates outside the fetched week.
+    const baseAssignmentsForFallback = [...assignments];
+
+    // Apply date-specific reschedule overrides for the current week.
+    // The base weekly timetable never changes; approved reschedule requests
+    // are overlaid here so the student sees the correct schedule.
+    if (enrolledCourseIds.length > 0) {
+      const weekDatesForOverride = getWeekDates(now);
+      const weekStart = new Date(weekDatesForOverride[0]);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekDatesForOverride[weekDatesForOverride.length - 1]);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      const approvedReschedules = await RequestModel.find({
+        status: "approved",
+        courseId: { $in: enrolledCourseIds.map((id) => new mongoose.Types.ObjectId(id)) },
+        $or: [
+          { currentDate: { $exists: true, $ne: "", $ne: null } },
+          { requestedDate: { $exists: true, $ne: "", $ne: null } },
+        ],
+      }).lean();
+
+      for (const rescheduled of approvedReschedules) {
+        const fromDateStr = (rescheduled as any).currentDate as string | undefined;
+        const toDateStr = (rescheduled as any).requestedDate as string | undefined;
+        if (!fromDateStr && !toDateStr) continue;
+
+        const fromDate = fromDateStr ? new Date(fromDateStr) : null;
+        const toDate = toDateStr ? new Date(toDateStr) : null;
+        const courseIdStr = String((rescheduled as any).courseId);
+        const curSlot = (rescheduled as any).currentSlot;
+        const reqSlot = (rescheduled as any).requestedSlot;
+        const curStart = curSlot?.time?.split("-")[0]?.trim();
+        const reqStart = reqSlot?.time?.split("-")[0]?.trim();
+        const reqEnd = reqSlot?.time?.split("-")[1]?.trim();
+
+        // Remove the original slot from its day if currentDate is in this week
+        if (fromDate && fromDate >= weekStart && fromDate <= weekEnd && curStart && curSlot?.day) {
+          assignments = assignments.filter(
+            (a) =>
+              !(String(a.courseId) === courseIdStr &&
+                a.startTime === curStart &&
+                normalizeDayName(a.day) === normalizeDayName(curSlot.day)),
+          );
+        }
+
+        // Insert the rescheduled slot if requestedDate is in this week
+        if (toDate && toDate >= weekStart && toDate <= weekEnd && reqStart && reqSlot?.day) {
+          const original = rawAssignments.find((a) => String(a.courseId) === courseIdStr);
+          if (original) {
+            assignments.push({
+              ...original,
+              day: normalizeDayName(reqSlot.day),
+              startTime: reqStart,
+              endTime: reqEnd || original.endTime,
+              isRescheduled: true,
+            });
+          }
+        }
+      }
+    }
+
+    const payload = buildDashboardPayload(assignments, timetable, now, baseAssignmentsForFallback);
     return ok(res, payload);
   } catch (error) {
     return fail(

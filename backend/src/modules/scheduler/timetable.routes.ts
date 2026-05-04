@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { TimetableResultModel } from "../../database/models/timetableResultModel.js";
+import { NotificationModel } from "../../database/models/notificationModel.js";
 import { ok, fail } from "../../shared/response.js";
 
 const router = Router();
@@ -107,12 +108,39 @@ router.post("/publish", async (req, res) => {
       return fail(res, "Timetable version not found", 404);
     }
 
+    // Broadcast notification to all students and faculty so they know to refresh
+    try {
+      await NotificationModel.create({
+        studentId: null, // null = broadcast to everyone
+        type: "timetable_update",
+        title: "New Timetable Published",
+        message: `Timetable ${result.version} has been published. Your schedule may have changed — please refresh your dashboard.`,
+        details: `Published at ${new Date().toLocaleString("en-IN")}`,
+        priority: "high",
+        isRead: false,
+      });
+    } catch {
+      // Never fail the publish because of notification errors
+    }
+
     return ok(res, { success: true, result });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return fail(res, "Validation failed", 400, error.flatten());
     }
     return fail(res, "Failed to publish timetable", 500, error instanceof Error ? error.message : error);
+  }
+});
+
+// Lightweight version-check endpoint — clients poll this to detect new publishes
+router.get("/published-at", async (req, res) => {
+  try {
+    const result = await TimetableResultModel.findOne({ isLatest: true })
+      .select("version publishedAt generatedAt")
+      .lean();
+    return ok(res, result ? { version: result.version, publishedAt: result.publishedAt ?? result.generatedAt } : null);
+  } catch (error) {
+    return fail(res, "Failed to get timetable version", 500, error instanceof Error ? error.message : error);
   }
 });
 

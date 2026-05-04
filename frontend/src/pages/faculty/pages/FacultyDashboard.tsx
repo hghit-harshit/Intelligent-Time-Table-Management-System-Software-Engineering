@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CalendarView from "../../../components/CalendarView";
+import CalendarCard from "../../student/components/CalendarCard";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 import { useUser } from "../../../contexts/UserContext";
 import {
@@ -9,6 +10,7 @@ import {
   fetchRescheduleRequests,
   fetchTimetableLatest,
 } from "../../../services/facultyApi";
+import { fetchTimetablePublishedAt } from "../../../services/studentApi";
 
 export default function FacultyDashboard() {
   const { user } = useUser();
@@ -23,6 +25,20 @@ export default function FacultyDashboard() {
   const [courseByCode, setCourseByCode] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [stale, setStale] = useState(false);
+  const loadedPublishedAt = useRef<string | null>(null);
+  const [selectedView, setSelectedView] = useState("week")
+  const [viewWeekStart, setViewWeekStart] = useState(() => {
+    const d = new Date(); d.setHours(0,0,0,0)
+    const day = d.getDay()
+    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+    return d
+  })
+  const [viewDayDate, setViewDayDate] = useState(() => new Date())
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
+  const [selectedDate, setSelectedDate] = useState(() => new Date().getDate())
+  const [facultyTimetableData, setFacultyTimetableData] = useState<any>(null)
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [rescheduleForm, setRescheduleForm] = useState({
@@ -93,6 +109,96 @@ export default function FacultyDashboard() {
     });
   };
 
+  const WEEK_DAY_NAMES_F = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+  const WEEK_DAYS_F = ["MON", "TUE", "WED", "THU", "FRI"]
+
+  const fmt12F = (time) => {
+    if (!time) return ""
+    if (/am|pm/i.test(time)) return time
+    const [h, m] = time.split(":").map(Number)
+    if (isNaN(h)) return time
+    const suffix = h >= 12 ? "PM" : "AM"
+    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${suffix}`
+  }
+
+  const timeToMinF = (t) => {
+    if (!t) return 0
+    const [h, m] = String(t).split(":").map(Number)
+    return (h || 0) * 60 + (m || 0)
+  }
+
+  const normalizeDayF = (val) => {
+    const map: Record<string,string> = {
+      mon:"Monday", monday:"Monday", tue:"Tuesday", tuesday:"Tuesday",
+      wed:"Wednesday", wednesday:"Wednesday", thu:"Thursday", thursday:"Thursday",
+      fri:"Friday", friday:"Friday"
+    }
+    return map[String(val).toLowerCase()] ?? val
+  }
+
+  const buildFacultyTimetableData = (assignments: any[], weekStart: Date) => {
+    const now = new Date()
+    const weekActualDates = Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(weekStart)
+      d.setDate(weekStart.getDate() + i)
+      return d
+    })
+    const weekDates = weekActualDates.map(d => d.getDate())
+
+    const byDay = new Map(WEEK_DAY_NAMES_F.map(d => [d, [] as any[]]))
+    for (const a of assignments) {
+      const day = normalizeDayF(a.day)
+      if (byDay.has(day)) byDay.get(day)!.push(a)
+    }
+
+    const timeSlots = [...new Set(assignments.map(a => a.startTime))]
+      .filter(Boolean)
+      .sort((a: any, b: any) => timeToMinF(a) - timeToMinF(b))
+
+    const weeklySchedule = timeSlots.map((time: any) => ({
+      time: fmt12F(time),
+      classes: WEEK_DAY_NAMES_F.map(day => {
+        const match = byDay.get(day)?.find(a => a.startTime === time)
+        return match ? {
+          name: match.courseName || match.courseCode || "Untitled",
+          location: match.roomName || "TBD",
+          professor: match.professorName || "",
+          isRescheduled: false,
+        } : null
+      })
+    }))
+
+    const dailySchedules: Record<string, any[]> = {}
+    weekActualDates.forEach((date, i) => {
+      const dayName = WEEK_DAY_NAMES_F[i]
+      const items = [...(byDay.get(dayName) || [])].sort((a, b) => timeToMinF(a.startTime) - timeToMinF(b.startTime))
+      dailySchedules[String(date.getDate())] = items.map(a => {
+        const dur = timeToMinF(a.endTime) - timeToMinF(a.startTime)
+        const duration = dur > 0 ? (dur % 60 === 0 ? `${dur/60} hr` : `${dur} min`) : ""
+        return {
+          time: fmt12F(a.startTime),
+          class: {
+            name: a.courseName || a.courseCode || "Untitled",
+            location: a.roomName || "TBD",
+            professor: a.professorName || "",
+            isRescheduled: false,
+            duration,
+          }
+        }
+      })
+    })
+
+    const DAY_NAMES_F = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+    return {
+      weekDays: WEEK_DAYS_F,
+      weekDates,
+      weeklySchedule,
+      dailySchedules,
+      currentDate: { day: now.getDate(), month: now.getMonth()+1, year: now.getFullYear(), dayName: DAY_NAMES_F[now.getDay()] },
+      calendar: { monthDaysWithClasses: [], timeSlots: (timeSlots as string[]).map(fmt12F) }
+    }
+  }
+
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
@@ -151,12 +257,18 @@ export default function FacultyDashboard() {
 
         if (!isMounted) return;
         setCalendarEvents(events);
+        setStale(false);
+        setFacultyTimetableData(buildFacultyTimetableData(filtered, viewWeekStart));
         setStats({
           totalClasses: String(filtered.length),
           completed: String(completed),
           thisWeek: String(filtered.length),
           pendingRequests: String(pendingRequests),
         });
+        // Record the timetable version we just loaded
+        fetchTimetablePublishedAt().then((v) => {
+          if (v?.publishedAt) loadedPublishedAt.current = v.publishedAt;
+        }).catch(() => {});
       } catch (error) {
         if (!isMounted) return;
         setLoadError(error?.message || "Unable to load faculty dashboard");
@@ -171,6 +283,112 @@ export default function FacultyDashboard() {
       isMounted = false;
     };
   }, [user?._id, user?.firstName, user?.lastName]);
+
+  // Poll every 90 seconds for a new timetable publish
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTimetablePublishedAt().then((v) => {
+        if (v?.publishedAt && loadedPublishedAt.current && v.publishedAt !== loadedPublishedAt.current) {
+          setStale(true);
+        }
+      }).catch(() => {});
+    }, 90_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Rebuild timetable data when week changes (calendarEvents already loaded)
+  useEffect(() => {
+    if (calendarEvents.length === 0) return
+    const rawAssignments = calendarEvents.map(e => e.raw)
+    setFacultyTimetableData(buildFacultyTimetableData(rawAssignments, viewWeekStart))
+  }, [viewWeekStart])
+
+  const toLocalISOF = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
+
+  const getMondayOfF = (date: Date) => {
+    const d = new Date(date); d.setHours(0,0,0,0)
+    const day = d.getDay()
+    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+    return d
+  }
+
+  const handlePrevF = () => {
+    if (selectedView === "week") {
+      const prev = new Date(viewWeekStart); prev.setDate(prev.getDate() - 7); setViewWeekStart(prev)
+    } else if (selectedView === "day") {
+      const prev = new Date(viewDayDate); prev.setDate(prev.getDate() - 1); setViewDayDate(prev)
+      setSelectedDate(prev.getDate()); setSelectedMonth(prev.getMonth()+1); setSelectedYear(prev.getFullYear())
+      const pm = getMondayOfF(prev)
+      if (pm.getTime() !== viewWeekStart.getTime()) setViewWeekStart(pm)
+    } else {
+      if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y-1) } else setSelectedMonth(m => m-1)
+      setSelectedDate(1)
+    }
+  }
+
+  const handleNextF = () => {
+    if (selectedView === "week") {
+      const next = new Date(viewWeekStart); next.setDate(next.getDate() + 7); setViewWeekStart(next)
+    } else if (selectedView === "day") {
+      const next = new Date(viewDayDate); next.setDate(next.getDate() + 1); setViewDayDate(next)
+      setSelectedDate(next.getDate()); setSelectedMonth(next.getMonth()+1); setSelectedYear(next.getFullYear())
+      const nm = getMondayOfF(next)
+      if (nm.getTime() !== viewWeekStart.getTime()) setViewWeekStart(nm)
+    } else {
+      if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y+1) } else setSelectedMonth(m => m+1)
+      setSelectedDate(1)
+    }
+  }
+
+  const MONTH_NAMES_F = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+  const DAY_NAMES_F2 = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+
+  const getHeaderLabelF = () => {
+    if (selectedView === "week") {
+      const friday = new Date(viewWeekStart); friday.setDate(friday.getDate() + 4)
+      return `${viewWeekStart.toLocaleDateString("en-IN", { month:"short", day:"numeric" })} – ${friday.getDate()}, ${viewWeekStart.getFullYear()}`
+    }
+    if (selectedView === "day") {
+      return viewDayDate.toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long", year:"numeric" })
+    }
+    return `${MONTH_NAMES_F[selectedMonth-1]} ${selectedYear}`
+  }
+
+  const getScheduleForDateF = (date) => {
+    if (!facultyTimetableData) return []
+    const fromCache = facultyTimetableData.dailySchedules?.[date.toString()]
+    if (fromCache && fromCache.length > 0) return fromCache
+    const d = new Date(selectedYear, selectedMonth - 1, date)
+    const jsDay = d.getDay()
+    if (jsDay === 0 || jsDay === 6) return []
+    const idx = jsDay - 1
+    const result: any[] = []
+    for (const slot of (facultyTimetableData.weeklySchedule || [])) {
+      const item = slot.classes?.[idx]
+      if (item) result.push({ time: slot.time, class: { ...item, duration: "" } })
+    }
+    return result
+  }
+
+  const getDayNameF = (date) => DAY_NAMES_F2[new Date(selectedYear, selectedMonth-1, date).getDay()]
+  const getShortDayNameF = (date) => {
+    const s = ["SUN","MON","TUE","WED","THU","FRI","SAT"]
+    return s[new Date(selectedYear, selectedMonth-1, date).getDay()]
+  }
+  const getDaysInMonthF = (month, year) => new Date(year, month, 0).getDate()
+  const getFirstDayOfMonthF = (month, year) => new Date(year, month-1, 1).getDay()
+  const getMonthNameF = (m) => MONTH_NAMES_F[m-1]
+
+  const handleCalendarTimeSlotClick = (item) => {
+    const match = calendarEvents.find(e => e.day === item.day && e.time === item.time)
+    setSelectedSlot(match ? { ...item, title: item.name, location: item.location } : { ...item, title: item.name })
+  }
+
+  const handleDateClickF = (day) => {
+    setSelectedDate(day); setSelectedView("day")
+    setViewDayDate(new Date(selectedYear, selectedMonth-1, day))
+  }
 
   const handleSlotClick = (slot) => {
     const match = calendarEvents.find(
@@ -277,6 +495,40 @@ export default function FacultyDashboard() {
 
   return (
     <>
+      {stale && (
+        <div style={{
+          margin: "0 0 12px",
+          padding: "10px 16px",
+          borderRadius: 8,
+          background: "rgba(59,130,246,0.1)",
+          border: "1px solid rgba(59,130,246,0.3)",
+          color: "#1d4ed8",
+          fontSize: "13px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+        }}>
+          <span>📅 A new timetable has been published. Your schedule may have changed.</span>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              background: "#1d4ed8",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "5px 14px",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Refresh Now
+          </button>
+        </div>
+      )}
+
       {/* Top Bar */}
       <div
         style={{
@@ -408,74 +660,45 @@ export default function FacultyDashboard() {
       </div>
 
       {/* Calendar */}
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "8px",
-          }}
-        >
-          <h3 style={{ ...heading, fontSize: fonts.size.base, margin: 0 }}>
-            Weekly Schedule
-          </h3>
-          <div style={caption}>
-            Click on any slot to select it for rescheduling
-          </div>
-        </div>
-
-        <CalendarView events={calendarEvents} onSlotClick={handleSlotClick} />
-
-        {selectedSlot && (
-          <div
-            style={{
-              marginTop: "12px",
-              padding: "12px 16px",
-              background: colors.primary.ghost,
-              border: `1px solid ${colors.primary.border}`,
-              borderRadius: radius.md,
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <div
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: colors.primary.main,
-              }}
-            />
-            <div
-              style={{
-                fontSize: fonts.size.base,
-                color: colors.primary.main,
-                fontWeight: 500,
-              }}
-            >
-              Selected: {selectedSlot.day} at {selectedSlot.time}
+      {facultyTimetableData ? (
+        <>
+          <CalendarCard
+            selectedView={selectedView}
+            setSelectedView={setSelectedView}
+            selectedDate={selectedDate}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            handlePrev={handlePrevF}
+            handleNext={handleNextF}
+            handleDateClick={handleDateClickF}
+            handleTimeSlotClick={handleCalendarTimeSlotClick}
+            headerLabel={getHeaderLabelF()}
+            getMonthName={getMonthNameF}
+            getDaysInMonth={getDaysInMonthF}
+            getFirstDayOfMonth={getFirstDayOfMonthF}
+            getDayName={getDayNameF}
+            getShortDayName={getShortDayNameF}
+            getScheduleForDate={getScheduleForDateF}
+            timetableData={facultyTimetableData}
+            viewWeekStart={viewWeekStart}
+          />
+          {selectedSlot && (
+            <div style={{ marginBottom: "12px", padding: "12px 16px", background: colors.primary.ghost, border: `1px solid ${colors.primary.border}`, borderRadius: radius.md, display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.primary.main }} />
+              <div style={{ fontSize: fonts.size.base, color: colors.primary.main, fontWeight: 500 }}>
+                Selected: {selectedSlot.day} at {selectedSlot.time}
+              </div>
+              <button onClick={handleRequestReschedule} style={{ marginLeft: "auto", padding: "6px 12px", fontSize: fonts.size.xs, background: colors.primary.main, color: "#fff", border: "none", borderRadius: radius.sm, cursor: "pointer", fontFamily: fonts.body }}>
+                Reschedule This Slot
+              </button>
             </div>
-            <button
-              onClick={handleRequestReschedule}
-              style={{
-                marginLeft: "auto",
-                padding: "6px 12px",
-                fontSize: fonts.size.xs,
-                background: colors.primary.main,
-                color: "#fff",
-                border: "none",
-                borderRadius: radius.sm,
-                cursor: "pointer",
-                fontFamily: fonts.body,
-              }}
-            >
-              Reschedule This Slot
-            </button>
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      ) : (
+        <div style={{ ...card, padding: "32px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>
+          {loading ? "Loading schedule…" : "No timetable published yet."}
+        </div>
+      )}
 
       {/* Reschedule Modal */}
       {showRescheduleModal && (

@@ -1,47 +1,38 @@
-/**
- * StudentDashboard — Main Timetable / Dashboard View
- *
- * Per DISHA UI Guide §3:
- * - Full-height layout: CalendarCard (left/main) + RightPane (contextual column)
- * - Right pane states: "classes" (default) / "notifs" (bell) / "exams" (View Exams)
- * - "View Exams" toggles examMode: exam-only calendar + exams pane simultaneously
- * - "View Full Calendar" reverts to normal mode
- * - "+ Add Task" opens AddTaskModal overlay; tasks shown in calendar + right pane
- * - Month → Day navigation on date click
- * - Red line time indicator built into DayView and WeekView
- */
+import { useEffect, useState, useCallback, useRef } from "react"
+import { fetchStudentDashboard, fetchTimetablePublishedAt } from "../../../services/studentApi"
+import TopBar from "../components/TopBar"
+import StatsCards from "../components/StatsCards"
+import CalendarCard from "../components/CalendarCard"
+import TodaysClasses from "../components/TodaysClasses"
+import QuickActions from "../components/QuickActions"
+import UpcomingEvents from "../components/UpcomingEvents"
+import ClassDetailsModal from "../components/ClassDetailsModal"
 
-import { useEffect, useState } from "react";
-import { fetchStudentDashboard, fetchNotificationUnreadCount, fetchStudentExams } from "../../../services/studentApi";
-import CalendarCard from "../components/CalendarCard";
-import RightPane from "../components/RightPane";
-import ClassDetailsModal from "../components/ClassDetailsModal";
-import AddTaskModal from "../components/AddTaskModal";
-import { colors, fonts } from "../../../styles/tokens";
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"]
 
-type PaneState = "classes" | "notifs" | "exams";
-
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  reminder: boolean;
-  reminderTime: string;
-  dueDate: string;
-  completed: boolean;
+const getMondayOf = (date: Date): Date => {
+  const d = new Date(date)
+  const day = d.getDay()
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
+// Use local date parts to avoid UTC offset shifting the date (e.g. IST midnight = prev day in UTC)
+const toISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+
 const buildEmptyDashboard = () => {
-  const now = new Date();
-  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const now = new Date()
   return {
     semester: { name: "Semester", period: "", status: { text: "Loading", type: "info" } },
     currentDate: {
       day: now.getDate(),
       month: now.getMonth() + 1,
       year: now.getFullYear(),
-      dayName: dayNames[now.getDay()],
+      dayName: DAY_NAMES[now.getDay()],
     },
     stats: [],
     weekDays: [],
@@ -52,251 +43,255 @@ const buildEmptyDashboard = () => {
     quickActions: [],
     upcomingEvents: [],
     calendar: { monthDaysWithClasses: [], timeSlots: [] },
-  };
-};
+  }
+}
 
 export default function StudentDashboard() {
-  const initialDashboard = buildEmptyDashboard();
-  const [dashboardData, setDashboardData] = useState(initialDashboard);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState(buildEmptyDashboard)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [stale, setStale] = useState(false)
+  const loadedPublishedAt = useRef<string | null>(null)
 
-  const [selectedView, setSelectedView] = useState("week");
-  const [selectedDate, setSelectedDate] = useState(initialDashboard.currentDate.day);
-  const [selectedMonth, setSelectedMonth] = useState(initialDashboard.currentDate.month);
-  const [selectedYear, setSelectedYear] = useState(initialDashboard.currentDate.year);
+  const [selectedView, setSelectedView] = useState("week")
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState(null)
+  const [showClassDetails, setShowClassDetails] = useState(false)
 
-  // Modal / overlay states
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<any>(null);
-  const [showClassDetails, setShowClassDetails] = useState(false);
-  const [showAddTask, setShowAddTask] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
+  // Week navigation: track the Monday of the displayed week
+  const [viewWeekStart, setViewWeekStart] = useState(() => getMondayOf(new Date()))
 
-  // Exam mode toggle
-  const [examMode, setExamMode] = useState(false);
-  const [examData, setExamData] = useState<any[]>([]);
+  // Day navigation: track the selected day as a full Date
+  const [viewDayDate, setViewDayDate] = useState(() => new Date())
 
-  // Tasks
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Month navigation (only for month view)
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
+  const [selectedDate, setSelectedDate] = useState(() => new Date().getDate())
 
-  // Right pane state
-  const [paneState, setPaneState] = useState<PaneState>("classes");
-
-  useEffect(() => {
-    fetchNotificationUnreadCount()
-      .then((data) => setNotificationCount(data?.unread ?? 0))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetchStudentExams()
-      .then((data) => setExamData(Array.isArray(data) ? data : data?.exams || []))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    setLoadError(null);
-
-    fetchStudentDashboard()
+  const loadDashboard = useCallback((weekStart: Date) => {
+    setIsLoading(true)
+    setLoadError(null)
+    setStale(false)
+    fetchStudentDashboard(toISO(weekStart))
       .then((data) => {
-        if (!isMounted) return;
-        setDashboardData(data);
-        setSelectedDate(data.currentDate.day);
-        setSelectedMonth(data.currentDate.month);
-        setSelectedYear(data.currentDate.year);
+        setDashboardData(data)
+        // Record the publishedAt of the timetable we just loaded
+        fetchTimetablePublishedAt().then((v) => {
+          if (v?.publishedAt) loadedPublishedAt.current = v.publishedAt
+        }).catch(() => {})
       })
-      .catch((error) => {
-        if (!isMounted) return;
-        setLoadError(error?.message || "Unable to load dashboard data");
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setIsLoading(false);
-      });
+      .catch((err) => setLoadError(err?.message || "Unable to load dashboard data"))
+      .finally(() => setIsLoading(false))
+  }, [])
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  useEffect(() => {
+    loadDashboard(viewWeekStart)
+  }, [viewWeekStart, loadDashboard])
 
-  const handleTimeSlotClick = (timeSlot: any) => {
-    setSelectedTimeSlot(timeSlot);
-    setShowClassDetails(true);
-  };
+  // Poll every 90 seconds for a new timetable publish
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTimetablePublishedAt().then((v) => {
+        if (v?.publishedAt && loadedPublishedAt.current && v.publishedAt !== loadedPublishedAt.current) {
+          setStale(true)
+        }
+      }).catch(() => {})
+    }, 90_000)
+    return () => clearInterval(interval)
+  }, [])
 
-  const handleDateClick = (day: number) => {
-    setSelectedDate(day);
-    setSelectedView("day");
-  };
-
-  const handlePrevMonth = () => {
-    if (selectedMonth === 1) {
-      setSelectedMonth(12);
-      setSelectedYear(selectedYear - 1);
+  // ── Navigation ────────────────────────────────────────────────
+  const handlePrev = () => {
+    if (selectedView === "week") {
+      const prev = new Date(viewWeekStart)
+      prev.setDate(prev.getDate() - 7)
+      setViewWeekStart(prev)
+    } else if (selectedView === "day") {
+      const prev = new Date(viewDayDate)
+      prev.setDate(prev.getDate() - 1)
+      setViewDayDate(prev)
+      setSelectedDate(prev.getDate())
+      setSelectedMonth(prev.getMonth() + 1)
+      setSelectedYear(prev.getFullYear())
+      // Cross-week: update week anchor so it refetches
+      const prevMonday = getMondayOf(prev)
+      if (prevMonday.getTime() !== viewWeekStart.getTime()) {
+        setViewWeekStart(prevMonday)
+      }
     } else {
-      setSelectedMonth(selectedMonth - 1);
+      if (selectedMonth === 1) {
+        setSelectedMonth(12)
+        setSelectedYear((y) => y - 1)
+      } else {
+        setSelectedMonth((m) => m - 1)
+      }
+      setSelectedDate(1)
     }
-    setSelectedDate(1);
-  };
+  }
 
-  const handleNextMonth = () => {
-    if (selectedMonth === 12) {
-      setSelectedMonth(1);
-      setSelectedYear(selectedYear + 1);
+  const handleNext = () => {
+    if (selectedView === "week") {
+      const next = new Date(viewWeekStart)
+      next.setDate(next.getDate() + 7)
+      setViewWeekStart(next)
+    } else if (selectedView === "day") {
+      const next = new Date(viewDayDate)
+      next.setDate(next.getDate() + 1)
+      setViewDayDate(next)
+      setSelectedDate(next.getDate())
+      setSelectedMonth(next.getMonth() + 1)
+      setSelectedYear(next.getFullYear())
+      const nextMonday = getMondayOf(next)
+      if (nextMonday.getTime() !== viewWeekStart.getTime()) {
+        setViewWeekStart(nextMonday)
+      }
     } else {
-      setSelectedMonth(selectedMonth + 1);
+      if (selectedMonth === 12) {
+        setSelectedMonth(1)
+        setSelectedYear((y) => y + 1)
+      } else {
+        setSelectedMonth((m) => m + 1)
+      }
+      setSelectedDate(1)
     }
-    setSelectedDate(1);
-  };
+  }
 
-  const handleToggleExamMode = () => {
-    const next = !examMode;
-    setExamMode(next);
-    setPaneState(next ? "exams" : "classes");
-  };
+  const handleTimeSlotClick = (timeSlot) => {
+    setSelectedTimeSlot(timeSlot)
+    setShowClassDetails(true)
+  }
 
-  const handleBell = () => {
-    setPaneState((prev) => (prev === "notifs" ? "classes" : "notifs"));
-  };
-
-  const handleAddTask = async (task: {
-    title: string;
-    description: string;
-    category: string;
-    reminder: boolean;
-    reminderTime: string;
-    dueDate: string;
-  }) => {
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString(),
-      completed: false,
-    };
-    setTasks((prev) => [...prev, newTask]);
-
-    try {
-      await fetch("/api/student/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: task.title,
-          description: task.description,
-          category: task.category,
-          dueDate: task.dueDate || null,
-          reminder: task.reminder,
-          reminderMinutes: task.reminder ? parseInt(task.reminderTime) : null,
-          status: "pending",
-        }),
-      });
-    } catch {
-      // Silently fail — task is shown locally
+  const handleDateClick = (day) => {
+    const clicked = new Date(selectedYear, selectedMonth - 1, day)
+    setViewDayDate(clicked)
+    setSelectedDate(day)
+    setSelectedView("day")
+    const clickedMonday = getMondayOf(clicked)
+    if (clickedMonday.getTime() !== viewWeekStart.getTime()) {
+      setViewWeekStart(clickedMonday)
     }
-  };
+  }
 
-  const handleToggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
-  };
+  // ── Helpers ───────────────────────────────────────────────────
+  const getMonthName = (monthNum) => MONTH_NAMES[monthNum - 1]
+  const getDaysInMonth = (month, year) => new Date(year, month, 0).getDate()
+  const getFirstDayOfMonth = (month, year) => new Date(year, month - 1, 1).getDay()
+  const getDayName = (date) => DAY_NAMES[new Date(selectedYear, selectedMonth - 1, date).getDay()]
+  const getShortDayName = (date) => {
+    const shorts = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+    return shorts[new Date(selectedYear, selectedMonth - 1, date).getDay()]
+  }
 
-  const handleDeleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  };
+  const getScheduleForDate = (date) => {
+    // Exact match — works for any date in the currently fetched week
+    const fromCache = dashboardData.dailySchedules[date.toString()]
+    if (fromCache && fromCache.length > 0) return fromCache
 
-  const getDaysInMonth = (month: number, year: number) => new Date(year, month, 0).getDate();
-  const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month - 1, 1).getDay();
+    // Fall back to the repeating weekly pattern for any other weekday
+    // (same courses repeat every week — rescheduled-specific dates just won't show for other weeks)
+    const d = new Date(selectedYear, selectedMonth - 1, date)
+    const jsDay = d.getDay() // 0=Sun, 1=Mon … 6=Sat
+    if (jsDay === 0 || jsDay === 6) return [] // weekend
+    const weekDayIdx = jsDay - 1 // Mon→0, Tue→1, … Fri→4
 
-  const getDayName = (date: number) => {
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    return days[new Date(selectedYear, selectedMonth - 1, date).getDay()];
-  };
+    // Use baseWeeklySchedule (pre-overlay) so dates in other weeks see the original
+    // timetable, not the modified version for the week that had a reschedule.
+    const baseSchedule = (dashboardData as any).baseWeeklySchedule ?? dashboardData.weeklySchedule ?? []
+    const result: any[] = []
+    for (const slot of baseSchedule) {
+      const classItem = slot.classes?.[weekDayIdx]
+      if (classItem) {
+        result.push({ time: slot.time, class: { ...classItem, duration: "" } })
+      }
+    }
+    return result
+  }
 
-  const getShortDayName = (date: number) => {
-    const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-    return days[new Date(selectedYear, selectedMonth - 1, date).getDay()];
-  };
+  const handleQuickAction = (action) => {
+    if (action.onClick.startsWith("/")) window.location.href = action.onClick
+  }
 
-  const getMonthName = (monthNum: number) => {
-    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-    return months[monthNum - 1];
-  };
-
-  const getScheduleForDate = (date: number) =>
-    dashboardData.dailySchedules[date.toString()] || [];
+  // ── Header label (passed to CalendarCard) ─────────────────────
+  const getHeaderLabel = () => {
+    if (selectedView === "week") {
+      const friday = new Date(viewWeekStart)
+      friday.setDate(friday.getDate() + 4)
+      const startLabel = viewWeekStart.toLocaleDateString("en-IN", { month: "short", day: "numeric" })
+      const endLabel = friday.toLocaleDateString("en-IN", { day: "numeric" })
+      const yearLabel = viewWeekStart.getFullYear()
+      return `${startLabel} – ${endLabel}, ${yearLabel}`
+    }
+    if (selectedView === "day") {
+      return viewDayDate.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    }
+    return `${getMonthName(selectedMonth)} ${selectedYear}`
+  }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        overflow: "hidden",
-        background: colors.bg.deep,
-      }}
-    >
-      {/* Loading / Error banners */}
+    <>
+      <TopBar semester={dashboardData.semester} />
+
       {isLoading && (
-        <div
-          style={{
-            margin: "8px 16px 0",
-            padding: "8px 14px",
-            borderRadius: 8,
-            background: "rgba(37,99,235,0.08)",
-            color: "#2563EB",
-            fontSize: fonts.size.sm,
-          }}
-        >
-          Loading dashboard data...
+        <div style={{ margin: "0 12px", padding: "8px 12px", borderRadius: 8, background: "rgba(59,130,246,0.1)", color: "#3b82f6", fontSize: "12px" }}>
+          Loading dashboard data…
         </div>
       )}
       {loadError && (
-        <div
-          style={{
-            margin: "8px 16px 0",
-            padding: "8px 14px",
-            borderRadius: 8,
-            background: "rgba(220,38,38,0.08)",
-            color: colors.error.main,
-            fontSize: fonts.size.sm,
-          }}
-        >
+        <div style={{ margin: "0 12px", padding: "8px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontSize: "12px" }}>
           {loadError}
         </div>
       )}
 
-      {/* Main layout: Calendar + Right Pane */}
-      <div
-        style={{
-          flex: 1,
+      {stale && (
+        <div style={{
+          margin: "0 12px 8px",
+          padding: "10px 16px",
+          borderRadius: 8,
+          background: "rgba(59,130,246,0.1)",
+          border: "1px solid rgba(59,130,246,0.3)",
+          color: "#1d4ed8",
+          fontSize: "13px",
           display: "flex",
-          gap: "14px",
-          padding: "14px 16px",
-          overflow: "hidden",
-          minHeight: 0,
-        }}
-      >
-        {/* Calendar (main area) */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            minWidth: 0,
-            overflow: "hidden",
-          }}
-        >
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+        }}>
+          <span>📅 A new timetable has been published. Your schedule may have changed.</span>
+          <button
+            onClick={() => loadDashboard(viewWeekStart)}
+            style={{
+              background: "#1d4ed8",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "5px 14px",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Refresh Now
+          </button>
+        </div>
+      )}
+
+      <div style={{ flex: 1, display: "flex", margin: "12px", gap: "12px", overflow: "hidden" }}>
+        {/* Main Panel */}
+        <div style={{ flex: 1, overflowY: "auto", paddingRight: "8px" }}>
+          <StatsCards stats={dashboardData.stats} />
+
           <CalendarCard
             selectedView={selectedView}
             setSelectedView={setSelectedView}
             selectedDate={selectedDate}
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
-            handlePrevMonth={handlePrevMonth}
-            handleNextMonth={handleNextMonth}
+            handlePrev={handlePrev}
+            handleNext={handleNext}
             handleDateClick={handleDateClick}
             handleTimeSlotClick={handleTimeSlotClick}
+            headerLabel={getHeaderLabel()}
             getMonthName={getMonthName}
             getDaysInMonth={getDaysInMonth}
             getFirstDayOfMonth={getFirstDayOfMonth}
@@ -304,56 +299,27 @@ export default function StudentDashboard() {
             getShortDayName={getShortDayName}
             getScheduleForDate={getScheduleForDate}
             timetableData={dashboardData}
-            examMode={examMode}
-            examData={examData}
-            tasks={tasks}
-            onToggleExamMode={handleToggleExamMode}
-            onAddTask={() => setShowAddTask(true)}
-            onBell={handleBell}
-            notificationCount={notificationCount}
+            viewWeekStart={viewWeekStart}
+          />
+
+          <TodaysClasses
+            todaysClasses={dashboardData.todaysClasses}
+            currentDate={dashboardData.currentDate}
+            handleTimeSlotClick={handleTimeSlotClick}
+            setSelectedView={setSelectedView}
           />
         </div>
 
-        {/* Contextual Right Pane */}
-        <div
-          style={{
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
-          <RightPane
-            paneState={paneState}
-            setPaneState={setPaneState}
-            todaysClasses={dashboardData.todaysClasses}
-            currentDate={dashboardData.currentDate}
-            onViewFullDay={() => setSelectedView("day")}
-            onAddNotes={() => {
-              window.location.href = "/StudentPage/notes";
-            }}
-            tasks={tasks}
-            onToggleTask={handleToggleTask}
-            onDeleteTask={handleDeleteTask}
-          />
+        {/* Right Panel */}
+        <div style={{ width: "260px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          <QuickActions quickActions={dashboardData.quickActions} handleQuickAction={handleQuickAction} />
+          <UpcomingEvents upcomingEvents={dashboardData.upcomingEvents} />
         </div>
       </div>
 
-      {/* Class Details Modal */}
       {showClassDetails && selectedTimeSlot && (
-        <ClassDetailsModal
-          selectedTimeSlot={selectedTimeSlot}
-          onClose={() => setShowClassDetails(false)}
-        />
+        <ClassDetailsModal selectedTimeSlot={selectedTimeSlot} onClose={() => setShowClassDetails(false)} />
       )}
-
-      {/* Add Task Modal */}
-      {showAddTask && (
-        <AddTaskModal
-          onClose={() => setShowAddTask(false)}
-          onSave={handleAddTask}
-        />
-      )}
-    </div>
-  );
+    </>
+  )
 }

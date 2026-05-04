@@ -1,7 +1,8 @@
 import { httpClient } from "./httpClient";
 
-export const fetchStudentDashboard = () => {
-  return httpClient.get("/student/dashboard");
+export const fetchStudentDashboard = (weekDate?: string) => {
+  const url = weekDate ? `/student/dashboard?weekDate=${weekDate}` : "/student/dashboard";
+  return httpClient.get(url);
 };
 
 export const fetchStudentCourses = () => {
@@ -31,4 +32,8 @@ export const deleteStudentNotification = (id) => {
 
 export const fetchNotificationUnreadCount = () => {
   return httpClient.get("/student/notifications/unread-count");
+};
+
+export const fetchTimetablePublishedAt = () => {
+  return httpClient.get("/timetable/published-at");
 };

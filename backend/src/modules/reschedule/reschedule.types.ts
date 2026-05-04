@@ -15,8 +15,11 @@ export interface RescheduleRequestInput {
     time: string;
     room?: string;
   };
+  currentDate?: string;
+  requestedDate?: string;
   reason: string;
   conflictStatus?: string;
+  affectedStudentCount?: number;
 }
 
 export interface RescheduleQuery {
