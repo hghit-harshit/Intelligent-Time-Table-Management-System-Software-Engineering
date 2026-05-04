@@ -95,3 +95,12 @@ export const rejectRequest = async (req: Request, res: Response) => {
     return handleError(res, error, "Error rejecting request");
   }
 };
+
+export const getPendingCount = async (_req: Request, res: Response) => {
+  try {
+    const count = await rescheduleService.getPendingCount();
+    return ok(res, { pending: count });
+  } catch (error) {
+    return handleError(res, error, "Error fetching pending count");
+  }
+};

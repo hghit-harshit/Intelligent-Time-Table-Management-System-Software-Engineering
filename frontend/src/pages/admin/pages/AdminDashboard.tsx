@@ -6,6 +6,7 @@ import ActivityFeed from "../components/dashboard/ActivityFeed";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
 import { Loader, PageHeader } from "../../../shared";
 import { fetchDashboard, updateRequestStatus } from "../../../features/admin/services";
+import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
@@ -19,23 +20,37 @@ export default function AdminDashboard() {
   }, []);
 
   const handleApprove = async (id) => {
-    await updateRequestStatus(id, "approved");
-    setData((prev) => ({
-      ...prev,
-      pendingRequests: prev.pendingRequests.map((r) =>
-        r.id === id ? { ...r, status: "approved" } : r
-      ),
-    }));
+    try {
+      const result = await updateRequestStatus(id, "approved");
+      setData((prev) => ({
+        ...prev,
+        pendingRequests: prev.pendingRequests.map((r) =>
+          r.id === id ? { ...r, status: "approved" } : r
+        ),
+      }));
+      if (result?.timetableVersion) {
+        toast.success(`Approved. New draft "${result.timetableVersion}" created.`, { duration: 4000 });
+      } else {
+        toast.success("Request approved");
+      }
+    } catch (error) {
+      toast.error(error?.message || "Failed to approve");
+    }
   };
 
   const handleReject = async (id) => {
-    await updateRequestStatus(id, "rejected");
-    setData((prev) => ({
-      ...prev,
-      pendingRequests: prev.pendingRequests.map((r) =>
-        r.id === id ? { ...r, status: "rejected" } : r
-      ),
-    }));
+    try {
+      await updateRequestStatus(id, "rejected");
+      setData((prev) => ({
+        ...prev,
+        pendingRequests: prev.pendingRequests.map((r) =>
+          r.id === id ? { ...r, status: "rejected" } : r
+        ),
+      }));
+      toast.success("Request rejected");
+    } catch (error) {
+      toast.error(error?.message || "Failed to reject");
+    }
   };
 
   if (loading) return <Loader />;

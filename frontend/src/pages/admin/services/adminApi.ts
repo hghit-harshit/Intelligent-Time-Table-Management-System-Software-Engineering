@@ -139,14 +139,19 @@ export async function fetchRescheduleRequests() {
   return items.map(normalizeRequest);
 }
 
+export async function fetchPendingRequestCount() {
+  const data = await httpClient.get("/requests/pending-count");
+  return data?.pending ?? 0;
+}
+
 export async function updateRequestStatus(requestId, status) {
   const action = status === "approved" ? "approve" : "reject";
-  await httpClient.request(`/requests/${requestId}/${action}`, {
+  const data = await httpClient.request(`/requests/${requestId}/${action}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
   });
-  return { success: true, requestId, status };
+  return data;
 }
 
 // ─── Timetable Engine ───────────────────────────────────────
@@ -293,12 +298,12 @@ export async function assignClassrooms(slotAssignments = []) {
   }
 }
 
-export async function saveTimetableDraft(assignments, stats, constraints, version) {
+export async function saveTimetableDraft(assignments, stats, constraints, version, commitMessage) {
   try {
     const response = await fetch(TimetableSaveDraftEP, {
       method: "POST",
       headers: withAuthHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ version, assignments, stats, constraints }),
+      body: JSON.stringify({ version, assignments, stats, constraints, commitMessage }),
     });
 
     const data = await response.json();
@@ -311,12 +316,12 @@ export async function saveTimetableDraft(assignments, stats, constraints, versio
   }
 }
 
-export async function publishTimetable(versionId, assignments = []) {
+export async function publishTimetable(versionId, assignments = [], commitMessage) {
   try {
     const response = await fetch(TimetablePublishEP, {
       method: "POST",
       headers: withAuthHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ version: versionId }),
+      body: JSON.stringify({ version: versionId, commitMessage }),
     });
 
     const data = await response.json();

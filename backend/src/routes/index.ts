@@ -7,6 +7,7 @@ import timetableRouter from "../modules/scheduler/timetable.routes.js";
 import slotRouter from "../modules/slot/slot.routes.js";
 import catalogRouter from "../modules/catalog/catalog.routes.js";
 import studentRouter from "../modules/student/student.routes.js";
+import workspaceRouter from "../modules/workspace/workspace.routes.js";
 
 const apiRouter = Router();
 
@@ -18,6 +19,7 @@ apiRouter.use("/ai", aiRouter);
 apiRouter.use("/catalog", catalogRouter);
 apiRouter.use("/student", studentRouter);
 apiRouter.use("/exam", examRouter);
+apiRouter.use("/workspace", workspaceRouter);
 
 export default apiRouter;
 

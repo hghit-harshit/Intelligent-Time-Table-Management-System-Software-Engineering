@@ -7,6 +7,7 @@ const router = Router();
 
 const saveDraftSchema = z.object({
   version: z.string(),
+  commitMessage: z.string().optional(),
   assignments: z.array(z.object({
     courseId: z.string().optional(),
     courseCode: z.string(),
@@ -43,6 +44,7 @@ const saveDraftSchema = z.object({
 
 const publishSchema = z.object({
   version: z.string(),
+  commitMessage: z.string().optional(),
 });
 
 // Save draft timetable
@@ -57,6 +59,7 @@ router.post("/save-draft", async (req, res) => {
           assignments: payload.assignments,
           stats: payload.stats,
           constraints: payload.constraints,
+          commitMessage: payload.commitMessage || "",
           status: "draft",
           generatedAt: new Date(),
         },
@@ -85,15 +88,18 @@ router.post("/publish", async (req, res) => {
     );
 
     // Then publish the requested version and mark as latest
+    const updateData: Record<string, unknown> = {
+      status: "published",
+      isLatest: true,
+      publishedAt: new Date(),
+    };
+    if (payload.commitMessage) {
+      updateData.commitMessage = payload.commitMessage;
+    }
+
     const result = await TimetableResultModel.findOneAndUpdate(
       { version: payload.version },
-      {
-        $set: {
-          status: "published",
-          isLatest: true,
-          publishedAt: new Date(),
-        },
-      },
+      { $set: updateData },
       { new: true }
     );
 
@@ -155,7 +161,7 @@ router.get("/versions", async (req, res) => {
   try {
     const results = await TimetableResultModel.find()
       .sort({ generatedAt: -1 })
-      .select("version status isLatest generatedAt publishedAt stats");
+      .select("version status isLatest generatedAt publishedAt stats commitMessage");
 
     return ok(res, results);
   } catch (error) {
@@ -276,7 +282,7 @@ router.get("/bulk-reschedule/room-courses", async (req, res) => {
  * POST /api/timetable/bulk-reschedule
  *
  * Body:
- *   operationType: "BR-1" | "BR-2" | "BR-4" | "BR-7"
+ *   operationType: "BR-1" | "BR-2" | "BR-3" | "BR-4" | "BR-7"
  *   sourceVersion: string          — version to clone / transform
  *   dryRun: boolean                — true → preview only, false → save as new draft
  *   reason?: string                — required when dryRun = false
@@ -285,6 +291,7 @@ router.get("/bulk-reschedule/room-courses", async (req, res) => {
  * Operation parameter shapes:
  *   BR-1: { courseCode: string, targetRoom: string }
  *   BR-2: { roomName: string }
+ *   BR-3: { courseCodeA: string, courseCodeB: string }
  *   BR-4: { courseCode: string, targetDay: string, targetStartTime: string, targetEndTime: string }
  *   BR-7: { date: string (ISO), dayOfWeek: string }
  *
@@ -293,7 +300,7 @@ router.get("/bulk-reschedule/room-courses", async (req, res) => {
  *                → returns { dryRun:false, newVersion, affectedCount, message }
  */
 const bulkRescheduleBodySchema = z.object({
-  operationType: z.enum(["BR-1", "BR-2", "BR-4", "BR-7"]),
+  operationType: z.enum(["BR-1", "BR-2", "BR-3", "BR-4", "BR-7"]),
   sourceVersion: z.string().min(1),
   dryRun: z.boolean(),
   reason: z.string().optional(),
@@ -513,6 +520,118 @@ router.post("/bulk-reschedule", async (req, res) => {
             slot.roomCapacity = undefined;
             slot.roomDepartment = undefined;
           }
+        }
+      }
+    }
+
+    // ── BR-3: Swap Two Course Times/Rooms ────────────────────────────────────
+    else if (operationType === "BR-3") {
+      const { courseCodeA, courseCodeB } = parameters as {
+        courseCodeA: string;
+        courseCodeB: string;
+      };
+      if (!courseCodeA || !courseCodeB)
+        return fail(res, "courseCodeA and courseCodeB are required for BR-3", 400);
+      if (courseCodeA === courseCodeB)
+        return fail(res, "courseCodeA and courseCodeB must be different", 400);
+
+      const slotsA = assignments.filter((a) => a.courseCode === courseCodeA);
+      const slotsB = assignments.filter((a) => a.courseCode === courseCodeB);
+
+      if (slotsA.length === 0)
+        return fail(res, `Course '${courseCodeA}' not found in source version`, 404);
+      if (slotsB.length === 0)
+        return fail(res, `Course '${courseCodeB}' not found in source version`, 404);
+
+      const swapSlotProps = (slot: Assignment, target: Assignment) => {
+        return {
+          day: slot.day,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          roomName: slot.roomName,
+          roomCapacity: slot.roomCapacity,
+          roomDepartment: slot.roomDepartment,
+          slotLabel: slot.slotLabel,
+        };
+      };
+
+      // Save original values
+      const originalsA = slotsA.map((s) => swapSlotProps(s, slotsB[0]));
+      const originalsB = slotsB.map((s) => swapSlotProps(s, slotsA[0]));
+
+      // Build changes for A → B positions
+      for (let i = 0; i < slotsA.length; i++) {
+        const slot = slotsA[i];
+        const target = slotsB[i % slotsB.length];
+        const conflict = detectConflict(
+          assignments,
+          target.roomName ?? null,
+          target.day!,
+          target.startTime!,
+          target.endTime!,
+          courseCodeA,
+          slot.professorName,
+        );
+        changes.push({
+          courseCode: slot.courseCode!,
+          courseName: slot.courseName!,
+          professorName: slot.professorName!,
+          day: slot.day!,
+          startTime: slot.startTime!,
+          endTime: slot.endTime!,
+          change: {
+            field: "swap_with_" + courseCodeB,
+            from: `${slot.day} ${slot.startTime}–${slot.endTime} (${slot.roomName})`,
+            to: `${target.day} ${target.startTime}–${target.endTime} (${target.roomName})`,
+          },
+          conflict,
+        });
+        if (!dryRun) {
+          slot.day = target.day;
+          slot.startTime = target.startTime;
+          slot.endTime = target.endTime;
+          slot.roomName = target.roomName;
+          slot.roomCapacity = target.roomCapacity;
+          slot.roomDepartment = target.roomDepartment;
+          slot.slotLabel = target.slotLabel;
+        }
+      }
+
+      // Build changes for B → A positions
+      for (let i = 0; i < slotsB.length; i++) {
+        const slot = slotsB[i];
+        const origA = originalsA[i % originalsA.length];
+        const conflict = detectConflict(
+          assignments,
+          origA.roomName ?? null,
+          origA.day!,
+          origA.startTime!,
+          origA.endTime!,
+          courseCodeB,
+          slot.professorName,
+        );
+        changes.push({
+          courseCode: slot.courseCode!,
+          courseName: slot.courseName!,
+          professorName: slot.professorName!,
+          day: slot.day!,
+          startTime: slot.startTime!,
+          endTime: slot.endTime!,
+          change: {
+            field: "swap_with_" + courseCodeA,
+            from: `${slot.day} ${slot.startTime}–${slot.endTime} (${slot.roomName})`,
+            to: `${origA.day} ${origA.startTime}–${origA.endTime} (${origA.roomName})`,
+          },
+          conflict,
+        });
+        if (!dryRun) {
+          slot.day = origA.day;
+          slot.startTime = origA.startTime;
+          slot.endTime = origA.endTime;
+          slot.roomName = origA.roomName;
+          slot.roomCapacity = origA.roomCapacity;
+          slot.roomDepartment = origA.roomDepartment;
+          slot.slotLabel = origA.slotLabel;
         }
       }
     }

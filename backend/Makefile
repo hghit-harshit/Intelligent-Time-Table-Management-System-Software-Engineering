@@ -1,19 +1,28 @@
-.PHONY: up down restart logs clean rebuild db-setup rebuild seed
-# Start all services (MongoDB + Backend with hot reload)
+.PHONY: up down fresh restart logs clean rebuild rebuild-backend db-setup seed
+# Start all services (does NOT seed — use 'make fresh' for a clean start with seed)
 up:
 	docker compose -f docker-compose.dev.yml up -d
 
-# Stop all services
+# Stop all services and wipe volumes
 down:
-	docker compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.dev.yml down -v
+
+# Wipe DB volumes + start fresh + seed everything (use this for a clean dev start)
+fresh:
+	@echo "==> Wiping DB volumes..."
+	docker compose -f docker-compose.dev.yml down -v
+	@echo "==> Starting services..."
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "==> Waiting for backend to be ready..."
+	@sleep 15
+	@echo "==> Seeding database..."
+	$(MAKE) seed
+	@echo "==> Done! Fresh start complete."
 
 # Restart all services
 restart:
 	docker compose -f docker-compose.dev.yml down && docker compose -f docker-compose.dev.yml up -d
 
-# Rebuild + start (most useful during development)
-rebuild:
-	docker compose -f docker-compose.dev.yml up -d --build
 
 seed:
 	docker compose -f docker-compose.dev.yml exec backend npm run seed:all:inside
@@ -34,8 +43,12 @@ logs-mongo:
 clean:
 	docker compose -f docker-compose.dev.yml down -v
 
-# Rebuild backend container (useful after package.json changes)
+# Rebuild everything
 rebuild:
+	docker compose -f docker-compose.dev.yml up -d --build
+
+# Rebuild backend container only
+rebuild-backend:
 	docker compose -f docker-compose.dev.yml up -d --build backend
 
 # Install new dependencies (run inside container)

@@ -7,6 +7,8 @@ import {
   CourseEnrollment,
   GoogleClassroom,
   AIAssistant,
+  NotesPage,
+  TasksPage,
 } from "../../features/student";
 
 export default function StudentPage() {
@@ -19,6 +21,8 @@ export default function StudentPage() {
         <Route path="courses" element={<CourseEnrollment />} />
         <Route path="google-classroom" element={<GoogleClassroom />} />
         <Route path="ai" element={<AIAssistant />} />
+        <Route path="notes" element={<NotesPage />} />
+        <Route path="tasks" element={<TasksPage />} />
       </Routes>
     </StudentLayout>
   );

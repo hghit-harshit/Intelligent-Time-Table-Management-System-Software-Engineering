@@ -29,4 +29,8 @@ export const rescheduleRepository = {
   findByIdRaw: async (id: string) => {
     return RequestModel.findById(id);
   },
+
+  countByStatus: async (status: string) => {
+    return RequestModel.countDocuments({ status });
+  },
 };

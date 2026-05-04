@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, Badge, Button, Loader, PageHeader, Modal } from "../../../shared";
 import { fetchTimetableVersions, fetchTimetableByVersion, deleteTimetableVersion, publishTimetable } from "../../../features/admin/services";
-import { Download, Trash2, Eye, Rocket, FileText, Archive, X, CheckCircle, AlertTriangle } from "lucide-react";
+import { Trash2, Eye, Rocket, FileText, Archive, X, CheckCircle, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { colors, fonts, radius } from "../../../styles/tokens";
 
@@ -169,6 +169,7 @@ export default function TimetableVersions() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
   const [publishConfirm, setPublishConfirm] = useState<any | null>(null);
+  const [publishCommitMessage, setPublishCommitMessage] = useState("");
 
   const reload = () => fetchTimetableVersions().then(setVersions);
 
@@ -190,8 +191,9 @@ export default function TimetableVersions() {
     const v = publishConfirm;
     setPublishConfirm(null);
     setActionLoading(v.version);
-    const result = await publishTimetable(v.version);
+    const result = await publishTimetable(v.version, [], publishCommitMessage);
     setActionLoading(null);
+    setPublishCommitMessage("");
     if (result.success) {
       toast.success("Timetable published", { description: `${v.version} is now the active timetable for all users` });
       reload();
@@ -260,6 +262,11 @@ export default function TimetableVersions() {
                       {totalAssignments != null && ` · ${totalAssignments} assignments`}
                       {v.publishedAt && ` · Published ${new Date(v.publishedAt).toLocaleString()}`}
                     </div>
+                    {v.commitMessage && (
+                      <div style={{ fontSize: fonts.size.xs, color: colors.text.secondary, marginTop: "4px", fontStyle: "italic" }}>
+                        <span style={{ color: colors.text.muted, fontStyle: "normal" }}>Message: </span>{v.commitMessage}
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ display: "flex", gap: "6px", flexShrink: 0, alignItems: "center" }}>
@@ -334,7 +341,7 @@ export default function TimetableVersions() {
       </Modal>
 
       {/* Publish confirmation modal */}
-      <Modal open={!!publishConfirm} onClose={() => setPublishConfirm(null)} maxWidth="420px">
+      <Modal open={!!publishConfirm} onClose={() => { setPublishConfirm(null); setPublishCommitMessage(""); }} maxWidth="420px">
         {publishConfirm && (
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
@@ -354,11 +361,35 @@ export default function TimetableVersions() {
                 </div>
               </div>
             </div>
-            <p style={{ fontSize: fonts.size.xs, color: colors.text.muted, margin: "0 0 20px" }}>
+            <p style={{ fontSize: fonts.size.xs, color: colors.text.muted, margin: "0 0 12px" }}>
               This will replace the currently active timetable and affect every student and faculty member. The previous version will remain in the list as a draft.
             </p>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: fonts.size.xs, fontWeight: fonts.weight.medium, color: colors.text.secondary, marginBottom: "6px" }}>
+                Commit message <span style={{ color: colors.text.muted }}>(optional)</span>
+              </label>
+              <textarea
+                value={publishCommitMessage}
+                onChange={(e) => setPublishCommitMessage(e.target.value)}
+                placeholder="Describe the changes in this version..."
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: `1px solid ${colors.border.subtle}`,
+                  borderRadius: radius.md,
+                  fontSize: fonts.size.sm,
+                  fontFamily: fonts.body,
+                  background: colors.bg.raised,
+                  color: colors.text.primary,
+                  outline: "none",
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
             <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-              <Button variant="ghost" size="sm" onClick={() => setPublishConfirm(null)}>Cancel</Button>
+              <Button variant="ghost" size="sm" onClick={() => { setPublishConfirm(null); setPublishCommitMessage(""); }}>Cancel</Button>
               <Button
                 variant="primary"
                 size="sm"

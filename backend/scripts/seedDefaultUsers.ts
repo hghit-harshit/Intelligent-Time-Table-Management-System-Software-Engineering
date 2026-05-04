@@ -1,27 +1,27 @@
-import { disconnectDatabase, connectDatabase } from "../src/database/index.js";
-import { UserModel } from "../src/database/models/userModel.js";
 import bcrypt from "bcryptjs";
+import { connectDatabase, disconnectDatabase } from "../src/database/index.js";
+import { UserModel } from "../src/database/models/userModel.js";
 
 const defaultUsers = [
   {
     firstName: "Student",
     lastName: "Work",
     email: "student@gmail.com",
-    password: "password123",
+    password: "password",
     role: "student",
   },
   {
-    firstName: "Prof",
-    lastName: "Work",
+    firstName: "Dr. Arun",
+    lastName: "Kumar",
     email: "prof@gmail.com",
-    password: "password123",
+    password: "password",
     role: "professor",
   },
   {
     firstName: "Admin",
     lastName: "Work",
     email: "admin@gmail.com",
-    password: "password123",
+    password: "password",
     role: "admin",
   },
 ];
@@ -34,7 +34,11 @@ async function seedDefaultUsers() {
     for (const user of defaultUsers) {
       const existing = await UserModel.findOne({ email: user.email });
       if (existing) {
-        console.log(`User ${user.email} already exists, skipping`);
+        // Update name in case it changed
+        existing.firstName = user.firstName;
+        existing.lastName = user.lastName;
+        await existing.save();
+        console.log(`User ${user.email} already exists, updated name`);
         continue;
       }
 
@@ -44,7 +48,7 @@ async function seedDefaultUsers() {
         password: hashedPassword,
         isActive: true,
       });
-      console.log(`Created user: ${user.email} (${user.role})`);
+      console.log(`Created user: ${user.email} (${user.role}) — password: "${user.password}"`);
     }
 
     console.log("Default users seeded successfully");
