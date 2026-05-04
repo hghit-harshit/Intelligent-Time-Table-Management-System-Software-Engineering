@@ -24,8 +24,6 @@ services:
       - NODE_ENV=development
       - PORT=5001
       - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/timetable?authSource=admin
-      - GEMINI_API_KEY=AIzaSyCJed26EnDBlOKaocd0rKxZqqovLf1YbmE
-      - GEMINI_MODEL=gemini-2.5-flash
       - CORS_ORIGIN=http://localhost:5173
       - ORTOOLS_PYTHON_BIN=python3
     ports:

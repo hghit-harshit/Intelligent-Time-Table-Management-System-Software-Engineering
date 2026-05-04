@@ -1,4 +1,8 @@
 import type { Request, Response } from "express";
+import { StudentEnrollmentModel } from "../../database/models/studentEnrollmentModel.js";
+import { CourseModel } from "../../database/models/courseModel.js";
+import { TimetableResultModel } from "../../database/models/timetableResultModel.js";
+import { UserModel } from "../../database/models/userModel.js";
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -16,9 +20,9 @@ type HistoryItem = {
   text?: string;
 };
 
-const buildGeminiBody = (history: HistoryItem[], message: string) => ({
+const buildGeminiBody = (history: HistoryItem[], message: string, customSystemPrompt?: string) => ({
   systemInstruction: {
-    parts: [{ text: GEMINI_SYSTEM_PROMPT }],
+    parts: [{ text: customSystemPrompt || GEMINI_SYSTEM_PROMPT }],
   },
   contents: [
     ...normalizeHistory(history),
@@ -79,6 +83,55 @@ export const chatWithAssistant = async (req: Request, res: Response) => {
       });
     }
 
+    let customSystemPrompt = GEMINI_SYSTEM_PROMPT;
+
+    // If the user is a student, fetch their courses to provide context to the AI
+    if (req.user?.email && req.user?.role === "student") {
+      try {
+        // Look up by email to handle cases where the DB was wiped but the token is stale
+        const actualUser = await UserModel.findOne({ email: req.user.email }).lean();
+        
+        if (actualUser) {
+          const enrollment = await StudentEnrollmentModel.findOne({ studentId: actualUser._id })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        if (enrollment && enrollment.enrolledCourseIds?.length) {
+          const courses = await CourseModel.find({ _id: { $in: enrollment.enrolledCourseIds } }).lean();
+          if (courses.length > 0) {
+            const courseList = courses.map(c => `- ${c.code || "N/A"}: ${c.name || "Untitled"} (${c.credits || 0} credits)`).join("\n");
+            customSystemPrompt += `\n\nContext for this user:\nThe user is a student currently enrolled in the following courses:\n${courseList}`;
+            
+            const timetable = await TimetableResultModel.findOne({ isLatest: true }).lean();
+            if (timetable && Array.isArray(timetable.assignments)) {
+              const enrolledCodes = new Set(courses.map(c => c.code).filter(Boolean));
+              const studentAssignments = timetable.assignments.filter((a: any) => enrolledCodes.has(a.courseCode));
+              
+              if (studentAssignments.length > 0) {
+                // Sort by day and time for better readability by the LLM
+                const dayOrder: Record<string, number> = { "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7 };
+                studentAssignments.sort((a: any, b: any) => {
+                  const dayDiff = (dayOrder[a.day] || 99) - (dayOrder[b.day] || 99);
+                  if (dayDiff !== 0) return dayDiff;
+                  return (a.startTime || "").localeCompare(b.startTime || "");
+                });
+
+                const scheduleStr = studentAssignments.map((a: any) => 
+                  `- ${a.day} ${a.startTime}-${a.endTime}: ${a.courseName} (${a.courseCode}) in ${a.roomName || "TBA"} with ${a.professorName || "TBA"}`
+                ).join("\n");
+                
+                customSystemPrompt += `\n\nTheir current weekly schedule is:\n${scheduleStr}`;
+              }
+            }
+          }
+        }
+        } // Closing brace for if (actualUser)
+      } catch (err) {
+        // Silently ignore DB errors here to not break the AI functionality
+        console.error("Failed to fetch student courses for AI context:", err);
+      }
+    }
+
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const maxAttempts = 3;
     let lastStatus = 500;
@@ -94,7 +147,7 @@ export const chatWithAssistant = async (req: Request, res: Response) => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(buildGeminiBody(history, message)),
+          body: JSON.stringify(buildGeminiBody(history, message, customSystemPrompt)),
         });
         data = await response.json();
       } catch (fetchError) {
