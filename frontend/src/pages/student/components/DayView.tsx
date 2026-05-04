@@ -67,6 +67,10 @@ function parseDuration(dur: string): number {
   return hrs * 60 + mins;
 }
 
+function extractCourseCode(location: string): string {
+  return (location || "").split("·")[0].trim().split(" ")[0].trim();
+}
+
 export default function DayView({
   selectedDate,
   selectedMonth,
@@ -79,6 +83,7 @@ export default function DayView({
   examMode,
   examData,
   tasks,
+  onNoteClick,
 }: any) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentMinutes, setCurrentMinutes] = useState(() => {
@@ -96,8 +101,8 @@ export default function DayView({
 
   useEffect(() => {
     if (scrollRef.current) {
-      const scrollTo = Math.max(0, ((currentMinutes - 60) / 60) * HOUR_HEIGHT);
-      scrollRef.current.scrollTop = scrollTo;
+      // Default scroll to 8am
+      scrollRef.current.scrollTop = 8 * HOUR_HEIGHT;
     }
   }, []);
 
@@ -258,10 +263,12 @@ export default function DayView({
           {/* Class event blocks (hidden in examMode) */}
           {!examMode && events.map((evt, i) => {
             const cs = getClassColor(evt.classItem);
+            const classDate = `${selectedYear}-${String(selectedMonth).padStart(2,"0")}-${String(selectedDate).padStart(2,"0")}`;
+            const courseCode = evt.classItem.courseCode || extractCourseCode(evt.classItem.name || "");
             return (
               <div
                 key={i}
-                onClick={() => handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: getShortDayName(selectedDate) })}
+                onClick={() => handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: getShortDayName(selectedDate), classDate, courseCode })}
                 style={{
                   position: "absolute",
                   top: `${evt.top}px`,
@@ -280,7 +287,7 @@ export default function DayView({
                 onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "brightness(0.94)")}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "none")}
               >
-                <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: cs.text, marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: cs.text, marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {evt.classItem.name}
                 </div>
                 <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.8 }}>

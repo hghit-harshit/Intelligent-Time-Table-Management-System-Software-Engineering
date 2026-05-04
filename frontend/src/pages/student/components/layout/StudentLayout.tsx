@@ -19,8 +19,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// Google Classroom service (port 4000)
-const GCS_BASE = "http://localhost:4000";
+// Google Classroom service (port 8000)
+const GCS_BASE = "http://localhost:8000";
 
 async function checkAuthStatus(): Promise<boolean> {
   try {

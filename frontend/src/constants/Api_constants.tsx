@@ -53,7 +53,7 @@ export const ExamMyRequestsEP = API_BASE_URL + "/exam/my-requests";
 export const ExamFacultyCoursesEP = API_BASE_URL + "/exam/faculty-courses";
 export const ExamCleanupEP = API_BASE_URL + "/exam/cleanup";
 
-export const GOOGLE_CLASSROOM_API_URL = "http://localhost:4000/api";
+export const GOOGLE_CLASSROOM_API_URL = "http://localhost:8000/api";
 export const GC_AUTH_URL_EP = GOOGLE_CLASSROOM_API_URL + "/auth/url";
 export const GC_AUTH_STATUS_EP = GOOGLE_CLASSROOM_API_URL + "/auth/status";
 export const GC_AUTH_LOGOUT_EP = GOOGLE_CLASSROOM_API_URL + "/auth/logout";

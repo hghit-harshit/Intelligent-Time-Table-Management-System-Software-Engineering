@@ -54,7 +54,7 @@ const run = async () => {
       return;
     }
   } else {
-    await UserModel.deleteMany({ role: "student", email: { $ne: "student@gmail.com" } });
+    await UserModel.deleteMany({ role: "student", email: { $nin: ["student@gmail.com", "es23btech11010@iith.ac.in"] } });
     console.log("Cleared existing students");
   }
 
@@ -105,14 +105,38 @@ const run = async () => {
     }
   }
 
+  // ── Atharva Lohare (named account, always seeded) ────────────────────
+  const atharvaUser = await UserModel.findOne({ email: "es23btech11010@iith.ac.in" });
+  if (atharvaUser) {
+    const existingEnroll = await StudentEnrollmentModel.findOne({ studentId: atharvaUser._id });
+    if (!existingEnroll) {
+      const atharvaCourseIds = courses
+        .filter((c) => ["CSE303", "CSE401", "CSE305", "CSE307", "MAT301"].includes(c.code))
+        .map((c) => new mongoose.Types.ObjectId(c._id.toString()));
+
+      await StudentEnrollmentModel.create({
+        studentId: atharvaUser._id,
+        batchId: "CS-TY",
+        enrolledCourseIds: atharvaCourseIds,
+        academicYear: "2025-2026",
+        semester: 6,
+      });
+      console.log(`Created enrollment for Atharva Lohare (${atharvaCourseIds.length} courses)`);
+    } else {
+      console.log("Atharva enrollment already exists, skipping");
+    }
+  }
+
   console.log(`\nSeeded ${studentUsers.length} students with enrollments`);
-  
+
   const totalEnrollments = await StudentEnrollmentModel.countDocuments();
   console.log(`Total enrollments: ${totalEnrollments}`);
-  
+
   console.log("\nSample student credentials:");
   console.log("Email: s1@gmail.com");
   console.log("Password: password");
+  console.log("Email: es23btech11010@iith.ac.in");
+  console.log("Password: Atharva@1234");
 };
 
 run()

@@ -14,8 +14,8 @@ import { useEffect, useRef, useState } from "react";
 import { colors, fonts, radius } from "../../../styles/tokens";
 
 const HOUR_HEIGHT = 64;
-const START_HOUR = 5;
-const END_HOUR = 22;
+const START_HOUR = 0;
+const END_HOUR = 24;
 const GRID_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT;
 const HEADER_HEIGHT = 44;
 
@@ -66,7 +66,11 @@ function parseDuration(dur: string): number {
   return hrs * 60 + mins;
 }
 
-export default function WeekView({ timetableData, handleTimeSlotClick, examMode, examData, tasks }: any) {
+function extractCourseCode(location: string): string {
+  return (location || "").split("·")[0].trim().split(" ")[0].trim();
+}
+
+export default function WeekView({ timetableData, handleTimeSlotClick, examMode, examData, tasks, onNoteClick }: any) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentMinutes, setCurrentMinutes] = useState(() => {
     const now = new Date();
@@ -83,7 +87,8 @@ export default function WeekView({ timetableData, handleTimeSlotClick, examMode,
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = Math.max(0, (7 - START_HOUR) * HOUR_HEIGHT);
+      // Default scroll to 8am
+      scrollRef.current.scrollTop = (8 - START_HOUR) * HOUR_HEIGHT;
     }
   }, []);
 
@@ -279,11 +284,14 @@ export default function WeekView({ timetableData, handleTimeSlotClick, examMode,
               {/* Class event blocks (hidden in examMode) */}
               {!examMode && dayEvents[dayIdx]?.map((evt, evtIdx) => {
                 const cs = getClassColor(evt.classItem);
+                const dateNum = dates[dayIdx];
+                const classDate = `${currentYear}-${String(currentMonth).padStart(2,"0")}-${String(dateNum).padStart(2,"0")}`;
+                const courseCode = evt.classItem.courseCode || extractCourseCode(evt.classItem.name || "");
                 return (
                   <div
                     key={evtIdx}
                     onClick={() =>
-                      handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: days[dayIdx] })
+                      handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: days[dayIdx], classDate, courseCode })
                     }
                     style={{
                       position: "absolute",

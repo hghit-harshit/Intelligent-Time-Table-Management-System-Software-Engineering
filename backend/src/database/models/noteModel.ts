@@ -6,41 +6,19 @@ const noteSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    content: {
-      type: String,
-      default: "",
-    },
-    courseId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Course",
-      default: null,
-    },
-    tags: [{
-      type: String,
-      trim: true,
-    }],
-    color: {
-      type: String,
-      default: "#3b82f6",
-    },
-    pinned: {
-      type: Boolean,
-      default: false,
-    },
+    sessionId: { type: String, default: "" },
+    courseCode: { type: String, required: true, trim: true, uppercase: true },
+    classDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+    googleDocId: { type: String, required: true },
+    webViewLink: { type: String, required: true },
+    folderId: { type: String, default: "" },
   },
-  {
-    timestamps: true,
-    collection: "notes",
-  },
+  { timestamps: true, collection: "student_notes" },
 );
 
-noteSchema.index({ studentId: 1, createdAt: -1 });
-noteSchema.index({ studentId: 1, courseId: 1 });
+// One note doc per student + course + date
+noteSchema.index({ studentId: 1, courseCode: 1, classDate: 1 }, { unique: true });
 
 export const NoteModel = mongoose.model("Note", noteSchema);

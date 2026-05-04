@@ -328,10 +328,31 @@ export default function GoogleClassroom() {
               >
                 Connect Google Classroom
               </h3>
-              <p style={{ ...muted, margin: "0 0 24px", lineHeight: 1.5 }}>
+              <p style={{ ...muted, margin: "0 0 16px", lineHeight: 1.5 }}>
                 Sign in with your Google account to view upcoming assignments,
                 deadlines, and coursework in one place.
               </p>
+
+              {/* Unverified app notice */}
+              <div
+                style={{
+                  background: "rgba(245,158,11,0.08)",
+                  border: "1px solid rgba(245,158,11,0.25)",
+                  borderRadius: radius.md,
+                  padding: "10px 14px",
+                  marginBottom: "20px",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ fontSize: fonts.size.xs, fontWeight: 600, color: "#D97706", marginBottom: "4px" }}>
+                  "This app isn't verified" warning
+                </div>
+                <div style={{ fontSize: fonts.size.xs, color: colors.text.secondary, lineHeight: 1.6 }}>
+                  Google may show a warning screen. This is expected for academic apps.
+                  Click <strong>"Advanced"</strong> → <strong>"Continue to DISHA"</strong> to proceed.
+                </div>
+              </div>
+
               <button
                 onClick={handleConnect}
                 style={{

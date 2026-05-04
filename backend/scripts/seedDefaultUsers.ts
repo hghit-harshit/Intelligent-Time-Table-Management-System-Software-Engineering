@@ -11,6 +11,13 @@ const defaultUsers = [
     role: "student",
   },
   {
+    firstName: "Atharva",
+    lastName: "Lohare",
+    email: "es23btech11010@iith.ac.in",
+    password: "Atharva@1234",
+    role: "student",
+  },
+  {
     firstName: "Dr. Arun",
     lastName: "Kumar",
     email: "prof@gmail.com",

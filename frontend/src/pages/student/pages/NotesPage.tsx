@@ -9,10 +9,35 @@
  * - "Add Notes" triggers the port 4000 microservice flow
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
-import { fetchStudentDashboard, fetchStudentCourses } from "../../../services/studentApi";
+import { fetchStudentDashboard, fetchStudentCourses, createStudentNote, fetchNotesByCourse } from "../../../services/studentApi";
 import { Calendar, BookOpen, ArrowLeft } from "lucide-react";
+import NotesViewerModal from "../components/NotesViewerModal";
+
+// ── Mock fallback data (shown when backend returns empty) ─────────────
+const MOCK_COURSES = [
+  { code: "CS201", name: "Data Structures & Algorithms" },
+  { code: "MA301", name: "Engineering Mathematics III" },
+  { code: "EC201", name: "Digital Circuits & Systems" },
+  { code: "CS301", name: "Computer Networks" },
+];
+
+function buildMockSessions(code: string): CourseSession[] {
+  const now = new Date();
+  const sessions: CourseSession[] = [];
+  // Generate last 6 Mon/Wed/Fri sessions
+  let count = 0;
+  for (let d = 1; d <= 60 && count < 6; d++) {
+    const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() - d);
+    const day = dt.getDay();
+    if (day === 1 || day === 3 || day === 5) {
+      sessions.push({ date: dt, time: "09:00", endTime: "09:00–10:00", hasNotes: false });
+      count++;
+    }
+  }
+  return sessions.reverse();
+}
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -75,6 +100,13 @@ function formatSessionDate(date: Date): string {
   });
 }
 
+function formatIsoDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric",
+  });
+}
+
 // Extract code from location string like "CS201 · LHC-2" → "CS201"
 function extractCode(location: string): string {
   if (!location) return "";
@@ -126,6 +158,9 @@ export default function NotesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<CourseNotes | null>(null);
+  const [noteMap, setNoteMap] = useState<Record<string, string>>({});
+  const [addingNote, setAddingNote] = useState<string | null>(null);
+  const [notesModal, setNotesModal] = useState<{ webViewLink: string; googleDocId: string; title: string; subtitle?: string } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -137,27 +172,24 @@ export default function NotesPage() {
         if (!isMounted) return;
 
         const sessionMap = buildCourseSessionMap(dashData);
-        const enrolled: any[] = courseData?.enrolled || [];
+        let enrolled: any[] = courseData?.enrolled || [];
 
-        // Build course notes list from enrolled courses + session data
+        // Use mock data when backend returns nothing (dev/demo mode)
+        if (enrolled.length === 0) enrolled = MOCK_COURSES;
+
         const notes: CourseNotes[] = enrolled.map((raw: any) => {
           const code = raw.code || "";
           const name = raw.name || raw.title || "";
           const sessions =
             sessionMap[code] ||
-            // fallback: match by name substring
             Object.entries(sessionMap).find(
               ([k]) =>
                 k.toLowerCase().includes(name.toLowerCase().split(" ")[0]) ||
                 name.toLowerCase().includes(k.toLowerCase()),
             )?.[1] ||
-            [];
+            buildMockSessions(code);
 
-          // Sort sessions by date ascending
-          const sorted = [...sessions].sort(
-            (a, b) => a.date.getTime() - b.date.getTime(),
-          );
-
+          const sorted = [...sessions].sort((a, b) => a.date.getTime() - b.date.getTime());
           return { code, name, sessions: sorted };
         });
 
@@ -177,23 +209,73 @@ export default function NotesPage() {
     };
   }, []);
 
+  // Refetch persisted notes every time a course is opened so calendar-created notes appear
+  useEffect(() => {
+    if (!selectedCourse) return;
+    setNoteMap({});
+    fetchNotesByCourse(selectedCourse.code)
+      .then((data: any) => {
+        const map: Record<string, string> = {};
+        (data?.notes || []).forEach((n: any) => {
+          if (n.classDate && n.webViewLink) map[n.classDate] = n.webViewLink;
+        });
+        setNoteMap(map);
+      })
+      .catch(() => {});
+  }, [selectedCourse]);
+
+  const [notesError, setNotesError] = useState<"drive_api_disabled" | "not_connected" | "generic" | null>(null);
+
+  const openNotes = useCallback(async (courseCode: string, classDate: string, courseName = "") => {
+    setAddingNote(classDate);
+    setNotesError(null);
+    try {
+      const data: any = await createStudentNote(courseCode, classDate);
+      const googleDocId = data?.googleDocId;
+      const webViewLink = data?.webViewLink || (googleDocId ? `https://docs.google.com/document/d/${googleDocId}/edit` : null);
+      if (webViewLink && googleDocId) {
+        setNoteMap((prev) => ({ ...prev, [classDate]: webViewLink }));
+        const formattedDate = formatIsoDate(classDate);
+        setNotesModal({
+          webViewLink,
+          googleDocId,
+          title: courseName || courseCode,
+          subtitle: `${courseCode} · ${formattedDate}`,
+        });
+      }
+    } catch (err: any) {
+      const msg = err?.message || "";
+      if (msg.includes("drive.googleapis") || msg.includes("Drive API") || msg.includes("has not been used") || msg.includes("disabled")) {
+        setNotesError("drive_api_disabled");
+      } else if (msg.includes("authenticated") || msg.includes("Not authenticated")) {
+        setNotesError("not_connected");
+      } else {
+        setNotesError("generic");
+      }
+      setTimeout(() => setNotesError(null), 6000);
+    } finally {
+      setAddingNote(null);
+    }
+  }, []);
+
   // ── History Drill-Down View ────────────────────────────────────
+  // ── Date helpers for the header ─────────────────────────────────
+  const today = new Date();
+  const todayStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
   if (selectedCourse) {
+    const sessionCount = selectedCourse.sessions.length;
+    const earliest = sessionCount > 0 ? formatSessionDate(selectedCourse.sessions[0].date) : "";
+    const latest   = sessionCount > 0 ? formatSessionDate(selectedCourse.sessions[sessionCount - 1].date) : "";
+
     return (
-      <div
-        style={{
-          minHeight: "100%",
-          background: colors.bg.deep,
-          padding: "28px 32px",
-        }}
-      >
+      <div style={{ minHeight: "100%", background: colors.bg.deep, padding: "28px 32px" }}>
+
         {/* Back link */}
         <button
           onClick={() => setSelectedCourse(null)}
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
+            display: "inline-flex", alignItems: "center", gap: "6px",
             background: "none",
             border: "none",
             color: colors.text.secondary,
@@ -204,18 +286,14 @@ export default function NotesPage() {
             marginBottom: "20px",
             transition: "color 0.15s ease",
           }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.color = colors.primary.main)
-          }
-          onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.color = colors.text.secondary)
-          }
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.primary.main; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.text.secondary; }}
         >
           <ArrowLeft size={15} />
           Back to Courses
         </button>
 
-        {/* Title section */}
+        {/* Page title */}
         <div style={{ marginBottom: "20px" }}>
           <h2
             style={{
@@ -226,105 +304,152 @@ export default function NotesPage() {
               fontFamily: fonts.heading,
             }}
           >
-            {selectedCourse.code} Notes History
+            {selectedCourse.code} — Notes History
           </h2>
           <p style={{ margin: 0, fontSize: fonts.size.sm, color: colors.text.secondary }}>
             {selectedCourse.name}
+            {sessionCount > 0 && (
+              <span style={{ color: colors.text.muted }}>
+                {" "}&middot; {earliest} &mdash; {latest}
+              </span>
+            )}
           </p>
         </div>
 
-        {/* Sessions list */}
-        <div
-          style={{
-            background: colors.bg.base,
-            border: `1px solid ${colors.border.medium}`,
-            borderRadius: radius.xl,
-            boxShadow: shadows.sm,
-            overflow: "hidden",
-          }}
-        >
-          {selectedCourse.sessions.length === 0 ? (
-            <div
-              style={{
-                padding: "40px",
-                textAlign: "center",
-                color: colors.text.muted,
-                fontSize: fonts.size.sm,
-              }}
-            >
-              No sessions found for this course.
-            </div>
-          ) : (
-            selectedCourse.sessions.map((session, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "16px 20px",
-                  borderBottom:
-                    i < selectedCourse.sessions.length - 1
-                      ? `1px solid ${colors.border.subtle}`
-                      : "none",
-                }}
-              >
-                {/* Date + time */}
-                <div>
-                  <div
-                    style={{
-                      fontWeight: fonts.weight.semibold,
-                      fontSize: fonts.size.sm,
-                      color: colors.text.primary,
-                      marginBottom: "3px",
-                    }}
-                  >
-                    {formatSessionDate(session.date)}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: fonts.size.xs,
-                      color: "#2563EB",
-                    }}
-                  >
-                    {session.endTime}
-                  </div>
-                </div>
 
-                {/* Notes status / action */}
-                {session.hasNotes && session.notesUrl ? (
-                  <a
-                    href={session.notesUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      padding: "5px 12px",
-                      background: colors.primary.ghost,
-                      border: `1px solid ${colors.primary.border}`,
-                      borderRadius: radius.md,
-                      color: colors.primary.main,
-                      fontSize: fonts.size.xs,
-                      fontWeight: fonts.weight.medium,
-                      textDecoration: "none",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    View Notes
-                  </a>
-                ) : (
-                  <span
-                    style={{
-                      fontSize: fonts.size.xs,
-                      color: colors.text.muted,
-                      fontStyle: "italic",
-                    }}
-                  >
-                    No Notes Taken for This Session.
-                  </span>
-                )}
-              </div>
-            ))
+        {/* Error banner */}
+        {notesError && (
+            <div style={{ marginBottom: "16px", padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.10)", color: "#D97706", fontSize: fonts.size.sm, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>
+                {notesError === "drive_api_disabled"
+                  ? "Google Drive API is not enabled for this project."
+                  : notesError === "not_connected"
+                  ? "Google account not connected. Connect to access notes."
+                  : "Could not open notes. Please try again."}
+              </span>
+              {notesError === "drive_api_disabled" ? (
+                <a href="https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=347302664202" target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB", fontWeight: 600, fontSize: fonts.size.xs, marginLeft: "12px", textDecoration: "none", whiteSpace: "nowrap" }}>Enable Drive API →</a>
+              ) : notesError === "not_connected" ? (
+                <a href="/StudentPage/google-classroom" style={{ color: "#2563EB", fontWeight: 600, fontSize: fonts.size.xs, marginLeft: "12px", textDecoration: "none", whiteSpace: "nowrap" }}>Connect Google →</a>
+              ) : null}
+            </div>
           )}
+
+          {/* Notes viewer modal */}
+          {notesModal && (
+            <NotesViewerModal
+              webViewLink={notesModal.webViewLink}
+              googleDocId={notesModal.googleDocId}
+              title={notesModal.title}
+              subtitle={notesModal.subtitle}
+              onClose={() => setNotesModal(null)}
+            />
+          )}
+
+          {/* Sessions list */}
+          <div
+            style={{
+              background: colors.bg.base,
+              border: `1px solid ${colors.border.medium}`,
+              borderRadius: radius.xl,
+              boxShadow: shadows.sm,
+              overflow: "hidden",
+            }}
+          >
+            {selectedCourse.sessions.length === 0 ? (
+              <div style={{ padding: "48px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>
+                No sessions found for this course.
+              </div>
+            ) : (
+              selectedCourse.sessions.map((session, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 20px",
+                    background: i % 2 === 0 ? colors.bg.base : colors.bg.deep,
+                    borderBottom: i < selectedCourse.sessions.length - 1 ? `1px solid ${colors.border.subtle}` : "none",
+                    transition: "background 0.15s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: 34, height: 34,
+                        background: "rgba(37,99,235,0.08)",
+                        border: "1px solid rgba(37,99,235,0.15)",
+                        borderRadius: radius.md,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
+                        fontSize: "14px",
+                      }}
+                    >
+                      📄
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: fonts.weight.semibold, fontSize: fonts.size.sm, color: colors.text.primary, marginBottom: "2px" }}>
+                        {formatSessionDate(session.date)}
+                      </div>
+                      <div style={{ fontSize: fonts.size.xs, color: "#2563EB" }}>
+                        {session.endTime}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes action */}
+                  {(() => {
+                    const classDate = session.date.toISOString().split("T")[0];
+                    const existingUrl = noteMap[classDate] || (session.hasNotes ? session.notesUrl : null);
+                    if (existingUrl) {
+                      const docId = existingUrl.match(/\/d\/([^/]+)/)?.[1] || "";
+                      return (
+                        <button
+                          onClick={() => setNotesModal({ webViewLink: existingUrl, googleDocId: docId, title: selectedCourse.name || selectedCourse.code, subtitle: `${selectedCourse.code} · ${formatIsoDate(classDate)}` })}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: "5px",
+                            padding: "6px 14px",
+                            background: colors.primary.ghost,
+                            border: `1px solid ${colors.primary.border}`,
+                            borderRadius: radius.md,
+                            color: colors.primary.main,
+                            fontSize: fonts.size.xs,
+                            fontWeight: fonts.weight.semibold,
+                            cursor: "pointer",
+                            fontFamily: fonts.body,
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          📖 Open Notes
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => openNotes(selectedCourse.code, classDate, selectedCourse.name)}
+                        disabled={addingNote === classDate}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "5px",
+                          padding: "6px 14px",
+                          background: addingNote === classDate ? colors.bg.raised : "rgba(37,99,235,0.06)",
+                          border: "1px solid rgba(37,99,235,0.20)",
+                          borderRadius: radius.md,
+                          color: "#2563EB",
+                          fontSize: fonts.size.xs,
+                          fontWeight: fonts.weight.semibold,
+                          cursor: addingNote === classDate ? "wait" : "pointer",
+                          fontFamily: fonts.body,
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {addingNote === classDate ? "⏳ Opening…" : "✏️ Add Notes"}
+                      </button>
+                    );
+                  })()}
+                </div>
+              ))
+            )}
         </div>
       </div>
     );
@@ -332,109 +457,84 @@ export default function NotesPage() {
 
   // ── Hub View ───────────────────────────────────────────────────
   return (
-    <div
-      style={{
-        minHeight: "100%",
-        background: colors.bg.deep,
-        padding: "28px 32px",
-      }}
-    >
-      {/* Page Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          marginBottom: "28px",
-        }}
-      >
+    <div style={{ minHeight: "100%", background: colors.bg.deep, padding: "28px 32px" }}>
+
+      {/* Page header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px" }}>
         <div
           style={{
-            width: "36px",
-            height: "36px",
+            width: 36, height: 36,
             background: colors.bg.raised,
             border: `1px solid ${colors.border.medium}`,
             borderRadius: radius.md,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0,
           }}
         >
           <Calendar size={18} style={{ color: colors.primary.main }} />
         </div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "1.75rem",
-            fontWeight: fonts.weight.bold,
-            color: colors.text.primary,
-            fontFamily: fonts.heading,
-          }}
-        >
-          My Notes
-        </h1>
+        <div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "1.4rem",
+              fontWeight: fonts.weight.bold,
+              color: colors.text.primary,
+              fontFamily: fonts.heading,
+            }}
+          >
+            My Notes
+          </h1>
+          <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "2px" }}>
+            {todayStr}
+          </div>
+        </div>
       </div>
 
       {/* Loading / Error */}
       {loading && (
-        <div
-          style={{
-            padding: "10px 14px",
-            borderRadius: radius.md,
-            background: "rgba(37,99,235,0.06)",
-            color: "#2563EB",
-            fontSize: fonts.size.sm,
-            marginBottom: "16px",
-          }}
-        >
-          Loading notes...
-        </div>
-      )}
-      {loadError && (
-        <div
-          style={{
-            padding: "10px 14px",
-            borderRadius: radius.md,
-            background: "rgba(220,38,38,0.06)",
-            color: colors.error.main,
-            fontSize: fonts.size.sm,
-            marginBottom: "16px",
-          }}
-        >
-          {loadError}
-        </div>
-      )}
+          <div style={{ padding: "10px 14px", borderRadius: radius.md, background: "rgba(37,99,235,0.06)", color: "#2563EB", fontSize: fonts.size.sm, marginBottom: "16px" }}>
+            Loading notes…
+          </div>
+        )}
+        {loadError && (
+          <div style={{ padding: "10px 14px", borderRadius: radius.md, background: "rgba(220,38,38,0.06)", color: colors.error.main, fontSize: fonts.size.sm, marginBottom: "16px" }}>
+            {loadError}
+          </div>
+        )}
+        {!loading && courseNotes.length === 0 && !loadError && (
+          <div style={{ padding: "48px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>
+            No courses found.
+          </div>
+        )}
 
-      {!loading && courseNotes.length === 0 && !loadError && (
+        {/* Course tiles grid */}
         <div
           style={{
-            padding: "40px",
-            textAlign: "center",
-            color: colors.text.muted,
-            fontSize: fonts.size.sm,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            gap: "16px",
           }}
         >
-          No courses found.
+          {courseNotes.map((cn) => (
+            <NotesCourseCard
+              key={cn.code}
+              courseNotes={cn}
+              onView={() => setSelectedCourse(cn)}
+            />
+          ))}
         </div>
-      )}
 
-      {/* Course tiles grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: "16px",
-        }}
-      >
-        {courseNotes.map((cn) => (
-          <NotesCourseCard
-            key={cn.code}
-            courseNotes={cn}
-            onView={() => setSelectedCourse(cn)}
-          />
-        ))}
-      </div>
+      {/* Notes viewer modal (hub view — usually not triggered, but keep for safety) */}
+      {notesModal && (
+        <NotesViewerModal
+          webViewLink={notesModal.webViewLink}
+          googleDocId={notesModal.googleDocId}
+          title={notesModal.title}
+          subtitle={notesModal.subtitle}
+          onClose={() => setNotesModal(null)}
+        />
+      )}
     </div>
   );
 }

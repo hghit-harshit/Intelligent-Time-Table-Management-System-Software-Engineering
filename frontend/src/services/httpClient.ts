@@ -55,11 +55,19 @@ const refreshAccessToken = async () => {
 };
 
 const requestWithAuth = async (path, options = undefined) => {
-  const requestOptions = options || {};
+  const rawOptions = options || {};
+  // Support `data` shorthand: convert to body + Content-Type
+  const { data, headers: rawHeaders, ...restOptions } = rawOptions as any;
+  const hasData = data !== undefined;
+  const requestOptions = {
+    ...restOptions,
+    ...(hasData ? { body: JSON.stringify(data) } : {}),
+  };
+  const baseHeaders = hasData ? { "Content-Type": "application/json", ...normalizeHeaders(rawHeaders) } : normalizeHeaders(rawHeaders);
   const runRequest = () =>
     fetch(`${API_BASE_URL}${path}`, {
       ...requestOptions,
-      headers: withAuthHeaders(normalizeHeaders(requestOptions.headers)),
+      headers: withAuthHeaders(baseHeaders),
     });
 
   let response = await runRequest();

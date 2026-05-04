@@ -133,6 +133,7 @@ const getWeekDates = (today: Date) => {
 const buildClassItem = (assignment: Record<string, any>) => {
   return {
     name: assignment.courseName || assignment.courseCode || "Untitled",
+    courseCode: assignment.courseCode || "",
     location: assignment.roomName || "TBD",
     professor: assignment.professorName || "TBA",
     isRescheduled: Boolean(assignment.isRescheduled),

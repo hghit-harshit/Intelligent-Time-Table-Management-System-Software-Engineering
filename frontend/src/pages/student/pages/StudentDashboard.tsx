@@ -12,11 +12,12 @@
  */
 
 import { useEffect, useState } from "react";
-import { fetchStudentDashboard, fetchNotificationUnreadCount, fetchStudentExams } from "../../../services/studentApi";
+import { fetchStudentDashboard, fetchNotificationUnreadCount, fetchStudentExams, createStudentNote } from "../../../services/studentApi";
 import CalendarCard from "../components/CalendarCard";
 import RightPane from "../components/RightPane";
 import ClassDetailsModal from "../components/ClassDetailsModal";
 import AddTaskModal from "../components/AddTaskModal";
+import NotesViewerModal from "../components/NotesViewerModal";
 import { colors, fonts } from "../../../styles/tokens";
 
 type PaneState = "classes" | "notifs" | "exams";
@@ -78,6 +79,9 @@ export default function StudentDashboard() {
 
   // Tasks
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  // Notes modal (from calendar event click)
+  const [notesModal, setNotesModal] = useState<{ webViewLink: string; googleDocId: string; title: string; subtitle?: string } | null>(null);
 
   // Right pane state
   const [paneState, setPaneState] = useState<PaneState>("classes");
@@ -205,6 +209,35 @@ export default function StudentDashboard() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const [notesError, setNotesError] = useState<"drive_api_disabled" | "not_connected" | "generic" | null>(null);
+
+  const handleNoteClick = async (courseCode: string, classDate: string) => {
+    if (!courseCode || !classDate) return;
+    setNotesError(null);
+    try {
+      const data: any = await createStudentNote(courseCode, classDate);
+      const googleDocId = data?.googleDocId;
+      const webViewLink = data?.webViewLink || (googleDocId ? `https://docs.google.com/document/d/${googleDocId}/edit` : null);
+      if (webViewLink && googleDocId) {
+        const [y, m, d] = classDate.split("-").map(Number);
+        const formattedDate = new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+        const courseName = selectedTimeSlot?.name || courseCode;
+        setNotesModal({ webViewLink, googleDocId, title: courseName, subtitle: `${courseCode} · ${formattedDate}` });
+        setShowClassDetails(false);
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "";
+      if (msg.includes("drive.googleapis") || msg.includes("Drive API") || msg.includes("has not been used") || msg.includes("disabled")) {
+        setNotesError("drive_api_disabled");
+      } else if (msg.includes("authenticated") || msg.includes("Not authenticated")) {
+        setNotesError("not_connected");
+      } else {
+        setNotesError("generic");
+      }
+      setTimeout(() => setNotesError(null), 6000);
+    }
+  };
+
   const getDaysInMonth = (month: number, year: number) => new Date(year, month, 0).getDate();
   const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month - 1, 1).getDay();
 
@@ -252,17 +285,33 @@ export default function StudentDashboard() {
         </div>
       )}
       {loadError && (
-        <div
-          style={{
-            margin: "8px 16px 0",
-            padding: "8px 14px",
-            borderRadius: 8,
-            background: "rgba(220,38,38,0.08)",
-            color: colors.error.main,
-            fontSize: fonts.size.sm,
-          }}
-        >
+        <div style={{ margin: "8px 16px 0", padding: "8px 14px", borderRadius: 8, background: "rgba(220,38,38,0.08)", color: colors.error.main, fontSize: fonts.size.sm }}>
           {loadError}
+        </div>
+      )}
+      {notesError && (
+        <div style={{ margin: "8px 16px 0", padding: "8px 14px", borderRadius: 8, background: "rgba(245,158,11,0.10)", color: "#D97706", fontSize: fonts.size.sm, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>
+            {notesError === "drive_api_disabled"
+              ? "Google Drive API is not enabled for this project."
+              : notesError === "not_connected"
+              ? "Google account not connected."
+              : "Could not open notes. Please try again."}
+          </span>
+          {notesError === "drive_api_disabled" ? (
+            <a
+              href="https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=347302664202"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#2563EB", fontWeight: 600, fontSize: fonts.size.xs, marginLeft: "12px", textDecoration: "none", whiteSpace: "nowrap" }}
+            >
+              Enable Drive API →
+            </a>
+          ) : notesError === "not_connected" ? (
+            <a href="/StudentPage/google-classroom" style={{ color: "#2563EB", fontWeight: 600, fontSize: fonts.size.xs, marginLeft: "12px", textDecoration: "none", whiteSpace: "nowrap" }}>
+              Connect Google →
+            </a>
+          ) : null}
         </div>
       )}
 
@@ -310,6 +359,7 @@ export default function StudentDashboard() {
             onToggleExamMode={handleToggleExamMode}
             onAddTask={() => setShowAddTask(true)}
             onBell={handleBell}
+            onNoteClick={handleNoteClick}
             notificationCount={notificationCount}
           />
         </div>
@@ -344,6 +394,7 @@ export default function StudentDashboard() {
         <ClassDetailsModal
           selectedTimeSlot={selectedTimeSlot}
           onClose={() => setShowClassDetails(false)}
+          onNoteClick={handleNoteClick}
         />
       )}
 
@@ -352,6 +403,17 @@ export default function StudentDashboard() {
         <AddTaskModal
           onClose={() => setShowAddTask(false)}
           onSave={handleAddTask}
+        />
+      )}
+
+      {/* Notes Viewer Modal (from calendar event) */}
+      {notesModal && (
+        <NotesViewerModal
+          webViewLink={notesModal.webViewLink}
+          googleDocId={notesModal.googleDocId}
+          title={notesModal.title}
+          subtitle={notesModal.subtitle}
+          onClose={() => setNotesModal(null)}
         />
       )}
     </div>

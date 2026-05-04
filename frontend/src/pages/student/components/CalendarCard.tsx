@@ -43,6 +43,7 @@ interface CalendarCardProps {
   onToggleExamMode?: () => void;
   onAddTask?: () => void;
   onBell?: () => void;
+  onNoteClick?: (courseCode: string, classDate: string) => void;
   notificationCount?: number;
 }
 
@@ -69,6 +70,7 @@ export default function CalendarCard({
   onToggleExamMode,
   onAddTask,
   onBell,
+  onNoteClick,
   notificationCount = 0,
 }: CalendarCardProps) {
   return (
@@ -303,6 +305,7 @@ export default function CalendarCard({
             examMode={examMode}
             examData={examData}
             tasks={tasks}
+            onNoteClick={onNoteClick}
           />
         )}
         {selectedView === "month" && (
@@ -333,6 +336,7 @@ export default function CalendarCard({
             examMode={examMode}
             examData={examData}
             tasks={tasks}
+            onNoteClick={onNoteClick}
           />
         )}
       </Box>

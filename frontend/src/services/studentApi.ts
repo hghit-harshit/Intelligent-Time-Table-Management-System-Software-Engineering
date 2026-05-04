@@ -32,3 +32,45 @@ export const deleteStudentNotification = (id) => {
 export const fetchNotificationUnreadCount = () => {
   return httpClient.get("/student/notifications/unread-count");
 };
+
+// ── Notes (Google Docs) ───────────────────────────────────────────────
+
+export const createStudentNote = (courseCode: string, classDate: string, sessionId = "") => {
+  return httpClient.request("/student/notes/create", {
+    method: "POST",
+    data: { courseCode, classDate, sessionId },
+  });
+};
+
+export const fetchNotesByCourse = (courseCode: string) => {
+  return httpClient.get(`/student/notes/${encodeURIComponent(courseCode)}`);
+};
+
+export const checkStudentNote = (courseCode: string, classDate: string) => {
+  return httpClient.get(`/student/notes/check?courseCode=${encodeURIComponent(courseCode)}&classDate=${encodeURIComponent(classDate)}`);
+};
+
+// ── Tasks ─────────────────────────────────────────────────────────────
+
+export const fetchStudentTasks = () => {
+  return httpClient.get("/student/tasks");
+};
+
+export const createStudentTask = (task: {
+  title: string;
+  description?: string;
+  category?: string;
+  dueDate?: string;
+  reminder?: boolean;
+  reminderMinutes?: number;
+}) => {
+  return httpClient.request("/student/tasks", { method: "POST", data: task });
+};
+
+export const updateStudentTask = (id: string, patch: Record<string, unknown>) => {
+  return httpClient.request(`/student/tasks/${id}`, { method: "PATCH", data: patch });
+};
+
+export const deleteStudentTask = (id: string) => {
+  return httpClient.request(`/student/tasks/${id}`, { method: "DELETE" });
+};
