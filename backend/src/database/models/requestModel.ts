@@ -32,6 +32,16 @@ const requestSchema = new mongoose.Schema(
       time: { type: String, trim: true },
       room: { type: String, trim: true },
     },
+    currentDate: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    requestedDate: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     reason: {
       type: String,
       required: true,
@@ -47,6 +57,10 @@ const requestSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
+    },
+    affectedStudentCount: {
+      type: Number,
+      default: 0,
     },
     reviewedBy: {
       type: String,

@@ -2,7 +2,6 @@ import type { NextFunction, Request, Response } from "express";
 import { env } from "../config/env.js";
 import { AppError } from "../shared/errors/index.js";
 import { verifyAccessToken, type TokenPayload } from "../utils/token.js";
-import { UserModel } from "../database/models/userModel.js";
 import { logger } from "../shared/logger/index.js";
 
 declare global {
@@ -41,40 +40,19 @@ export const authMiddleware = async (
       return next(new AppError("Missing bearer token", 401));
     }
 
-    // const staticTokenMatch = token === env.apiAuthToken;
     const signedTokenPayload = verifyAccessToken(token);
-    // if (!staticTokenMatch && !signedTokenPayload) {
-    //   return next(new AppError("Invalid or expired token", 401));
-    // }
     if (!signedTokenPayload) {
       return next(new AppError("Invalid or expired token", 401));
     }
 
-    // if (staticTokenMatch) {
-    //   const user = await UserModel.findOne({ role: "admin" })
-    //     .select("-password")
-    //     .lean();
-    //   if (user) {
-    //     req.user = {
-    //       sub: "static-token",
-    //       userId: user._id.toString(),
-    //       role: "admin",
-    //       email: "system@admin.local",
-    //       _id: user._id.toString(),
-    //     };
-    //   }
-    // }
-
     logger.info("value ", signedTokenPayload);
-    if (signedTokenPayload) {
-      req.user = {
-        sub: signedTokenPayload.sub,
-        userId: signedTokenPayload.userId,
-        role: signedTokenPayload.role,
-        email: signedTokenPayload.email,
-        _id: signedTokenPayload.userId,
-      };
-    }
+    req.user = {
+      sub: signedTokenPayload.sub,
+      userId: signedTokenPayload.userId,
+      role: signedTokenPayload.role,
+      email: signedTokenPayload.email,
+      _id: signedTokenPayload.userId,
+    };
 
     next();
   } catch (error) {

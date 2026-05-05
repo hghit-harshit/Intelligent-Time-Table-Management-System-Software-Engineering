@@ -74,6 +74,8 @@ export default function Notifications() {
   const getNotificationColor = (notification) => {
     const typeColors = {
       class_change: colors.warning.main,
+      schedule_change: colors.warning.main,
+      timetable_update: colors.primary.main,
       exam: colors.error.main,
       assignment: colors.info.main,
       grade: colors.success.main,
@@ -160,6 +162,8 @@ export default function Notifications() {
     const types = {
       all: "All",
       class_change: "Class Changes",
+      schedule_change: "Class Rescheduled",
+      timetable_update: "Timetable Published",
       exam: "Exams",
       assignment: "Assignments",
       grade: "Grades",

@@ -133,7 +133,7 @@ export default function AIAssistant() {
   };
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", paddingBottom: "24px" }}>
       <SubPageHeader
         title="AI Assistant"
         subtitle="Ask Gemini about your timetable, exams, and student schedule"
@@ -175,11 +175,11 @@ export default function AIAssistant() {
         </div>
       )}
 
-      <div style={{ flex: 1, display: "flex", margin: "12px", gap: "12px", overflow: "hidden" }}>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px", overflow: "hidden" }}>
+      <div style={{ display: "flex", margin: "12px", gap: "12px", alignItems: "flex-start" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
           <StatsGrid stats={conversationStats} />
 
-          <div style={{ ...card, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ ...card, display: "flex", flexDirection: "column" }}>
             <div
               style={{
                 padding: "14px 16px",
@@ -204,7 +204,7 @@ export default function AIAssistant() {
               </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px", background: colors.bg.base }}>
+            <div style={{ maxHeight: "60vh", overflowY: "auto", padding: "16px", background: colors.bg.base }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {messages.map((message) => {
                   const isUser = message.role === "user";
@@ -386,6 +386,6 @@ export default function AIAssistant() {
 
         </div>
       </div>
-    </>
+    </div>
   );
 }

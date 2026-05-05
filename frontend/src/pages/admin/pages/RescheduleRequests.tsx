@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { Card, Badge, Button, SearchInput, TabBar, Loader, PageHeader } from "../../../shared";
 import { fetchRescheduleRequests, updateRequestStatus } from "../../../features/admin/services";
 import { colors, fonts, radius } from "../../../styles/tokens";
-import { Check, X, Eye } from "lucide-react";
+import { Check, X, Eye, Users } from "lucide-react";
 import { toast } from "sonner";
+import { useUser } from "../../../contexts/UserContext";
 
 const statusVariant = { pending: "warning", approved: "success", rejected: "danger" };
 
 export default function RescheduleRequests() {
+  const { user } = useUser();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -23,7 +25,7 @@ export default function RescheduleRequests() {
 
   const handleApprove = async (id) => {
     try {
-      const result = await updateRequestStatus(id, "approved");
+      const result = await updateRequestStatus(id, "approved", user?._id);
       setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
       if (result?.timetableVersion) {
         toast.success(`Request approved. New draft version "${result.timetableVersion}" created with ${result.assignmentsChanged} changes.`, {
@@ -39,7 +41,7 @@ export default function RescheduleRequests() {
 
   const handleReject = async (id) => {
     try {
-      await updateRequestStatus(id, "rejected");
+      await updateRequestStatus(id, "rejected", user?._id);
       setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
       toast.success("Request rejected");
     } catch (error) {
@@ -118,10 +120,25 @@ export default function RescheduleRequests() {
                 <div style={{ fontSize: fonts.size.sm, color: colors.text.secondary, marginBottom: "2px" }}>
                   <span style={{ color: colors.primary.main, fontWeight: fonts.weight.semibold }}>{req.courseCode}</span> — {req.course}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: fonts.size.xs, color: colors.text.muted }}>
-                  <span>{req.currentSlot.day} {req.currentSlot.time} ({req.currentSlot.room})</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: fonts.size.xs, color: colors.text.muted, flexWrap: "wrap" }}>
+                  <span>
+                    {req.currentDate
+                      ? new Date(req.currentDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                      : `${req.currentSlot.day} ${req.currentSlot.time}`}
+                    {!req.currentDate && ` (${req.currentSlot.room})`}
+                  </span>
                   <span style={{ color: colors.text.disabled }}>→</span>
-                  <span style={{ color: colors.warning.main }}>{req.requestedSlot.day} {req.requestedSlot.time} ({req.requestedSlot.room})</span>
+                  <span style={{ color: colors.warning.main }}>
+                    {req.requestedDate
+                      ? new Date(req.requestedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                      : `${req.requestedSlot.day} ${req.requestedSlot.time}`}
+                    {!req.requestedDate && ` (${req.requestedSlot.room})`}
+                  </span>
+                  {req.affectedStudentCount > 0 && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: colors.warning.main, fontWeight: fonts.weight.semibold }}>
+                      <Users size={11} /> {req.affectedStudentCount} student{req.affectedStudentCount > 1 ? "s" : ""} affected
+                    </span>
+                  )}
                 </div>
               </div>
 

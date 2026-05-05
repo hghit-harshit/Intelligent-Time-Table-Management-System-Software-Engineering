@@ -55,9 +55,12 @@ function normalizeRequest(raw) {
       time: requestedSlot.time || "—",
       room: requestedSlot.room || "—",
     },
+    currentDate: raw.currentDate || "",
+    requestedDate: raw.requestedDate || "",
     reason: raw.reason || "",
     status: raw.status || "pending",
     conflictStatus: raw.conflictStatus || "No conflicts",
+    affectedStudentCount: raw.affectedStudentCount ?? 0,
     createdAt: raw.createdAt,
   };
 }
@@ -144,12 +147,12 @@ export async function fetchPendingRequestCount() {
   return data?.pending ?? 0;
 }
 
-export async function updateRequestStatus(requestId, status) {
+export async function updateRequestStatus(requestId, status, adminId?) {
   const action = status === "approved" ? "approve" : "reject";
   const data = await httpClient.request(`/requests/${requestId}/${action}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify(adminId ? { adminId } : {}),
   });
   return data;
 }

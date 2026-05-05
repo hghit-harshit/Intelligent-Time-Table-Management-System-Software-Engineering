@@ -183,19 +183,8 @@ export default function AppShell({
                   color: colors.primary.main,
                 }}
               >
-                Smart Timetable
+                Disha TimeTable
               </h1>
-              <p
-                style={{
-                  color: colors.text.muted,
-                  fontSize: fonts.size.xs,
-                  letterSpacing: fonts.letterSpacing.wider,
-                  textTransform: "uppercase",
-                  margin: 0,
-                }}
-              >
-                {portalSubtitle}
-              </p>
             </div>
           )}
           <button

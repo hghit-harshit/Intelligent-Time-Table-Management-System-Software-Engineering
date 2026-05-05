@@ -104,3 +104,27 @@ export const getPendingCount = async (_req: Request, res: Response) => {
     return handleError(res, error, "Error fetching pending count");
   }
 };
+
+export const getProfessorCourses = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return fail(res, "Authentication required", 401);
+    const courses = await rescheduleService.getProfessorCourses(userId);
+    return ok(res, courses);
+  } catch (error) {
+    return handleError(res, error, "Error fetching professor courses");
+  }
+};
+
+export const getSlotConflicts = async (req: Request, res: Response) => {
+  try {
+    const { courseId, currentDay, currentStartTime } = req.query as Record<string, string>;
+    if (!courseId || !currentDay || !currentStartTime) {
+      return fail(res, "courseId, currentDay, currentStartTime are required", 400);
+    }
+    const slots = await rescheduleService.getSlotConflicts(courseId, currentDay, currentStartTime);
+    return ok(res, slots);
+  } catch (error) {
+    return handleError(res, error, "Error computing slot conflicts");
+  }
+};

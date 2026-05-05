@@ -14,8 +14,11 @@ export const createRescheduleRequestSchema = z
     requestedSlotId: z.string().trim().optional(),
     currentSlot: slotInfoSchema.optional(),
     requestedSlot: slotInfoSchema.optional(),
+    currentDate: z.string().trim().optional().default(""),
+    requestedDate: z.string().trim().optional().default(""),
     reason: z.string().trim().min(1),
     conflictStatus: z.string().trim().optional(),
+    affectedStudentCount: z.number().int().min(0).optional().default(0),
   })
   .refine(
     (value) =>

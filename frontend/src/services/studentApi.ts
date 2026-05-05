@@ -1,7 +1,8 @@
 import { httpClient } from "./httpClient";
 
-export const fetchStudentDashboard = () => {
-  return httpClient.get("/student/dashboard");
+export const fetchStudentDashboard = (weekDate?: string) => {
+  const url = weekDate ? `/student/dashboard?weekDate=${weekDate}` : "/student/dashboard";
+  return httpClient.get(url);
 };
 
 export const fetchStudentCourses = () => {
@@ -23,10 +24,9 @@ export const markStudentNotificationRead = (id) => {
 };
 
 export const deleteStudentNotification = (id) => {
-  return httpClient.request(`/student/notifications/${id}`,
-    {
-      method: "DELETE",
-    });
+  return httpClient.request(`/student/notifications/${id}`, {
+    method: "DELETE",
+  });
 };
 
 export const fetchNotificationUnreadCount = () => {
@@ -47,7 +47,9 @@ export const fetchNotesByCourse = (courseCode: string) => {
 };
 
 export const checkStudentNote = (courseCode: string, classDate: string) => {
-  return httpClient.get(`/student/notes/check?courseCode=${encodeURIComponent(courseCode)}&classDate=${encodeURIComponent(classDate)}`);
+  return httpClient.get(
+    `/student/notes/check?courseCode=${encodeURIComponent(courseCode)}&classDate=${encodeURIComponent(classDate)}`
+  );
 };
 
 // ── Tasks ─────────────────────────────────────────────────────────────
@@ -73,4 +75,10 @@ export const updateStudentTask = (id: string, patch: Record<string, unknown>) =>
 
 export const deleteStudentTask = (id: string) => {
   return httpClient.request(`/student/tasks/${id}`, { method: "DELETE" });
+};
+
+// ── Timetable Metadata ────────────────────────────────────────────────
+
+export const fetchTimetablePublishedAt = () => {
+  return httpClient.get("/timetable/published-at");
 };
