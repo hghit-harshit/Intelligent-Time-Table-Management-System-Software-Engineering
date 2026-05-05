@@ -82,3 +82,13 @@ export const deleteStudentTask = (id: string) => {
 export const fetchTimetablePublishedAt = () => {
   return httpClient.get("/timetable/published-at");
 };
+
+export const fetchProfessorClassReferences = (courseCode: string, day: string, startTime: string) => {
+  const params = new URLSearchParams({ courseCode, day, startTime });
+  return httpClient.get(`/references?${params.toString()}`);
+};
+
+export const fetchCourseSyllabusReference = (courseCode: string) => {
+  const params = new URLSearchParams({ courseCode, kind: "syllabus" });
+  return httpClient.get(`/references?${params.toString()}`);
+};

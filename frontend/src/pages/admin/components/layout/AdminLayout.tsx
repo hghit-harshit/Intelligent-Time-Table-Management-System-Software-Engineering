@@ -97,7 +97,7 @@ export default function AdminLayout({ children }) {
       setUserData({
         initials,
         name,
-        subtitle: user.role === "admin" ? "Administrator" : user.email,
+        subtitle: user.email,
       });
     }
   }, [user]);

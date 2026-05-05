@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 import { useUser } from "../../../contexts/UserContext";
 import {
@@ -122,7 +123,7 @@ function WeeklyCalendar({ slots, currentSlot, selectedTarget, onSelect }) {
   };
 
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div style={{ overflowX: "auto", maxWidth: "100%" }}>
       {/* Legend */}
       <div style={{ display: "flex", gap: "16px", marginBottom: "12px", flexWrap: "wrap" }}>
         {[
@@ -137,10 +138,10 @@ function WeeklyCalendar({ slots, currentSlot, selectedTarget, onSelect }) {
         ))}
       </div>
 
-      <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
+      <table style={{ borderCollapse: "separate", borderSpacing: 0, width: "100%", minWidth: "920px", tableLayout: "fixed" }}>
         <thead>
           <tr>
-            <th style={{ ...thStyle, textAlign: "left", width: "100px" }}>Time</th>
+            <th style={{ ...thStyle, textAlign: "left", width: "140px" }}>Time</th>
             {activeDays.map((d) => (
               <th key={d} style={thStyle}>{d.slice(0, 3)}</th>
             ))}
@@ -168,16 +169,20 @@ function WeeklyCalendar({ slots, currentSlot, selectedTarget, onSelect }) {
 
                   if (isCurrent) {
                     return (
-                      <td key={day} style={{ padding: "4px", borderBottom: `1px solid ${colors.border.subtle}` }}>
+                      <td key={day} style={{ padding: "6px", borderBottom: `1px solid ${colors.border.subtle}` }}>
                         <div style={{
-                          padding: "6px 8px",
+                          minHeight: 38,
+                          padding: "8px 10px",
                           borderRadius: radius.sm,
                           background: colors.warning.ghost,
                           border: `1px solid ${colors.warning.border}`,
-                          fontSize: "10px",
+                          fontSize: "12px",
                           fontWeight: fonts.weight.semibold,
                           color: colors.warning.main,
                           textAlign: "center",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}>
                           Current
                         </div>
@@ -209,22 +214,26 @@ function WeeklyCalendar({ slots, currentSlot, selectedTarget, onSelect }) {
                     : "#15803d";
 
                   return (
-                    <td key={day} style={{ padding: "4px", borderBottom: `1px solid ${colors.border.subtle}` }}>
+                    <td key={day} style={{ padding: "6px", borderBottom: `1px solid ${colors.border.subtle}` }}>
                       <div
                         onClick={() => onSelect(slot)}
                         title={hasConflict ? `${slot.conflictCount} student(s) have class at this time` : "No conflicts"}
                         style={{
-                          padding: "6px 8px",
+                          minHeight: 38,
+                          padding: "8px 10px",
                           borderRadius: radius.sm,
                           background: cellBg,
                           border: `${isSelected ? "2px" : "1px"} solid ${cellBorder}`,
-                          fontSize: "10px",
+                          fontSize: "12px",
                           fontWeight: fonts.weight.semibold,
                           color: cellColor,
                           textAlign: "center",
                           cursor: "pointer",
                           transition: "all 0.15s",
                           userSelect: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
                       >
                         {hasConflict ? (
@@ -250,6 +259,46 @@ function WeeklyCalendar({ slots, currentSlot, selectedTarget, onSelect }) {
 
 // ─── Date helpers ─────────────────────────────────────────────
 const DAY_JS_INDEX = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+const DAY_FULL_MAP = {
+  mon: "Monday",
+  monday: "Monday",
+  tue: "Tuesday",
+  tues: "Tuesday",
+  tuesday: "Tuesday",
+  wed: "Wednesday",
+  wednesday: "Wednesday",
+  thu: "Thursday",
+  thur: "Thursday",
+  thurs: "Thursday",
+  thursday: "Thursday",
+  fri: "Friday",
+  friday: "Friday",
+  sat: "Saturday",
+  saturday: "Saturday",
+};
+
+const normalizeTimeKey = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const m24 = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (m24) {
+    const hh = Number(m24[1]);
+    const mm = Number(m24[2]);
+    if (hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) {
+      return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+    }
+  }
+  const m12 = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (m12) {
+    let hh = Number(m12[1]);
+    const mm = Number(m12[2]);
+    const ampm = m12[3].toUpperCase();
+    if (ampm === "PM" && hh !== 12) hh += 12;
+    if (ampm === "AM" && hh === 12) hh = 0;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  }
+  return raw.toLowerCase();
+};
 
 const toLocalISO = (d: Date) => {
   const y = d.getFullYear();
@@ -280,7 +329,7 @@ const fmtDateLabel = (iso) => {
 };
 
 // ─── Request Wizard ───────────────────────────────────────────
-function RequestWizard({ user, onClose, onSuccess }) {
+function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
   const [step, setStep] = useState("course"); // "course" | "calendar"
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -292,12 +341,18 @@ function RequestWizard({ user, onClose, onSuccess }) {
 
   const [availableSlots, setAvailableSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState(null);
   const [selectedTarget, setSelectedTarget] = useState(null);
   const [requestedDate, setRequestedDate] = useState(""); // specific target date
 
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [prefillApplied, setPrefillApplied] = useState(false);
+
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
 
   useEffect(() => {
     fetchProfessorCourses()
@@ -311,6 +366,48 @@ function RequestWizard({ user, onClose, onSuccess }) {
         setCoursesLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (!prefill || prefillApplied || coursesLoading || !courses.length) return;
+
+    const normalizedDayRaw = String(prefill.day || "").toLowerCase();
+    const normalizedDay = DAY_FULL_MAP[normalizedDayRaw] || prefill.day || "";
+    const normalizedStart = normalizeTimeKey(prefill.startTime || "");
+    const normalizedCode = String(prefill.courseCode || "").toLowerCase();
+    const normalizedCourseId = String(prefill.courseId || "");
+
+    const matchedCourse = courses.find((c) => {
+      if (normalizedCourseId && String(c.courseId || "") === normalizedCourseId) return true;
+      return String(c.courseCode || "").toLowerCase() === normalizedCode;
+    });
+
+    if (!matchedCourse) {
+      setPrefillApplied(true);
+      return;
+    }
+
+    const matchedSlot = (matchedCourse.slots || []).find((s) => {
+      const dayOk = String(s.day || "").toLowerCase() === String(normalizedDay).toLowerCase();
+      const startOk = normalizeTimeKey(s.startTime || "") === normalizedStart;
+      return dayOk && startOk;
+    });
+
+    const fallbackDaySlot = !matchedSlot
+      ? (matchedCourse.slots || []).find(
+          (s) => String(s.day || "").toLowerCase() === String(normalizedDay).toLowerCase()
+        )
+      : null;
+
+    if (!matchedSlot && !fallbackDaySlot) {
+      setSelectedCourse(matchedCourse);
+      setPrefillApplied(true);
+      return;
+    }
+
+    setSelectedCourse(matchedCourse);
+    loadCalendar(matchedCourse, matchedSlot || fallbackDaySlot);
+    setPrefillApplied(true);
+  }, [prefill, prefillApplied, coursesLoading, courses]);
 
   const handleCourseSelect = (course) => {
     setSelectedCourse(course);
@@ -331,6 +428,7 @@ function RequestWizard({ user, onClose, onSuccess }) {
     const upcoming = upcomingDatesForDay(slot.day, 1);
     setCurrentDate(upcoming[0] || "");
     setSlotsLoading(true);
+    setSlotsError(null);
     setStep("calendar");
     fetchSlotConflicts(course.courseId, slot.day, slot.startTime)
       .then((data) => {
@@ -338,8 +436,9 @@ function RequestWizard({ user, onClose, onSuccess }) {
         setAvailableSlots(list);
         setSlotsLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
         setAvailableSlots([]);
+        setSlotsError(err?.message || "Unable to load slot availability");
         setSlotsLoading(false);
       });
   };
@@ -511,27 +610,27 @@ function RequestWizard({ user, onClose, onSuccess }) {
     return (
       <div style={{ ...card, marginBottom: "12px" }}>
         {/* Header */}
-        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${colors.border.subtle}`, display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${colors.border.subtle}`, display: "flex", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" }}>
           <button
             onClick={() => { setStep("course"); setSelectedCurrentSlot(null); setSelectedTarget(null); }}
             style={{ ...btnSecondary, padding: "5px 10px" }}
           >
             <ChevronLeft size={14} /> Back
           </button>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: "260px" }}>
             <span style={{ fontWeight: fonts.weight.semibold, fontSize: fonts.size.sm, color: colors.text.primary }}>
               {selectedCourse.courseCode} — {selectedCourse.courseName}
             </span>
-            <span style={{ marginLeft: "10px", fontSize: fonts.size.xs, color: colors.text.muted }}>
+            <span style={{ marginLeft: "10px", fontSize: fonts.size.xs, color: colors.text.muted, display: "inline-block", marginTop: "2px" }}>
               Moving from: {fmtSlot(selectedCurrentSlot.day, selectedCurrentSlot.startTime, selectedCurrentSlot.endTime)} · {selectedCurrentSlot.room}
             </span>
           </div>
-          <button onClick={onClose} style={{ ...btnSecondary, padding: "5px 12px" }}>Cancel</button>
+          <button onClick={onClose} style={{ ...btnSecondary, padding: "5px 12px", marginLeft: "auto" }}>Cancel</button>
         </div>
 
         <div style={{ padding: "20px" }}>
           {/* Date pickers row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginBottom: "20px" }}>
             {/* From date */}
             <div>
               <label style={labelStyle}>Rescheduling from (date)</label>
@@ -599,12 +698,29 @@ function RequestWizard({ user, onClose, onSuccess }) {
             {slotsLoading ? (
               <div style={{ color: colors.text.muted, fontSize: fonts.size.sm }}>Checking student schedules…</div>
             ) : (
-              <WeeklyCalendar
-                slots={availableSlots}
-                currentSlot={selectedCurrentSlot}
-                selectedTarget={selectedTarget}
-                onSelect={handleTargetSelect}
-              />
+              <>
+                {slotsError && (
+                  <div
+                    style={{
+                      marginBottom: "10px",
+                      padding: "8px 10px",
+                      borderRadius: radius.md,
+                      border: `1px solid ${colors.error.border}`,
+                      background: colors.error.ghost,
+                      color: colors.error.main,
+                      fontSize: fonts.size.xs,
+                    }}
+                  >
+                    {slotsError}
+                  </div>
+                )}
+                <WeeklyCalendar
+                  slots={availableSlots}
+                  currentSlot={selectedCurrentSlot}
+                  selectedTarget={selectedTarget}
+                  onSelect={handleTargetSelect}
+                />
+              </>
             )}
           </div>
 
@@ -684,11 +800,14 @@ function RequestWizard({ user, onClose, onSuccess }) {
 
 // ─── Main Component ───────────────────────────────────────────
 export default function RescheduleRequests() {
+  const location = useLocation();
   const { user } = useUser();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState("course");
+  const [wizardPrefill, setWizardPrefill] = useState(null);
 
   const normalizeRequest = (r) => {
     const cur = r.currentSlot || {};
@@ -725,39 +844,28 @@ export default function RescheduleRequests() {
 
   useEffect(() => { reload(); }, [user?._id]);
 
+  useEffect(() => {
+    const prefill = location.state?.prefill;
+    if (!prefill) return;
+    setWizardPrefill(prefill);
+    setShowWizard(true);
+  }, [location.state]);
+
   const handleWizardSuccess = () => {
     setShowWizard(false);
+    setWizardStep("course");
+    setWizardPrefill(null);
     reload();
   };
 
   return (
-    <>
-      {/* Header */}
-      <div style={{ ...card, marginBottom: "12px", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: radius.md,
-            background: colors.primary.ghost, border: `1px solid ${colors.primary.border}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <RotateCcw size={18} color={colors.primary.main} />
-          </div>
-          <div>
-            <h2 style={{ fontFamily: fonts.heading, fontWeight: 700, fontSize: "15px", margin: 0, color: colors.text.primary }}>
-              My Reschedule Requests
-            </h2>
-            <p style={{ fontSize: fonts.size.xs, color: colors.text.muted, margin: "2px 0 0" }}>
-              Submit and track your class reschedule requests
-            </p>
-          </div>
-        </div>
-        {!showWizard && (
-          <button onClick={() => setShowWizard(true)} style={btnPrimary}>
-            <Plus size={14} /> New Request
-          </button>
-        )}
-      </div>
-
+    <div
+      style={{
+        minHeight: "100%",
+        padding: "14px 16px 18px",
+        boxSizing: "border-box",
+      }}
+    >
       {/* Error */}
       {loadError && (
         <div style={{ margin: "0 0 12px", padding: "8px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", color: "#ef4444", fontSize: "12px" }}>
@@ -769,14 +877,17 @@ export default function RescheduleRequests() {
       {showWizard && (
         <RequestWizard
           user={user}
-          onClose={() => setShowWizard(false)}
+          onClose={() => { setShowWizard(false); setWizardStep("course"); setWizardPrefill(null); }}
           onSuccess={handleWizardSuccess}
+          onStepChange={setWizardStep}
+          prefill={wizardPrefill}
         />
       )}
 
       {/* Request history */}
-      <div style={{ ...card, padding: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+      {(!showWizard || wizardStep === "course") && (
+      <div style={{ ...card, padding: "16px 18px", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
           <h3 style={{ fontFamily: fonts.heading, fontWeight: fonts.weight.semibold, fontSize: fonts.size.base, margin: 0, color: colors.text.primary }}>
             Request History
           </h3>
@@ -788,10 +899,48 @@ export default function RescheduleRequests() {
             Loading…
           </div>
         ) : requests.length === 0 ? (
-          <div style={{ padding: "40px", textAlign: "center", color: colors.text.muted }}>
-            <RotateCcw size={28} style={{ marginBottom: 8, opacity: 0.3 }} />
-            <p style={{ fontSize: fonts.size.sm, margin: 0 }}>No reschedule requests yet</p>
-            <p style={{ fontSize: fonts.size.xs, marginTop: 4 }}>Click "New Request" to submit one</p>
+          <div
+            style={{
+              marginTop: "4px",
+              minHeight: "46vh",
+              padding: "44px 24px",
+              textAlign: "center",
+              color: colors.text.muted,
+              borderRadius: radius.lg,
+              border: `1px dashed ${colors.border.medium}`,
+              background: colors.bg.raised,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 54,
+                height: 54,
+                margin: "0 auto 12px",
+                borderRadius: radius.full,
+                background: colors.primary.ghost,
+                border: `1px solid ${colors.primary.border}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <RotateCcw size={24} style={{ color: colors.primary.main }} />
+            </div>
+            <p style={{ fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, color: colors.text.primary, margin: 0 }}>
+              No reschedule requests yet
+            </p>
+            {!showWizard && (
+              <button
+                onClick={() => { setWizardPrefill(null); setShowWizard(true); }}
+                style={{ ...btnPrimary, margin: "14px auto 0" }}
+              >
+                <Plus size={14} /> New Request
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -865,6 +1014,7 @@ export default function RescheduleRequests() {
           </div>
         )}
       </div>
-    </>
+      )}
+    </div>
   );
 }

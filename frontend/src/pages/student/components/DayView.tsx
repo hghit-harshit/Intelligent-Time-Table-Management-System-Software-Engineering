@@ -85,6 +85,38 @@ export default function DayView({
   tasks,
   onNoteClick,
 }: any) {
+  type TimelineEvent = {
+    kind: "class" | "task" | "exam";
+    top: number;
+    height: number;
+    time?: string;
+    classItem?: any;
+    task?: any;
+    exam?: any;
+    lane?: number;
+  };
+
+  const assignLanes = (events: TimelineEvent[]) => {
+    const sorted = [...events].sort((a, b) => (a.top - b.top) || (a.height - b.height));
+    const laneEnds: number[] = [];
+    let maxLanes = 1;
+
+    for (const evt of sorted) {
+      const start = evt.top;
+      const end = evt.top + evt.height;
+      let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start + 1);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(end);
+      } else {
+        laneEnds[lane] = end;
+      }
+      evt.lane = lane;
+      if (lane + 1 > maxLanes) maxLanes = lane + 1;
+    }
+
+    return { events: sorted, laneCount: maxLanes };
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentMinutes, setCurrentMinutes] = useState(() => {
     const now = new Date();
@@ -101,10 +133,12 @@ export default function DayView({
 
   useEffect(() => {
     if (scrollRef.current) {
-      // Default scroll to 8am
-      scrollRef.current.scrollTop = 8 * HOUR_HEIGHT;
+      const raf = requestAnimationFrame(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = 8 * HOUR_HEIGHT;
+      });
+      return () => cancelAnimationFrame(raf);
     }
-  }, []);
+  }, [selectedDate, selectedMonth, selectedYear]);
 
   const selectedDateSchedule = getScheduleForDate(selectedDate);
 
@@ -166,6 +200,34 @@ export default function DayView({
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
   const hasAnyEvents = (examMode ? examEvents.length > 0 : events.length > 0) || taskEvents.length > 0;
+  const classTimeline: TimelineEvent[] = !examMode
+    ? events.map((evt) => ({
+        kind: "class",
+        top: evt.top,
+        height: evt.height - 3,
+        time: evt.time,
+        classItem: evt.classItem,
+      }))
+    : [];
+  const examTimeline: TimelineEvent[] = examEvents.map((evt) => ({
+    kind: "exam",
+    top: evt.top,
+    height: evt.height - 3,
+    exam: evt.exam,
+  }));
+  const taskTimeline: TimelineEvent[] = !examMode
+    ? taskEvents.map((evt) => ({
+        kind: "task",
+        top: evt.top,
+        height: evt.height - 3,
+        task: evt.task,
+      }))
+    : [];
+  const { events: laidOutEvents, laneCount } = assignLanes([
+    ...classTimeline,
+    ...examTimeline,
+    ...taskTimeline,
+  ]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -260,115 +322,122 @@ export default function DayView({
             </div>
           )}
 
-          {/* Class event blocks (hidden in examMode) */}
-          {!examMode && events.map((evt, i) => {
-            const cs = getClassColor(evt.classItem);
-            const classDate = `${selectedYear}-${String(selectedMonth).padStart(2,"0")}-${String(selectedDate).padStart(2,"0")}`;
-            const courseCode = evt.classItem.courseCode || extractCourseCode(evt.classItem.name || "");
-            return (
-              <div
-                key={i}
-                onClick={() => handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: getShortDayName(selectedDate), classDate, courseCode })}
-                style={{
-                  position: "absolute",
-                  top: `${evt.top}px`,
-                  left: "80px",
-                  right: "12px",
-                  height: `${evt.height - 3}px`,
-                  background: cs.bg,
-                  border: `1px ${cs.borderStyle} ${cs.border}`,
-                  borderRadius: radius.md,
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                  overflow: "hidden",
-                  zIndex: 2,
-                  transition: "filter 0.15s ease",
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "brightness(0.94)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "none")}
-              >
-                <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: cs.text, marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {evt.classItem.name}
-                </div>
-                <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.8 }}>
-                  {evt.time}{evt.classItem.duration ? ` · ${evt.classItem.duration}` : ""}
-                </div>
-                {!evt.classItem.isRescheduled && evt.classItem.location && (
-                  <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.7, marginTop: "2px" }}>
-                    {evt.classItem.location}{evt.classItem.professor ? ` · ${evt.classItem.professor}` : ""}
-                  </div>
-                )}
-                {evt.classItem.isRescheduled && (
-                  <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.8, marginTop: "2px" }}>
-                    See notifications
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: "80px", right: "12px" }}>
+          {laidOutEvents.map((evt, i) => {
+            const lane = evt.lane || 0;
+            const laneGap = laneCount > 1 ? 6 : 0;
+            const laneWidthPct = 100 / laneCount;
+            const left = `calc(${lane * laneWidthPct}% + ${lane * laneGap}px)`;
+            const width = `calc(${laneWidthPct}% - ${((laneCount - 1) * laneGap) / laneCount}px)`;
 
-          {/* Exam blocks (always shown) */}
-          {examEvents.map((evt, i) => (
-            <div
-              key={`exam-${i}`}
-              style={{
-                position: "absolute",
-                top: `${evt.top}px`,
-                left: "80px",
-                right: "12px",
-                height: `${evt.height - 3}px`,
-                background: EXAM_COLOR.bg,
-                border: `1px solid ${EXAM_COLOR.border}`,
-                borderRadius: radius.md,
-                padding: "8px 12px",
-                overflow: "hidden",
-                zIndex: 3,
-              }}
-            >
-              <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: EXAM_COLOR.text, marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {evt.exam.courseName || evt.exam.courseCode}
-              </div>
-              <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.8 }}>
-                Exam · {evt.exam.time || ""}{evt.exam.duration ? ` · ${evt.exam.duration}` : ""}
-              </div>
-              {evt.exam.hall && (
-                <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.7, marginTop: "2px" }}>
-                  {evt.exam.hall}{evt.exam.seat ? ` · Seat ${evt.exam.seat}` : ""}
+            if (evt.kind === "class" && evt.classItem) {
+              const cs = getClassColor(evt.classItem);
+              const classDate = `${selectedYear}-${String(selectedMonth).padStart(2,"0")}-${String(selectedDate).padStart(2,"0")}`;
+              const courseCode = evt.classItem.courseCode || extractCourseCode(evt.classItem.name || "");
+              return (
+                <div
+                  key={`class-${i}`}
+                  onClick={() => handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: getShortDayName(selectedDate), classDate, courseCode })}
+                  style={{
+                    position: "absolute",
+                    top: `${evt.top}px`,
+                    left,
+                    width,
+                    height: `${evt.height}px`,
+                    background: cs.bg,
+                    border: `1px ${cs.borderStyle} ${cs.border}`,
+                    borderRadius: radius.md,
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    zIndex: 2,
+                    transition: "filter 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "brightness(0.94)")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "none")}
+                >
+                  <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: cs.text, marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {evt.classItem.name}
+                  </div>
+                  <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.8 }}>
+                    {evt.time}{evt.classItem.duration ? ` · ${evt.classItem.duration}` : ""}
+                  </div>
+                  {!evt.classItem.isRescheduled && evt.classItem.location && (
+                    <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.7, marginTop: "2px" }}>
+                      {evt.classItem.location}{evt.classItem.professor ? ` · ${evt.classItem.professor}` : ""}
+                    </div>
+                  )}
+                  {evt.classItem.isRescheduled && (
+                    <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.8, marginTop: "2px" }}>
+                      See notifications
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            }
 
-          {/* Task blocks (hidden in examMode) */}
-          {!examMode && taskEvents.map((evt, i) => {
-            const tc = getTaskColor(evt.task.category);
+            if (evt.kind === "exam" && evt.exam) {
+              return (
+                <div
+                  key={`exam-${i}`}
+                  style={{
+                    position: "absolute",
+                    top: `${evt.top}px`,
+                    left,
+                    width,
+                    height: `${evt.height}px`,
+                    background: EXAM_COLOR.bg,
+                    border: `1px solid ${EXAM_COLOR.border}`,
+                    borderRadius: radius.md,
+                    padding: "8px 12px",
+                    overflow: "hidden",
+                    zIndex: 3,
+                  }}
+                >
+                  <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: EXAM_COLOR.text, marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {evt.exam.courseName || evt.exam.courseCode}
+                  </div>
+                  <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.8 }}>
+                    Exam · {evt.exam.time || ""}{evt.exam.duration ? ` · ${evt.exam.duration}` : ""}
+                  </div>
+                  {evt.exam.hall && (
+                    <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.7, marginTop: "2px" }}>
+                      {evt.exam.hall}{evt.exam.seat ? ` · Seat ${evt.exam.seat}` : ""}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            const tc = getTaskColor(evt.task?.category);
             return (
               <div
                 key={`task-${i}`}
                 style={{
                   position: "absolute",
                   top: `${evt.top}px`,
-                  left: "80px",
-                  right: "12px",
-                  height: `${evt.height - 3}px`,
+                  left,
+                  width,
+                  height: `${evt.height}px`,
                   background: tc.bg,
                   border: `1px solid ${tc.border}`,
                   borderRadius: radius.md,
                   padding: "6px 12px",
                   overflow: "hidden",
                   zIndex: 2,
-                  opacity: evt.task.completed ? 0.5 : 1,
+                  opacity: evt.task?.completed ? 0.5 : 1,
                 }}
               >
-                <div style={{ fontWeight: fonts.weight.semibold, fontSize: fonts.size.sm, color: tc.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: evt.task.completed ? "line-through" : "none" }}>
-                  ✓ {evt.task.title}
+                <div style={{ fontWeight: fonts.weight.semibold, fontSize: fonts.size.sm, color: tc.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: evt.task?.completed ? "line-through" : "none" }}>
+                  ✓ {evt.task?.title}
                 </div>
                 <div style={{ fontSize: fonts.size.xs, color: tc.text, opacity: 0.7, marginTop: "1px" }}>
-                  Task · {evt.task.category}
+                  Task · {evt.task?.category}
                 </div>
               </div>
             );
           })}
+          </div>
 
           {/* Empty state */}
           {!hasAnyEvents && (

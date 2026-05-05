@@ -47,21 +47,22 @@ export default function MonthView({
   const firstDay = getFirstDayOfMonth(selectedMonth, selectedYear);
   const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
 
-  // Build class map: dayNum → class names
+  // Build class map for the FULL selected month: dayNum → class names
   const dayClassMap: Record<number, string[]> = {};
   if (timetableData?.weeklySchedule) {
-    timetableData.weeklySchedule.forEach((slot: any) => {
-      slot.classes?.forEach((cls: any, dayIdx: number) => {
-        if (!cls) return;
-        const weekDate = timetableData.weekDates?.[dayIdx];
-        if (weekDate) {
-          if (!dayClassMap[weekDate]) dayClassMap[weekDate] = [];
-          dayClassMap[weekDate].push(cls.name);
-        }
-      });
-    });
+    const jsToWeekIdx: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const jsDay = new Date(selectedYear, selectedMonth - 1, dayNum).getDay(); // 0=Sun
+      const weekIdx = jsToWeekIdx[jsDay];
+      if (weekIdx == null) continue; // skip weekends
+      for (const slot of timetableData.weeklySchedule) {
+        const cls = slot?.classes?.[weekIdx];
+        if (!cls) continue;
+        if (!dayClassMap[dayNum]) dayClassMap[dayNum] = [];
+        dayClassMap[dayNum].push(cls.name);
+      }
+    }
   }
-  const monthDaysWithClasses = timetableData?.calendar?.monthDaysWithClasses || [];
 
   // Build exam map: dayNum → exam names
   const dayExamMap: Record<number, string[]> = {};
@@ -129,13 +130,9 @@ export default function MonthView({
             selectedMonth === timetableData?.currentDate?.month &&
             selectedYear === timetableData?.currentDate?.year;
           const isSelected = dayNum === selectedDate && isCurrentMonth;
-          const hasClass = monthDaysWithClasses.includes(dayNum);
           const dayClasses = dayClassMap[dayNum] || [];
           const dayExams = dayExamMap[dayNum] || [];
           const dayTasks = dayTaskMap[dayNum] || [];
-
-          // In examMode only show exams; otherwise show classes + exams + tasks
-          const MAX_CHIPS = 2;
 
           // Collect chips based on mode
           type Chip = { label: string; bg: string; text: string };
@@ -154,15 +151,14 @@ export default function MonthView({
             chips.push({ label: name, bg: "rgba(220,38,38,0.12)", text: "#DC2626" });
           });
 
-          const visibleChips = chips.slice(0, MAX_CHIPS);
-          const extraCount = chips.length > MAX_CHIPS ? chips.length - MAX_CHIPS : 0;
+          const visibleChips = chips;
 
           return (
             <Box
               key={i}
               onClick={() => isCurrentMonth && handleDateClick(dayNum)}
               sx={{
-                minHeight: 80,
+                minHeight: 108,
                 p: "6px 4px 4px",
                 bgcolor: isSelected ? colors.primary.ghost : colors.bg.base,
                 border: isToday
@@ -203,7 +199,7 @@ export default function MonthView({
 
                   {/* Event chips */}
                   {visibleChips.length > 0 ? (
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: "2px", maxHeight: 74, overflowY: "auto", pr: "2px" }}>
                       {visibleChips.map((chip, ci) => (
                         <Box
                           key={ci}
@@ -222,24 +218,6 @@ export default function MonthView({
                           {chip.label}
                         </Box>
                       ))}
-                      {extraCount > 0 && (
-                        <Box sx={{ fontSize: "9px", color: colors.text.muted, paddingLeft: "4px" }}>
-                          +{extraCount} more
-                        </Box>
-                      )}
-                    </Box>
-                  ) : !examMode && hasClass ? (
-                    <Box
-                      sx={{
-                        fontSize: "9px",
-                        color: colors.primary.main,
-                        background: colors.primary.ghost,
-                        padding: "1px 5px",
-                        borderRadius: "3px",
-                        fontWeight: fonts.weight.medium,
-                      }}
-                    >
-                      Classes scheduled
                     </Box>
                   ) : null}
                 </>

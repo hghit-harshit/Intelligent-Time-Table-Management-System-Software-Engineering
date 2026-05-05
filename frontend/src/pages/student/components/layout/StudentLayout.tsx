@@ -120,7 +120,7 @@ export default function StudentLayout({ children }) {
       }}
       searchPlaceholder={null}
       notificationCount={0}
-      settingsPath="/profile"
+      settingsPath={undefined}
       onLogout={handleLogout}
       isGoogleConnected={isGoogleConnected}
       onConnectGoogle={handleConnectGoogle}

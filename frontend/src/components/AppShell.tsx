@@ -173,18 +173,41 @@ export default function AppShell({
           }}
         >
           {!collapsed && (
-            <div>
-              <h1
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                <span
+                  style={{
+                    fontFamily: fonts.heading,
+                    fontSize: "18px",
+                    fontWeight: fonts.weight.bold,
+                    letterSpacing: fonts.letterSpacing.wider,
+                    color: colors.primary.main,
+                  }}
+                >
+                  Disha
+                </span>
+                <span
+                  style={{
+                    fontFamily: fonts.heading,
+                    fontSize: "18px",
+                    fontWeight: fonts.weight.semibold,
+                    letterSpacing: fonts.letterSpacing.wide,
+                    color: colors.primary.dark,
+                  }}
+                >
+                  TimeTable
+                </span>
+              </div>
+              <span
                 style={{
-                  fontFamily: fonts.heading,
-                  fontSize: fonts.size.xl,
-                  fontWeight: fonts.weight.bold,
-                  margin: "0 0 2px",
-                  color: colors.primary.main,
+                  fontSize: "10px",
+                  color: colors.text.muted,
+                  letterSpacing: fonts.letterSpacing.widest,
+                  textTransform: "uppercase",
                 }}
               >
-                Disha TimeTable
-              </h1>
+                Academic Scheduler
+              </span>
             </div>
           )}
           <button
@@ -245,26 +268,37 @@ export default function AppShell({
                 {user.initials}
               </div>
 
-              {/* Name + Google Sync dot */}
-              <div style={{ flex: 1, overflow: "hidden" }}>
+              {/* Role, Name, Email */}
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                }}
+              >
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "6px",
+                    justifyContent: "space-between",
+                    gap: "8px",
                   }}
                 >
                   <span
                     style={{
+                      background: roleBadge.bg,
+                      color: roleBadge.color,
+                      fontSize: "10px",
                       fontWeight: fonts.weight.bold,
-                      fontSize: "17px",
-                      color: colors.text.primary,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
+                      padding: "2px 6px",
+                      borderRadius: radius.sm,
+                      letterSpacing: "0.04em",
+                      ...(roleBadge.borderColor ? { border: `1px solid ${roleBadge.borderColor}` } : {}),
                     }}
                   >
-                    {user.name}
+                    {roleBadge.text}
                   </span>
 
                   {/* Google G icon with sync dot — student only */}
@@ -288,22 +322,32 @@ export default function AppShell({
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Role badge */}
-              <div
-                style={{
-                  background: roleBadge.bg,
-                  color: roleBadge.color,
-                  fontSize: fonts.size.xs,
-                  fontWeight: fonts.weight.bold,
-                  padding: "3px 6px",
-                  borderRadius: radius.sm,
-                  flexShrink: 0,
-                  ...(roleBadge.borderColor ? { border: `1px solid ${roleBadge.borderColor}` } : {}),
-                }}
-              >
-                {roleBadge.text}
+                <span
+                  style={{
+                    fontWeight: fonts.weight.bold,
+                    fontSize: "16px",
+                    color: colors.text.primary,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {user.name}
+                </span>
+                {user.subtitle && (
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      color: colors.text.muted,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {user.subtitle}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -494,7 +538,7 @@ export default function AppShell({
                     <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
                     {!collapsed && (
                       <>
-                        <span style={{ flex: 1, fontSize: "16px" }}>{item.label}</span>
+                        <span style={{ flex: 1, fontSize: fonts.size.sm }}>{item.label}</span>
                         {item.badge && (
                           <span
                             style={{

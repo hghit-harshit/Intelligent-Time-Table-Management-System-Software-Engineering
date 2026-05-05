@@ -40,6 +40,8 @@ interface CalendarCardProps {
   examData?: any[]
   tasks?: any[]
   onToggleExamMode?: () => void
+  onTopAction?: () => void
+  topActionLabel?: string
   onAddTask?: () => void
   onBell?: () => void
   onNoteClick?: (courseCode: string, classDate: string) => void
@@ -69,6 +71,8 @@ export default function CalendarCard({
   examData = [],
   tasks = [],
   onToggleExamMode,
+  onTopAction,
+  topActionLabel = "Action",
   onAddTask,
   onBell,
   onNoteClick,
@@ -194,6 +198,31 @@ export default function CalendarCard({
             }}
           >
             {examMode ? "View Full Calendar" : "View Exams"}
+          </Button>
+        )}
+
+        {/* Generic top action button (used by Faculty dashboard) */}
+        {!onToggleExamMode && onTopAction && (
+          <Button
+            size="small"
+            onClick={onTopAction}
+            sx={{
+              px: 1.5,
+              py: 0.75,
+              borderRadius: radius.sm,
+              border: `1px solid ${colors.border.medium}`,
+              bgcolor: colors.bg.raised,
+              color: colors.text.primary,
+              fontSize: fonts.size.xs,
+              fontWeight: fonts.weight.medium,
+              textTransform: "none",
+              minWidth: "auto",
+              "&:hover": {
+                bgcolor: colors.bg.deep,
+              },
+            }}
+          >
+            {topActionLabel}
           </Button>
         )}
 

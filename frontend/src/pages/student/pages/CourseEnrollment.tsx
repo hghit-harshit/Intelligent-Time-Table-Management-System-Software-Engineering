@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
-import { fetchStudentCourses, fetchStudentExams } from "../../../services/studentApi";
+import { fetchCourseSyllabusReference, fetchStudentCourses, fetchStudentExams } from "../../../services/studentApi";
 import { BookOpen, MapPin, Mail, FileText } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -68,6 +68,16 @@ function CourseDetailsModal({
   course: CourseWithAttendance;
   onClose: () => void;
 }) {
+  const [syllabusUrl, setSyllabusUrl] = useState("");
+  useEffect(() => {
+    if (!course?.code) return;
+    fetchCourseSyllabusReference(course.code)
+      .then((data: any) => {
+        const list = Array.isArray(data) ? data : (data?.references || data?.data?.references || []);
+        setSyllabusUrl(list?.[0]?.url || "");
+      })
+      .catch(() => setSyllabusUrl(""));
+  }, [course?.code]);
   // Derive a reasonable professor email from the name
   const emailFromName = (name: string) => {
     if (!name || name === "TBA") return null;
@@ -273,30 +283,35 @@ function CourseDetailsModal({
             Course Resources
           </div>
           <button
+            disabled={!syllabusUrl}
+            onClick={() => { if (syllabusUrl) window.open(syllabusUrl, "_blank", "noopener,noreferrer"); }}
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "6px",
               padding: "7px 14px",
-              background: "rgba(37, 99, 235, 0.06)",
-              border: "1px solid rgba(37, 99, 235, 0.2)",
+              background: syllabusUrl ? "rgba(37, 99, 235, 0.06)" : colors.bg.deep,
+              border: syllabusUrl ? "1px solid rgba(37, 99, 235, 0.2)" : `1px solid ${colors.border.subtle}`,
               borderRadius: radius.md,
-              color: "#2563EB",
+              color: syllabusUrl ? "#2563EB" : colors.text.muted,
               fontSize: fonts.size.sm,
               fontWeight: fonts.weight.medium,
-              cursor: "pointer",
+              cursor: syllabusUrl ? "pointer" : "not-allowed",
               fontFamily: fonts.body,
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
+              if (!syllabusUrl) return;
               (e.currentTarget as HTMLButtonElement).style.background = "rgba(37, 99, 235, 0.12)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "rgba(37, 99, 235, 0.06)";
+              (e.currentTarget as HTMLButtonElement).style.background = syllabusUrl
+                ? "rgba(37, 99, 235, 0.06)"
+                : colors.bg.deep;
             }}
           >
             <FileText size={14} />
-            Course Syllabus
+            {syllabusUrl ? "Course Syllabus" : "Syllabus Not Attached"}
           </button>
         </div>
       </div>

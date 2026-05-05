@@ -1,918 +1,811 @@
-import { useEffect, useRef, useState } from "react";
-import CalendarView from "../../../components/CalendarView";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CalendarCard from "../../student/components/CalendarCard";
-import { colors, fonts, radius, shadows } from "../../../styles/tokens";
+import AddTaskModal from "../../student/components/AddTaskModal";
+import FacultyRightPane from "../components/FacultyRightPane";
+import { colors, fonts } from "../../../styles/tokens";
 import { useUser } from "../../../contexts/UserContext";
 import {
-  createRescheduleRequest,
-  fetchCatalogCourses,
-  fetchCatalogProfessors,
   fetchRescheduleRequests,
   fetchTimetableLatest,
+  createClassReference,
+  fetchClassReferences,
 } from "../../../services/facultyApi";
 import { fetchTimetablePublishedAt } from "../../../services/studentApi";
+import { Clock, MapPin } from "lucide-react";
+
+type PaneState = "classes" | "notifs";
+
+type Task = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  reminder: boolean;
+  reminderTime: string;
+  dueDate: string;
+  completed: boolean;
+};
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const WEEK_DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const WEEK_DAYS_SHORT = ["MON", "TUE", "WED", "THU", "FRI"];
+const SHORT_TO_FULL_DAY: Record<string, string> = {
+  MON: "Monday",
+  TUE: "Tuesday",
+  WED: "Wednesday",
+  THU: "Thursday",
+  FRI: "Friday",
+  SAT: "Saturday",
+  SUN: "Sunday",
+};
+
+const parseStartTime24 = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const firstPart = raw.split("·")[0].trim();
+  const rangeStart = firstPart.split("–")[0].split("-")[0].trim();
+  const m = rangeStart.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!m) return "";
+  let hh = Number(m[1]);
+  const mm = Number(m[2]);
+  const ampm = (m[3] || "").toUpperCase();
+  if (ampm === "PM" && hh !== 12) hh += 12;
+  if (ampm === "AM" && hh === 12) hh = 0;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+};
+
+const normalizeDayLabel = (value: string) => {
+  const key = String(value || "").trim().toLowerCase();
+  const map: Record<string, string> = {
+    mon: "Monday", monday: "Monday",
+    tue: "Tuesday", tues: "Tuesday", tuesday: "Tuesday",
+    wed: "Wednesday", wednesday: "Wednesday",
+    thu: "Thursday", thur: "Thursday", thurs: "Thursday", thursday: "Thursday",
+    fri: "Friday", friday: "Friday",
+    sat: "Saturday", saturday: "Saturday",
+    sun: "Sunday", sunday: "Sunday",
+  };
+  return map[key] || value;
+};
+
+const getMondayOf = (date: Date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d;
+};
+
+const normalizeName = (value: string) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/^dr\.?\s+/, "")
+    .trim();
+
+const normalizeDay = (value: string) => {
+  const map: Record<string, string> = {
+    mon: "Monday", monday: "Monday",
+    tue: "Tuesday", tuesday: "Tuesday",
+    wed: "Wednesday", wednesday: "Wednesday",
+    thu: "Thursday", thursday: "Thursday",
+    fri: "Friday", friday: "Friday",
+  };
+  return map[String(value || "").toLowerCase()] ?? value;
+};
+
+const formatTime12 = (value: string) => {
+  if (!value) return "";
+  if (/am|pm/i.test(value)) return value;
+  const [hours, minutes] = value.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+};
+
+const timeToMinutes = (value: string) => {
+  if (!value) return 0;
+  const [hours, minutes] = String(value).split(":").map(Number);
+  return (hours || 0) * 60 + (minutes || 0);
+};
+
+const formatDuration = (start?: string, end?: string) => {
+  if (!start || !end) return "";
+  const diff = timeToMinutes(end) - timeToMinutes(start);
+  if (diff <= 0) return "";
+  if (diff % 60 === 0) return `${diff / 60} hr`;
+  return `${diff} min`;
+};
+
+function buildFacultyDashboard(assignments: any[], weekStart: Date) {
+  const now = new Date();
+  const weekActualDates = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+  const weekDates = weekActualDates.map((d) => d.getDate());
+
+  const byDay = new Map(WEEK_DAY_NAMES.map((d) => [d, [] as any[]]));
+  for (const assignment of assignments) {
+    const day = normalizeDay(assignment.day);
+    if (byDay.has(day)) byDay.get(day)?.push(assignment);
+  }
+
+  const timeSlots = [...new Set(assignments.map((a) => a.startTime || a.time))]
+    .filter(Boolean)
+    .sort((a: string, b: string) => timeToMinutes(a) - timeToMinutes(b));
+
+  const weeklySchedule = timeSlots.map((time) => ({
+    time: formatTime12(time),
+    classes: WEEK_DAY_NAMES.map((day) => {
+      const match = byDay.get(day)?.find((a) => (a.startTime || a.time) === time);
+      if (!match) return null;
+      return {
+        name: match.courseName || match.courseCode || "Untitled",
+        location: [match.courseCode, match.roomName].filter(Boolean).join(" · ") || "TBD",
+        professor: "",
+        duration: formatDuration(match.startTime, match.endTime),
+        courseCode: match.courseCode || "",
+        courseId: match.courseId || "",
+        courseName: match.courseName || match.courseCode || "Untitled",
+        startTime: match.startTime || match.time || "",
+        endTime: match.endTime || "",
+        day: day,
+        room: match.roomName || "TBD",
+        isRescheduled: false,
+      };
+    }),
+  }));
+
+  const dailySchedules: Record<string, any[]> = {};
+  weekActualDates.forEach((date, index) => {
+    const dayName = WEEK_DAY_NAMES[index];
+    const items = [...(byDay.get(dayName) || [])].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+    dailySchedules[String(date.getDate())] = items.map((item) => ({
+      time: formatTime12(item.startTime || item.time),
+      class: {
+        name: item.courseName || item.courseCode || "Untitled",
+        location: [item.courseCode, item.roomName].filter(Boolean).join(" · ") || "TBD",
+        professor: "",
+        duration: formatDuration(item.startTime, item.endTime),
+        courseCode: item.courseCode || "",
+        courseId: item.courseId || "",
+        courseName: item.courseName || item.courseCode || "Untitled",
+        startTime: item.startTime || item.time || "",
+        endTime: item.endTime || "",
+        day: dayName,
+        room: item.roomName || "TBD",
+        isRescheduled: false,
+      },
+    }));
+  });
+
+  const todayName = DAY_NAMES[now.getDay()];
+  const todaysClasses = [...(byDay.get(todayName) || [])]
+    .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+    .map((item) => ({
+      subject: item.courseName || item.courseCode || "Untitled",
+      time: formatTime12(item.startTime || item.time),
+      duration: formatDuration(item.startTime, item.endTime) || "1 hr",
+      location: [item.courseCode, item.roomName].filter(Boolean).join(" · ") || "TBD",
+      status: "Scheduled",
+      statusColor: colors.primary.main,
+      isLive: false,
+      dotColor: colors.primary.main,
+    }));
+
+  return {
+    currentDate: {
+      day: now.getDate(),
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      dayName: DAY_NAMES[now.getDay()],
+    },
+    weekDays: WEEK_DAYS_SHORT,
+    weekDates,
+    weeklySchedule,
+    baseWeeklySchedule: weeklySchedule,
+    dailySchedules,
+    todaysClasses,
+    calendar: {
+      monthDaysWithClasses: [],
+      timeSlots: timeSlots.map(formatTime12),
+    },
+  };
+}
+
+const mapFacultyNotifications = (requests: any[]) => {
+  const statusText: Record<string, string> = {
+    pending: "Pending Review",
+    approved: "Approved",
+    rejected: "Rejected",
+  };
+
+  return requests
+    .map((request, index) => {
+      const reqSlot = request.requestedSlot || {};
+      const slotText = request.requestedDate
+        ? `${request.requestedDate}`
+        : `${reqSlot.day || ""} ${reqSlot.time || ""}`.trim();
+      const status = String(request.status || "pending").toLowerCase();
+      return {
+        id: String(request._id || request.id || index),
+        title: `${statusText[status] || "Update"}: Reschedule Request`,
+        message: slotText
+          ? `Requested slot: ${slotText}`
+          : "Your reschedule request has been updated.",
+        createdAt: request.createdAt || new Date().toISOString(),
+        read: status === "approved",
+        type: status,
+      };
+    })
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+};
 
 export default function FacultyDashboard() {
   const { user } = useUser();
-  const [calendarEvents, setCalendarEvents] = useState([]);
-  const [stats, setStats] = useState({
-    totalClasses: "0",
-    completed: "0",
-    thisWeek: "0",
-    pendingRequests: "0",
-  });
-  const [resolvedProfessorId, setResolvedProfessorId] = useState(null);
-  const [courseByCode, setCourseByCode] = useState({});
+  const navigate = useNavigate();
+
+  const [selectedView, setSelectedView] = useState("week");
+  const [viewWeekStart, setViewWeekStart] = useState(() => getMondayOf(new Date()));
+  const [viewDayDate, setViewDayDate] = useState(() => new Date());
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(() => new Date().getDate());
+
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [rawAssignments, setRawAssignments] = useState<any[]>([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [paneState, setPaneState] = useState<PaneState>("classes");
+
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<any>(null);
+  const [showClassDetails, setShowClassDetails] = useState(false);
+  const [classReferences, setClassReferences] = useState<any[]>([]);
+  const [refsLoading, setRefsLoading] = useState(false);
+
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
   const loadedPublishedAt = useRef<string | null>(null);
-  const [selectedView, setSelectedView] = useState("week")
-  const [viewWeekStart, setViewWeekStart] = useState(() => {
-    const d = new Date(); d.setHours(0,0,0,0)
-    const day = d.getDay()
-    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
-    return d
-  })
-  const [viewDayDate, setViewDayDate] = useState(() => new Date())
-  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
-  const [selectedDate, setSelectedDate] = useState(() => new Date().getDate())
-  const [facultyTimetableData, setFacultyTimetableData] = useState<any>(null)
-  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [rescheduleForm, setRescheduleForm] = useState({
-    currentDay: "",
-    currentTime: "",
-    requestedDay: "",
-    requestedTime: "",
-    reason: "",
-  });
 
-  const normalizeName = (value) =>
-    String(value || "")
-      .toLowerCase()
-      .replace(/^dr\.?\s+/, "")
-      .trim();
-
-  const formatTime12 = (value) => {
-    if (!value) return "";
-    if (/am|pm/i.test(value)) return value;
-    const [hours, minutes] = value.split(":").map(Number);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
-    const suffix = hours >= 12 ? "PM" : "AM";
-    const hour12 = hours % 12 || 12;
-    return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
-  };
-
-  const formatTime24 = (value) => {
-    if (!value) return "";
-    if (!/am|pm/i.test(value)) return value;
-    const match = value.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
-    if (!match) return value;
-    let hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    const period = match[3].toLowerCase();
-    if (period === "pm" && hours !== 12) hours += 12;
-    if (period === "am" && hours === 12) hours = 0;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-  };
-
-  const parseTimeMinutes = (value) => {
-    if (!value) return null;
-    const time24 = formatTime24(value);
-    const [hours, minutes] = time24.split(":").map(Number);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
-    return hours * 60 + minutes;
-  };
-
-  const buildCalendarEvents = (assignments) => {
-    const palette = [
-      { bg: colors.primary.ghost, fg: colors.primary.main },
-      { bg: colors.warning.ghost, fg: colors.warning.main },
-      { bg: colors.success.ghost, fg: colors.success.main },
-      { bg: colors.info.ghost, fg: colors.info.main },
-      { bg: colors.secondary.ghost, fg: colors.secondary.main },
-    ];
-
-    return assignments.map((assignment, index) => {
-      const pick = palette[index % palette.length];
-      return {
-        day: assignment.day,
-        time: formatTime12(assignment.startTime || assignment.time),
-        title: assignment.courseName || assignment.courseCode || "Untitled",
-        location: assignment.roomName || "TBD",
-        color: pick.bg,
-        textColor: pick.fg,
-        raw: assignment,
-      };
-    });
-  };
-
-  const WEEK_DAY_NAMES_F = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-  const WEEK_DAYS_F = ["MON", "TUE", "WED", "THU", "FRI"]
-
-  const fmt12F = (time) => {
-    if (!time) return ""
-    if (/am|pm/i.test(time)) return time
-    const [h, m] = time.split(":").map(Number)
-    if (isNaN(h)) return time
-    const suffix = h >= 12 ? "PM" : "AM"
-    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${suffix}`
-  }
-
-  const timeToMinF = (t) => {
-    if (!t) return 0
-    const [h, m] = String(t).split(":").map(Number)
-    return (h || 0) * 60 + (m || 0)
-  }
-
-  const normalizeDayF = (val) => {
-    const map: Record<string,string> = {
-      mon:"Monday", monday:"Monday", tue:"Tuesday", tuesday:"Tuesday",
-      wed:"Wednesday", wednesday:"Wednesday", thu:"Thursday", thursday:"Thursday",
-      fri:"Friday", friday:"Friday"
-    }
-    return map[String(val).toLowerCase()] ?? val
-  }
-
-  const buildFacultyTimetableData = (assignments: any[], weekStart: Date) => {
-    const now = new Date()
-    const weekActualDates = Array.from({ length: 5 }, (_, i) => {
-      const d = new Date(weekStart)
-      d.setDate(weekStart.getDate() + i)
-      return d
-    })
-    const weekDates = weekActualDates.map(d => d.getDate())
-
-    const byDay = new Map(WEEK_DAY_NAMES_F.map(d => [d, [] as any[]]))
-    for (const a of assignments) {
-      const day = normalizeDayF(a.day)
-      if (byDay.has(day)) byDay.get(day)!.push(a)
-    }
-
-    const timeSlots = [...new Set(assignments.map(a => a.startTime))]
-      .filter(Boolean)
-      .sort((a: any, b: any) => timeToMinF(a) - timeToMinF(b))
-
-    const weeklySchedule = timeSlots.map((time: any) => ({
-      time: fmt12F(time),
-      classes: WEEK_DAY_NAMES_F.map(day => {
-        const match = byDay.get(day)?.find(a => a.startTime === time)
-        return match ? {
-          name: match.courseName || match.courseCode || "Untitled",
-          location: match.roomName || "TBD",
-          professor: match.professorName || "",
-          isRescheduled: false,
-        } : null
-      })
-    }))
-
-    const dailySchedules: Record<string, any[]> = {}
-    weekActualDates.forEach((date, i) => {
-      const dayName = WEEK_DAY_NAMES_F[i]
-      const items = [...(byDay.get(dayName) || [])].sort((a, b) => timeToMinF(a.startTime) - timeToMinF(b.startTime))
-      dailySchedules[String(date.getDate())] = items.map(a => {
-        const dur = timeToMinF(a.endTime) - timeToMinF(a.startTime)
-        const duration = dur > 0 ? (dur % 60 === 0 ? `${dur/60} hr` : `${dur} min`) : ""
-        return {
-          time: fmt12F(a.startTime),
-          class: {
-            name: a.courseName || a.courseCode || "Untitled",
-            location: a.roomName || "TBD",
-            professor: a.professorName || "",
-            isRescheduled: false,
-            duration,
-          }
-        }
-      })
-    })
-
-    const DAY_NAMES_F = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-    return {
-      weekDays: WEEK_DAYS_F,
-      weekDates,
-      weeklySchedule,
-      dailySchedules,
-      currentDate: { day: now.getDate(), month: now.getMonth()+1, year: now.getFullYear(), dayName: DAY_NAMES_F[now.getDay()] },
-      calendar: { monthDaysWithClasses: [], timeSlots: (timeSlots as string[]).map(fmt12F) }
-    }
-  }
+  const taskStorageKey = useMemo(() => `faculty_tasks_${user?._id || "anon"}`, [user?._id]);
 
   useEffect(() => {
-    let isMounted = true;
-    const load = async () => {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        const [timetable, requestData] = await Promise.all([
-          fetchTimetableLatest(),
-          user?._id ? fetchRescheduleRequests(user._id) : Promise.resolve([]),
-        ]);
+    try {
+      const saved = localStorage.getItem(taskStorageKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) setTasks(parsed);
+    } catch {
+      setTasks([]);
+    }
+  }, [taskStorageKey]);
 
-        const assignments = Array.isArray(timetable?.assignments)
-          ? timetable.assignments
-          : [];
-        const facultyName = user
-          ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
-          : "";
-        let filtered = assignments;
+  useEffect(() => {
+    try {
+      localStorage.setItem(taskStorageKey, JSON.stringify(tasks));
+    } catch {
+      // ignore storage errors
+    }
+  }, [taskStorageKey, tasks]);
 
-        if (facultyName) {
-          const target = normalizeName(facultyName);
-          const matches = assignments.filter((assignment) => {
-            const value = normalizeName(assignment.professorName || "");
-            return value && (value.includes(target) || target.includes(value));
-          });
-          if (matches.length) {
-            filtered = matches;
-          }
-        }
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    setStale(false);
 
-        const events = buildCalendarEvents(filtered);
-        const pendingRequests = Array.isArray(requestData)
-          ? requestData.filter((req) => req.status === "pending").length
-          : 0;
+    try {
+      const [timetable, requestData] = await Promise.all([
+        fetchTimetableLatest(),
+        user?._id ? fetchRescheduleRequests(user._id) : Promise.resolve([]),
+      ]);
 
-        const today = new Date();
-        const dayIndex = {
-          Sunday: 0,
-          Monday: 1,
-          Tuesday: 2,
-          Wednesday: 3,
-          Thursday: 4,
-          Friday: 5,
-          Saturday: 6,
-        };
-        const nowDay = today.getDay();
-        const nowMinutes = today.getHours() * 60 + today.getMinutes();
-        const completed = filtered.filter((assignment) => {
-          const day = dayIndex[assignment.day] ?? null;
-          if (day === null) return false;
-          if (day < nowDay) return true;
-          if (day > nowDay) return false;
-          const startMinutes = parseTimeMinutes(assignment.startTime);
-          return startMinutes !== null && startMinutes < nowMinutes;
-        }).length;
+      const assignments = Array.isArray(timetable?.assignments) ? timetable.assignments : [];
+      const facultyName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "";
+      let filtered = assignments;
 
-        if (!isMounted) return;
-        setCalendarEvents(events);
-        setStale(false);
-        setFacultyTimetableData(buildFacultyTimetableData(filtered, viewWeekStart));
-        setStats({
-          totalClasses: String(filtered.length),
-          completed: String(completed),
-          thisWeek: String(filtered.length),
-          pendingRequests: String(pendingRequests),
+      if (facultyName) {
+        const target = normalizeName(facultyName);
+        const byName = assignments.filter((assignment) => {
+          const value = normalizeName(assignment.professorName || "");
+          return value && (value.includes(target) || target.includes(value));
         });
-        // Record the timetable version we just loaded
-        fetchTimetablePublishedAt().then((v) => {
-          if (v?.publishedAt) loadedPublishedAt.current = v.publishedAt;
-        }).catch(() => {});
-      } catch (error) {
-        if (!isMounted) return;
-        setLoadError(error?.message || "Unable to load faculty dashboard");
-      } finally {
-        if (!isMounted) return;
-        setLoading(false);
+        if (byName.length > 0) filtered = byName;
       }
-    };
 
-    load();
-    return () => {
-      isMounted = false;
-    };
-  }, [user?._id, user?.firstName, user?.lastName]);
+      setRawAssignments(filtered);
+      setDashboardData(buildFacultyDashboard(filtered, viewWeekStart));
 
-  // Poll every 90 seconds for a new timetable publish
+      const requests = Array.isArray(requestData) ? requestData : [];
+      const mappedNotifications = mapFacultyNotifications(requests);
+      setNotifications(mappedNotifications);
+      setNotificationCount(requests.filter((req) => String(req.status || "").toLowerCase() === "pending").length);
+
+      fetchTimetablePublishedAt()
+        .then((version) => {
+          if (version?.publishedAt) loadedPublishedAt.current = version.publishedAt;
+        })
+        .catch(() => {});
+    } catch (error: any) {
+      setLoadError(error?.message || "Unable to load faculty dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }, [user?._id, user?.firstName, user?.lastName, viewWeekStart]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchTimetablePublishedAt().then((v) => {
-        if (v?.publishedAt && loadedPublishedAt.current && v.publishedAt !== loadedPublishedAt.current) {
-          setStale(true);
-        }
-      }).catch(() => {});
+      fetchTimetablePublishedAt()
+        .then((version) => {
+          if (version?.publishedAt && loadedPublishedAt.current && version.publishedAt !== loadedPublishedAt.current) {
+            setStale(true);
+          }
+        })
+        .catch(() => {});
     }, 90_000);
+
     return () => clearInterval(interval);
   }, []);
 
-  // Rebuild timetable data when week changes (calendarEvents already loaded)
   useEffect(() => {
-    if (calendarEvents.length === 0) return
-    const rawAssignments = calendarEvents.map(e => e.raw)
-    setFacultyTimetableData(buildFacultyTimetableData(rawAssignments, viewWeekStart))
-  }, [viewWeekStart])
+    if (!rawAssignments.length) return;
+    setDashboardData(buildFacultyDashboard(rawAssignments, viewWeekStart));
+  }, [rawAssignments, viewWeekStart]);
 
-  const toLocalISOF = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
-
-  const getMondayOfF = (date: Date) => {
-    const d = new Date(date); d.setHours(0,0,0,0)
-    const day = d.getDay()
-    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
-    return d
-  }
-
-  const handlePrevF = () => {
+  const handlePrev = () => {
     if (selectedView === "week") {
-      const prev = new Date(viewWeekStart); prev.setDate(prev.getDate() - 7); setViewWeekStart(prev)
-    } else if (selectedView === "day") {
-      const prev = new Date(viewDayDate); prev.setDate(prev.getDate() - 1); setViewDayDate(prev)
-      setSelectedDate(prev.getDate()); setSelectedMonth(prev.getMonth()+1); setSelectedYear(prev.getFullYear())
-      const pm = getMondayOfF(prev)
-      if (pm.getTime() !== viewWeekStart.getTime()) setViewWeekStart(pm)
-    } else {
-      if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y-1) } else setSelectedMonth(m => m-1)
-      setSelectedDate(1)
+      const prev = new Date(viewWeekStart);
+      prev.setDate(prev.getDate() - 7);
+      setViewWeekStart(prev);
+      return;
     }
-  }
 
-  const handleNextF = () => {
-    if (selectedView === "week") {
-      const next = new Date(viewWeekStart); next.setDate(next.getDate() + 7); setViewWeekStart(next)
-    } else if (selectedView === "day") {
-      const next = new Date(viewDayDate); next.setDate(next.getDate() + 1); setViewDayDate(next)
-      setSelectedDate(next.getDate()); setSelectedMonth(next.getMonth()+1); setSelectedYear(next.getFullYear())
-      const nm = getMondayOfF(next)
-      if (nm.getTime() !== viewWeekStart.getTime()) setViewWeekStart(nm)
-    } else {
-      if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y+1) } else setSelectedMonth(m => m+1)
-      setSelectedDate(1)
-    }
-  }
-
-  const MONTH_NAMES_F = ["January","February","March","April","May","June","July","August","September","October","November","December"]
-  const DAY_NAMES_F2 = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-
-  const getHeaderLabelF = () => {
-    if (selectedView === "week") {
-      const friday = new Date(viewWeekStart); friday.setDate(friday.getDate() + 4)
-      return `${viewWeekStart.toLocaleDateString("en-IN", { month:"short", day:"numeric" })} – ${friday.getDate()}, ${viewWeekStart.getFullYear()}`
-    }
     if (selectedView === "day") {
-      return viewDayDate.toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long", year:"numeric" })
+      const prev = new Date(viewDayDate);
+      prev.setDate(prev.getDate() - 1);
+      setViewDayDate(prev);
+      setSelectedDate(prev.getDate());
+      setSelectedMonth(prev.getMonth() + 1);
+      setSelectedYear(prev.getFullYear());
+      const monday = getMondayOf(prev);
+      if (monday.getTime() !== viewWeekStart.getTime()) setViewWeekStart(monday);
+      return;
     }
-    return `${MONTH_NAMES_F[selectedMonth-1]} ${selectedYear}`
-  }
 
-  const getScheduleForDateF = (date) => {
-    if (!facultyTimetableData) return []
-    const fromCache = facultyTimetableData.dailySchedules?.[date.toString()]
-    if (fromCache && fromCache.length > 0) return fromCache
-    const d = new Date(selectedYear, selectedMonth - 1, date)
-    const jsDay = d.getDay()
-    if (jsDay === 0 || jsDay === 6) return []
-    const idx = jsDay - 1
-    const result: any[] = []
-    for (const slot of (facultyTimetableData.weeklySchedule || [])) {
-      const item = slot.classes?.[idx]
-      if (item) result.push({ time: slot.time, class: { ...item, duration: "" } })
-    }
-    return result
-  }
-
-  const getDayNameF = (date) => DAY_NAMES_F2[new Date(selectedYear, selectedMonth-1, date).getDay()]
-  const getShortDayNameF = (date) => {
-    const s = ["SUN","MON","TUE","WED","THU","FRI","SAT"]
-    return s[new Date(selectedYear, selectedMonth-1, date).getDay()]
-  }
-  const getDaysInMonthF = (month, year) => new Date(year, month, 0).getDate()
-  const getFirstDayOfMonthF = (month, year) => new Date(year, month-1, 1).getDay()
-  const getMonthNameF = (m) => MONTH_NAMES_F[m-1]
-
-  const handleCalendarTimeSlotClick = (item) => {
-    const match = calendarEvents.find(e => e.day === item.day && e.time === item.time)
-    setSelectedSlot(match ? { ...item, title: item.name, location: item.location } : { ...item, title: item.name })
-  }
-
-  const handleDateClickF = (day) => {
-    setSelectedDate(day); setSelectedView("day")
-    setViewDayDate(new Date(selectedYear, selectedMonth-1, day))
-  }
-
-  const handleSlotClick = (slot) => {
-    const match = calendarEvents.find(
-      (event) => event.day === slot.day && event.time === slot.time,
-    );
-    setSelectedSlot(
-      match
-        ? { ...slot, title: match.title, location: match.location }
-        : slot,
-    );
-  };
-
-  const handleRequestReschedule = () => {
-    if (selectedSlot) {
-      setRescheduleForm((prev) => ({
-        ...prev,
-        currentDay: selectedSlot.day,
-        currentTime: selectedSlot.time,
-      }));
-      setShowRescheduleModal(true);
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear((y) => y - 1);
     } else {
-      alert("Please select a time slot from the calendar first");
+      setSelectedMonth((m) => m - 1);
     }
+    setSelectedDate(1);
   };
 
-  const handleRescheduleChange = (e) => {
-    const { name, value } = e.target;
-    setRescheduleForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmitReschedule = async () => {
-    if (
-      !rescheduleForm.requestedDay ||
-      !rescheduleForm.requestedTime ||
-      !rescheduleForm.reason
-    ) {
-      alert("Please fill in all fields");
-      return;
-    }
-    if (!user?._id) {
-      alert("Please sign in again to submit a request.");
+  const handleNext = () => {
+    if (selectedView === "week") {
+      const next = new Date(viewWeekStart);
+      next.setDate(next.getDate() + 7);
+      setViewWeekStart(next);
       return;
     }
 
-    const facultyName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+    if (selectedView === "day") {
+      const next = new Date(viewDayDate);
+      next.setDate(next.getDate() + 1);
+      setViewDayDate(next);
+      setSelectedDate(next.getDate());
+      setSelectedMonth(next.getMonth() + 1);
+      setSelectedYear(next.getFullYear());
+      const monday = getMondayOf(next);
+      if (monday.getTime() !== viewWeekStart.getTime()) setViewWeekStart(monday);
+      return;
+    }
+
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
+    }
+    setSelectedDate(1);
+  };
+
+  const getMonthName = (monthNum: number) => MONTH_NAMES[monthNum - 1];
+  const getDaysInMonth = (month: number, year: number) => new Date(year, month, 0).getDate();
+  const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month - 1, 1).getDay();
+  const getDayName = (date: number) => DAY_NAMES[new Date(selectedYear, selectedMonth - 1, date).getDay()];
+  const getShortDayName = (date: number) => {
+    const names = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    return names[new Date(selectedYear, selectedMonth - 1, date).getDay()];
+  };
+
+  const getScheduleForDate = (date: number) => {
+    if (!dashboardData) return [];
+    const fromCache = dashboardData.dailySchedules?.[date.toString()];
+    if (fromCache && fromCache.length > 0) return fromCache;
+
+    const d = new Date(selectedYear, selectedMonth - 1, date);
+    const jsDay = d.getDay();
+    if (jsDay === 0 || jsDay === 6) return [];
+
+    const weekDayIdx = jsDay - 1;
+    const schedule = dashboardData.baseWeeklySchedule ?? dashboardData.weeklySchedule ?? [];
+    const result: any[] = [];
+
+    for (const slot of schedule) {
+      const classItem = slot.classes?.[weekDayIdx];
+      if (classItem) result.push({ time: slot.time, class: { ...classItem, duration: classItem.duration || "" } });
+    }
+
+    return result;
+  };
+
+  const getHeaderLabel = () => {
+    if (selectedView === "week") {
+      const friday = new Date(viewWeekStart);
+      friday.setDate(friday.getDate() + 4);
+      const startLabel = viewWeekStart.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+      const endLabel = friday.toLocaleDateString("en-IN", { day: "numeric" });
+      return `${startLabel} – ${endLabel}, ${viewWeekStart.getFullYear()}`;
+    }
+
+    if (selectedView === "day") {
+      return viewDayDate.toLocaleDateString("en-IN", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    }
+
+    return `${getMonthName(selectedMonth)} ${selectedYear}`;
+  };
+
+  const handleDateClick = (day: number) => {
+    const clicked = new Date(selectedYear, selectedMonth - 1, day);
+    setViewDayDate(clicked);
+    setSelectedDate(day);
+    setSelectedView("day");
+    const monday = getMondayOf(clicked);
+    if (monday.getTime() !== viewWeekStart.getTime()) setViewWeekStart(monday);
+  };
+
+  const handleTimeSlotClick = (slot: any) => {
+    if (!slot || slot.type === "exam") return;
+    setSelectedTimeSlot(slot);
+    setShowClassDetails(true);
+  };
+
+  const loadReferencesForSlot = useCallback(async (slot: any) => {
+    if (!slot?.courseCode) { setClassReferences([]); return; }
+    const day = normalizeDayLabel(slot.day || "");
+    const startTime = slot.startTime || parseStartTime24(slot.time || "");
+    if (!day || !startTime) { setClassReferences([]); return; }
+    setRefsLoading(true);
     try {
-      await createRescheduleRequest({
-        professorId: user._id,
-        currentSlot: {
-          day: selectedSlot?.day || rescheduleForm.currentDay,
-          time: formatTime24(
-            selectedSlot?.time || rescheduleForm.currentTime,
-          ),
-          room: selectedSlot?.location || "—",
-        },
-        requestedSlot: {
-          day: rescheduleForm.requestedDay,
-          time: formatTime24(rescheduleForm.requestedTime),
-          room: "—",
-        },
-        reason: rescheduleForm.reason,
-        conflictStatus: "",
-      });
+      const data = await fetchClassReferences(slot.courseCode, day, startTime);
+      const list = Array.isArray(data) ? data : (data?.references || data?.data?.references || []);
+      setClassReferences(list);
+    } catch {
+      setClassReferences([]);
+    } finally {
+      setRefsLoading(false);
+    }
+  }, []);
 
-      alert("Reschedule request submitted successfully! Pending admin approval.");
-      setShowRescheduleModal(false);
-      setRescheduleForm({
-        currentDay: "",
-        currentTime: "",
-        requestedDay: "",
-        requestedTime: "",
-        reason: "",
+  useEffect(() => {
+    if (!showClassDetails || !selectedTimeSlot) return;
+    loadReferencesForSlot(selectedTimeSlot);
+  }, [showClassDetails, selectedTimeSlot, loadReferencesForSlot]);
+
+  const handleRequestRescheduleFromModal = () => {
+    if (!selectedTimeSlot) return;
+    const rawDay = String(selectedTimeSlot.day || "").toUpperCase();
+    const startTime =
+      selectedTimeSlot.startTime ||
+      parseStartTime24(selectedTimeSlot.time || "");
+    const payload = {
+      courseCode: selectedTimeSlot.courseCode || "",
+      courseName: selectedTimeSlot.courseName || selectedTimeSlot.name || "",
+      courseId: selectedTimeSlot.courseId || "",
+      day: SHORT_TO_FULL_DAY[rawDay] || selectedTimeSlot.day || "",
+      startTime,
+      endTime: selectedTimeSlot.endTime || "",
+      room: selectedTimeSlot.room || "",
+    };
+    setShowClassDetails(false);
+    navigate("/FacultyPage/requests", { state: { prefill: payload } });
+  };
+
+  const handleAddReference = async () => {
+    if (!selectedTimeSlot?.courseCode) return;
+    const title = window.prompt("Reference title (e.g., Week 4 Notes):", "");
+    if (!title || !title.trim()) return;
+    const url = window.prompt("Reference URL:", "https://");
+    if (!url || !url.trim()) return;
+    const day = normalizeDayLabel(selectedTimeSlot.day || "");
+    const startTime = selectedTimeSlot.startTime || parseStartTime24(selectedTimeSlot.time || "");
+    if (!day || !startTime) return;
+    try {
+      await createClassReference({
+        courseCode: selectedTimeSlot.courseCode,
+        day,
+        startTime,
+        title: title.trim(),
+        url: url.trim(),
       });
-      setSelectedSlot(null);
-    } catch (error) {
-      alert(error?.message || "Unable to submit reschedule request");
+      await loadReferencesForSlot(selectedTimeSlot);
+    } catch (err: any) {
+      alert(err?.message || "Failed to add reference");
     }
   };
 
-  const card = {
-    background: colors.bg.base,
-    border: `1px solid ${colors.border.medium}`,
-    borderRadius: radius.lg,
-    boxShadow: shadows.sm,
+  const handleBell = () => {
+    setPaneState((prev) => (prev === "notifs" ? "classes" : "notifs"));
   };
-  const heading = {
-    fontFamily: fonts.heading,
-    fontWeight: fonts.weight.semibold,
-    color: colors.text.primary,
+
+  const handleAddTask = (task: {
+    title: string;
+    description: string;
+    category: string;
+    reminder: boolean;
+    reminderTime: string;
+    dueDate: string;
+  }) => {
+    const newTask: Task = {
+      ...task,
+      id: Date.now().toString(),
+      completed: false,
+    };
+    setTasks((prev) => [...prev, newTask]);
   };
-  const muted = { fontSize: fonts.size.sm, color: colors.text.secondary };
-  const caption = { fontSize: fonts.size.xs, color: colors.text.muted };
-  const inputField = {
-    width: "100%",
-    padding: "8px 12px",
-    background: colors.bg.base,
-    border: `1px solid ${colors.border.medium}`,
-    borderRadius: radius.md,
-    color: colors.text.primary,
-    fontSize: fonts.size.base,
-    fontFamily: fonts.body,
-    outline: "none",
+
+  const handleToggleTask = (id: string) => {
+    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)));
+  };
+
+  const handleDeleteTask = (id: string) => {
+    setTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
   return (
-    <>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        background: colors.bg.deep,
+        overflow: "hidden",
+      }}
+    >
+      {loading && (
+        <div style={{ margin: "8px 16px 0", padding: "8px 14px", borderRadius: 8, background: "rgba(37,99,235,0.08)", color: "#2563EB", fontSize: fonts.size.sm }}>
+          Loading dashboard data...
+        </div>
+      )}
+
+      {loadError && (
+        <div style={{ margin: "8px 16px 0", padding: "8px 14px", borderRadius: 8, background: "rgba(220,38,38,0.08)", color: colors.error.main, fontSize: fonts.size.sm }}>
+          {loadError}
+        </div>
+      )}
+
       {stale && (
-        <div style={{
-          margin: "0 0 12px",
-          padding: "10px 16px",
-          borderRadius: 8,
-          background: "rgba(59,130,246,0.1)",
-          border: "1px solid rgba(59,130,246,0.3)",
-          color: "#1d4ed8",
-          fontSize: "13px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-        }}>
+        <div style={{ margin: "8px 16px 0", padding: "10px 16px", borderRadius: 8, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", color: "#1d4ed8", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
           <span>📅 A new timetable has been published. Your schedule may have changed.</span>
           <button
-            onClick={() => window.location.reload()}
-            style={{
-              background: "#1d4ed8",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              padding: "5px 14px",
-              fontSize: "12px",
-              fontWeight: 600,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
+            onClick={loadDashboard}
+            style={{ background: "#1d4ed8", color: "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
           >
             Refresh Now
           </button>
         </div>
       )}
 
-      {/* Top Bar */}
       <div
         style={{
-          ...card,
-          marginBottom: "12px",
-          padding: "10px 16px",
+          flex: 1,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          gap: "14px",
+          padding: "14px 16px",
+          overflow: "hidden",
+          minHeight: 0,
         }}
       >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div
-              style={{
-                width: 3,
-                height: 20,
-                borderRadius: "2px",
-                background: "#7C3AED",
-              }}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            overflow: "hidden",
+          }}
+        >
+          {dashboardData ? (
+            <CalendarCard
+              selectedView={selectedView}
+              setSelectedView={setSelectedView}
+              selectedDate={selectedDate}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              handlePrev={handlePrev}
+              handleNext={handleNext}
+              handleDateClick={handleDateClick}
+              handleTimeSlotClick={handleTimeSlotClick}
+              headerLabel={getHeaderLabel()}
+              getMonthName={getMonthName}
+              getDaysInMonth={getDaysInMonth}
+              getFirstDayOfMonth={getFirstDayOfMonth}
+              getDayName={getDayName}
+              getShortDayName={getShortDayName}
+              getScheduleForDate={getScheduleForDate}
+              timetableData={dashboardData}
+              viewWeekStart={viewWeekStart}
+              tasks={tasks}
+              onAddTask={() => setShowAddTask(true)}
+              onBell={handleBell}
+              notificationCount={notificationCount}
             />
-            <h2
-              style={{
-                ...heading,
-                fontSize: "15px",
-                margin: 0,
-                fontWeight: 700,
-              }}
-            >
-              Faculty Dashboard
-            </h2>
-          </div>
-          <p style={{ ...caption, margin: "4px 0 0 11px" }}>
-            Teaching schedule & availability
-          </p>
-        </div>
-        <button
-          onClick={handleRequestReschedule}
-          style={{
-            padding: "8px 16px",
-            background: colors.primary.main,
-            color: "#fff",
-            border: "none",
-            borderRadius: radius.md,
-            fontSize: fonts.size.sm,
-            fontWeight: 500,
-            cursor: "pointer",
-            fontFamily: fonts.body,
-          }}
-        >
-          Request Reschedule
-        </button>
-      </div>
-
-      {loading && (
-        <div
-          style={{
-            marginBottom: "12px",
-            padding: "8px 12px",
-            borderRadius: 8,
-            background: "rgba(59, 130, 246, 0.1)",
-            color: "#3b82f6",
-            fontSize: "12px",
-          }}
-        >
-          Loading faculty schedule...
-        </div>
-      )}
-
-      {loadError && (
-        <div
-          style={{
-            marginBottom: "12px",
-            padding: "8px 12px",
-            borderRadius: 8,
-            background: "rgba(239, 68, 68, 0.1)",
-            color: "#ef4444",
-            fontSize: "12px",
-          }}
-        >
-          {loadError}
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "10px",
-          marginBottom: "12px",
-        }}
-      >
-        {[
-          {
-            label: "Total Classes",
-            value: stats.totalClasses,
-            color: colors.primary.main,
-          },
-          { label: "Completed", value: stats.completed, color: colors.success.main },
-          { label: "This Week", value: stats.thisWeek, color: colors.secondary.main },
-          {
-            label: "Pending Requests",
-            value: stats.pendingRequests,
-            color: colors.warning.main,
-          },
-        ].map((stat, i) => (
-          <div
-            key={i}
-            style={{ ...card, padding: "14px", textAlign: "center" }}
-          >
-            <div
-              style={{
-                fontSize: "22px",
-                fontWeight: 700,
-                color: stat.color,
-                marginBottom: "4px",
-                fontFamily: fonts.heading,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {stat.value}
-            </div>
-            <div style={{ ...muted, fontSize: fonts.size.xs }}>
-              {stat.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar */}
-      {facultyTimetableData ? (
-        <>
-          <CalendarCard
-            selectedView={selectedView}
-            setSelectedView={setSelectedView}
-            selectedDate={selectedDate}
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            handlePrev={handlePrevF}
-            handleNext={handleNextF}
-            handleDateClick={handleDateClickF}
-            handleTimeSlotClick={handleCalendarTimeSlotClick}
-            headerLabel={getHeaderLabelF()}
-            getMonthName={getMonthNameF}
-            getDaysInMonth={getDaysInMonthF}
-            getFirstDayOfMonth={getFirstDayOfMonthF}
-            getDayName={getDayNameF}
-            getShortDayName={getShortDayNameF}
-            getScheduleForDate={getScheduleForDateF}
-            timetableData={facultyTimetableData}
-            viewWeekStart={viewWeekStart}
-          />
-          {selectedSlot && (
-            <div style={{ marginBottom: "12px", padding: "12px 16px", background: colors.primary.ghost, border: `1px solid ${colors.primary.border}`, borderRadius: radius.md, display: "flex", alignItems: "center", gap: "10px" }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.primary.main }} />
-              <div style={{ fontSize: fonts.size.base, color: colors.primary.main, fontWeight: 500 }}>
-                Selected: {selectedSlot.day} at {selectedSlot.time}
-              </div>
-              <button onClick={handleRequestReschedule} style={{ marginLeft: "auto", padding: "6px 12px", fontSize: fonts.size.xs, background: colors.primary.main, color: "#fff", border: "none", borderRadius: radius.sm, cursor: "pointer", fontFamily: fonts.body }}>
-                Reschedule This Slot
-              </button>
+          ) : (
+            <div style={{ background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: "14px", padding: "24px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>
+              {loading ? "Loading schedule..." : "No timetable published yet."}
             </div>
           )}
-        </>
-      ) : (
-        <div style={{ ...card, padding: "32px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>
-          {loading ? "Loading schedule…" : "No timetable published yet."}
         </div>
+
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <FacultyRightPane
+            paneState={paneState}
+            setPaneState={setPaneState}
+            todaysClasses={dashboardData?.todaysClasses || []}
+            currentDate={dashboardData?.currentDate || { dayName: "", day: 0, month: 0, year: 0 }}
+            onViewFullDay={() => setSelectedView("day")}
+            notifications={notifications}
+            tasks={tasks}
+            onToggleTask={handleToggleTask}
+            onDeleteTask={handleDeleteTask}
+          />
+        </div>
+      </div>
+
+      {showAddTask && (
+        <AddTaskModal
+          onClose={() => setShowAddTask(false)}
+          onSave={handleAddTask}
+        />
       )}
 
-      {/* Reschedule Modal */}
-      {showRescheduleModal && (
+      {showClassDetails && selectedTimeSlot && (
         <div
+          onClick={() => setShowClassDetails(false)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.4)",
+            background: "rgba(0,0,0,0.45)",
+            backdropFilter: "blur(3px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 1000,
           }}
-          onClick={() => setShowRescheduleModal(false)}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: colors.bg.base,
               border: `1px solid ${colors.border.medium}`,
-              borderRadius: radius.xl,
-              padding: "24px",
-              width: "90%",
-              maxWidth: "500px",
-              boxShadow: shadows.xl,
+              borderRadius: "16px",
+              padding: "22px",
+              width: "100%",
+              maxWidth: "460px",
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <h3
-              style={{
-                ...heading,
-                fontSize: fonts.size.lg,
-                marginBottom: "20px",
-              }}
-            >
-              Request Reschedule
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
-                marginBottom: "16px",
-              }}
-            >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
               <div>
-                <label
-                  style={{
-                    display: "block",
-                    ...caption,
-                    marginBottom: "6px",
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Current Day
-                </label>
-                <input
-                  type="text"
-                  value={selectedSlot?.day || ""}
-                  readOnly
-                  style={{ ...inputField, opacity: 0.5, cursor: "not-allowed" }}
-                />
+                <h2 style={{ margin: "0 0 4px", fontSize: fonts.size.xl, fontWeight: 700, color: colors.text.primary }}>
+                  {selectedTimeSlot.name || selectedTimeSlot.courseName || selectedTimeSlot.courseCode}
+                </h2>
+                <p style={{ margin: 0, fontSize: fonts.size.sm, color: colors.text.muted }}>
+                  {selectedTimeSlot.day}{selectedTimeSlot.time ? ` · ${selectedTimeSlot.time}` : ""}
+                </p>
               </div>
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    ...caption,
-                    marginBottom: "6px",
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Current Time
-                </label>
-                <input
-                  type="text"
-                  value={selectedSlot?.time || ""}
-                  readOnly
-                  style={{ ...inputField, opacity: 0.5, cursor: "not-allowed" }}
-                />
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
-                marginBottom: "16px",
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    ...caption,
-                    marginBottom: "6px",
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Requested Day
-                </label>
-                <select
-                  name="requestedDay"
-                  value={rescheduleForm.requestedDay}
-                  onChange={handleRescheduleChange}
-                  style={{ ...inputField, cursor: "pointer" }}
-                >
-                  <option value="">Select Day</option>
-                  {[
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                  ].map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    ...caption,
-                    marginBottom: "6px",
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Requested Time
-                </label>
-                <input
-                  type="time"
-                  name="requestedTime"
-                  value={rescheduleForm.requestedTime}
-                  onChange={handleRescheduleChange}
-                  style={inputField}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: "24px" }}>
-              <label
-                style={{
-                  display: "block",
-                  ...caption,
-                  marginBottom: "6px",
-                  fontWeight: 500,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                Reason for Rescheduling
-              </label>
-              <textarea
-                name="reason"
-                value={rescheduleForm.reason}
-                onChange={handleRescheduleChange}
-                rows={4}
-                placeholder="Please provide a reason..."
-                style={{ ...inputField, resize: "vertical" }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "12px" }}>
               <button
-                onClick={() => setShowRescheduleModal(false)}
+                onClick={() => setShowClassDetails(false)}
+                style={{ background: "none", border: "none", color: colors.text.muted, cursor: "pointer", fontSize: fonts.size.sm }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ background: colors.bg.raised, border: `1px solid ${colors.border.subtle}`, borderRadius: 10, padding: "12px 14px", marginBottom: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: fonts.size.sm, color: colors.text.primary, marginBottom: "6px" }}>
+                <Clock size={14} /> {selectedTimeSlot.time || "See timetable"}
+              </div>
+              {!!selectedTimeSlot.location && (
+                <div style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: fonts.size.xs, color: colors.text.muted }}>
+                  <MapPin size={12} /> {selectedTimeSlot.location}
+                </div>
+              )}
+            </div>
+
+            <div style={{ background: colors.bg.raised, border: `1px solid ${colors.border.subtle}`, borderRadius: 10, padding: "12px 14px", marginBottom: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ fontSize: fonts.size.xs, fontWeight: 700, color: colors.text.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  References
+                </span>
+                <button
+                  onClick={handleAddReference}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${colors.primary.border}`, background: colors.primary.ghost, color: colors.primary.main, cursor: "pointer", fontSize: fonts.size.xs, fontWeight: 600 }}
+                >
+                  Add Reference
+                </button>
+              </div>
+              {refsLoading ? (
+                <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>Loading references…</div>
+              ) : classReferences.length === 0 ? (
+                <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>No references attached yet.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {classReferences.map((ref) => (
+                    <a
+                      key={ref._id || ref.id}
+                      href={ref.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: fonts.size.xs, color: colors.primary.main, textDecoration: "none" }}
+                    >
+                      {ref.title}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button
+                onClick={() => setShowClassDetails(false)}
                 style={{
-                  flex: 1,
-                  padding: "8px 16px",
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border.medium}`,
                   background: colors.bg.raised,
                   color: colors.text.primary,
-                  border: `1px solid ${colors.border.medium}`,
-                  borderRadius: radius.md,
-                  fontSize: fonts.size.sm,
-                  fontWeight: 500,
                   cursor: "pointer",
-                  fontFamily: fonts.body,
                 }}
               >
                 Cancel
               </button>
               <button
-                onClick={handleSubmitReschedule}
+                onClick={handleRequestRescheduleFromModal}
                 style={{
-                  flex: 1,
-                  padding: "8px 16px",
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "none",
                   background: colors.primary.main,
                   color: "#fff",
-                  border: "none",
-                  borderRadius: radius.md,
-                  fontSize: fonts.size.sm,
-                  fontWeight: 500,
                   cursor: "pointer",
-                  fontFamily: fonts.body,
+                  fontWeight: 600,
                 }}
               >
-                Submit Request
+                Request Reschedule
               </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

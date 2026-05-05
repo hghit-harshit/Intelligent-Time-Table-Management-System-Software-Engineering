@@ -37,3 +37,27 @@ export const fetchCatalogProfessors = async () => {
   const response = await httpClient.get("/catalog/professors");
   return response?.data ?? response ?? [];
 };
+
+export const fetchClassReferences = (courseCode: string, day: string, startTime: string) => {
+  const params = new URLSearchParams({ courseCode, day, startTime });
+  return httpClient.get(`/references?${params.toString()}`);
+};
+
+export const fetchCourseSyllabus = (courseCode: string) => {
+  const params = new URLSearchParams({ courseCode, kind: "syllabus" });
+  return httpClient.get(`/references?${params.toString()}`);
+};
+
+export const createClassReference = (payload: {
+  courseCode: string;
+  day: string;
+  startTime: string;
+  title: string;
+  url: string;
+  kind?: string;
+}) => {
+  return httpClient.request("/references", {
+    method: "POST",
+    data: payload,
+  });
+};

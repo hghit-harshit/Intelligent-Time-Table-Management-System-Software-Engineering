@@ -9,16 +9,46 @@
 import { useState, useEffect } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 import { MapPin, Mail, FileText, Clock, BookOpen } from "lucide-react";
-import { checkStudentNote } from "../../../services/studentApi";
+import { checkStudentNote, fetchCourseSyllabusReference, fetchProfessorClassReferences } from "../../../services/studentApi";
 
 export default function ClassDetailsModal({ selectedTimeSlot, onClose, onNoteClick }) {
   const [notesLoading, setNotesLoading] = useState(false);
   const [noteExists, setNoteExists] = useState<boolean | null>(null);
+  const [profRefs, setProfRefs] = useState<any[]>([]);
+  const [refsLoading, setRefsLoading] = useState(false);
+  const [syllabusUrl, setSyllabusUrl] = useState("");
 
   const courseCode = selectedTimeSlot?.courseCode ||
     (selectedTimeSlot?.location || "").split("·")[0].trim().split(" ")[0].trim() ||
     (selectedTimeSlot?.name || "").split(" ")[0];
   const classDate = selectedTimeSlot?.classDate || new Date().toISOString().split("T")[0];
+  const normalizeDay = (value: string) => {
+    const key = String(value || "").trim().toLowerCase();
+    const map: Record<string, string> = {
+      mon: "Monday", monday: "Monday",
+      tue: "Tuesday", tues: "Tuesday", tuesday: "Tuesday",
+      wed: "Wednesday", wednesday: "Wednesday",
+      thu: "Thursday", thur: "Thursday", thurs: "Thursday", thursday: "Thursday",
+      fri: "Friday", friday: "Friday",
+      sat: "Saturday", saturday: "Saturday",
+      sun: "Sunday", sunday: "Sunday",
+    };
+    return map[key] || value;
+  };
+  const parseStartTime24 = (value: string) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const firstPart = raw.split("·")[0].trim();
+    const start = firstPart.split("–")[0].split("-")[0].trim();
+    const m = start.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (!m) return "";
+    let hh = Number(m[1]);
+    const mm = Number(m[2]);
+    const suffix = (m[3] || "").toUpperCase();
+    if (suffix === "PM" && hh !== 12) hh += 12;
+    if (suffix === "AM" && hh === 12) hh = 0;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     if (!courseCode || !classDate) return;
@@ -26,6 +56,39 @@ export default function ClassDetailsModal({ selectedTimeSlot, onClose, onNoteCli
       .then((data: any) => setNoteExists(data?.exists === true))
       .catch(() => setNoteExists(false));
   }, [courseCode, classDate]);
+
+  useEffect(() => {
+    if (!selectedTimeSlot) return;
+    const day = normalizeDay(selectedTimeSlot.day || "");
+    const startTime = selectedTimeSlot.startTime || parseStartTime24(selectedTimeSlot.time || "");
+    if (!courseCode || !day || !startTime) {
+      setProfRefs([]);
+      return;
+    }
+    setRefsLoading(true);
+    fetchProfessorClassReferences(courseCode, day, startTime)
+      .then((data: any) => {
+        const list = Array.isArray(data) ? data : (data?.references || data?.data?.references || []);
+        const filtered = (list || []).filter((ref: any) => {
+          const t = String(ref?.title || "").toLowerCase();
+          const k = String(ref?.kind || "").toLowerCase();
+          return k !== "syllabus" && t !== "course syllabus";
+        });
+        setProfRefs(filtered);
+      })
+      .catch(() => setProfRefs([]))
+      .finally(() => setRefsLoading(false));
+  }, [selectedTimeSlot, courseCode]);
+
+  useEffect(() => {
+    if (!courseCode) return;
+    fetchCourseSyllabusReference(courseCode)
+      .then((data: any) => {
+        const list = Array.isArray(data) ? data : (data?.references || data?.data?.references || []);
+        setSyllabusUrl(list?.[0]?.url || "");
+      })
+      .catch(() => setSyllabusUrl(""));
+  }, [courseCode]);
 
   if (!selectedTimeSlot) return null;
 
@@ -237,23 +300,6 @@ export default function ClassDetailsModal({ selectedTimeSlot, onClose, onNoteCli
             Course Resources
           </div>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <button
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "7px 14px",
-                background: "rgba(37, 99, 235, 0.06)",
-                border: "1px solid rgba(37, 99, 235, 0.2)",
-                borderRadius: radius.md, color: "#2563EB",
-                fontSize: fonts.size.sm, fontWeight: fonts.weight.medium,
-                cursor: "pointer", fontFamily: fonts.body,
-              }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(37, 99, 235, 0.12)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(37, 99, 235, 0.06)")}
-            >
-              <FileText size={14} />
-              Course Syllabus
-            </button>
-
             {onNoteClick && (
               <button
                 disabled={notesLoading || noteExists === null}
@@ -283,7 +329,60 @@ export default function ClassDetailsModal({ selectedTimeSlot, onClose, onNoteCli
                 {notesLoading ? "Opening…" : noteExists === null ? "Checking…" : noteExists ? "Open Notes" : "Add Notes"}
               </button>
             )}
+
+            <button
+              disabled={!syllabusUrl}
+              onClick={() => { if (syllabusUrl) window.open(syllabusUrl, "_blank", "noopener,noreferrer"); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "7px 14px",
+                background: syllabusUrl ? "rgba(37, 99, 235, 0.06)" : colors.bg.raised,
+                border: `1px solid ${syllabusUrl ? "rgba(37, 99, 235, 0.2)" : colors.border.subtle}`,
+                borderRadius: radius.md, color: syllabusUrl ? "#2563EB" : colors.text.muted,
+                fontSize: fonts.size.sm, fontWeight: fonts.weight.medium,
+                cursor: syllabusUrl ? "pointer" : "not-allowed", fontFamily: fonts.body,
+              }}
+            >
+              <FileText size={14} />
+              {syllabusUrl ? "Course Syllabus" : "Syllabus Not Attached"}
+            </button>
+
+            <button
+              disabled={refsLoading || profRefs.length === 0}
+              onClick={() => {
+                if (profRefs.length > 0) window.open(profRefs[0].url, "_blank", "noopener,noreferrer");
+              }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "7px 14px",
+                background: profRefs.length > 0 ? "rgba(245,158,11,0.08)" : colors.bg.raised,
+                border: `1px solid ${profRefs.length > 0 ? "rgba(245,158,11,0.28)" : colors.border.subtle}`,
+                borderRadius: radius.md,
+                color: profRefs.length > 0 ? "#B45309" : colors.text.muted,
+                fontSize: fonts.size.sm, fontWeight: fonts.weight.medium,
+                cursor: (refsLoading || profRefs.length === 0) ? "not-allowed" : "pointer",
+                fontFamily: fonts.body,
+              }}
+            >
+              <FileText size={14} />
+              {refsLoading ? "Loading References…" : profRefs.length > 0 ? `View References (${profRefs.length})` : "No References"}
+            </button>
           </div>
+          {profRefs.length > 0 && (
+            <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              {profRefs.map((ref) => (
+                <a
+                  key={ref._id || ref.id}
+                  href={ref.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: fonts.size.xs, color: colors.primary.main, textDecoration: "none" }}
+                >
+                  {ref.title}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

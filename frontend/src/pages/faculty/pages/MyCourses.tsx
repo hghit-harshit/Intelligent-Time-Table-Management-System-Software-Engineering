@@ -5,15 +5,14 @@
  * Data comes from the published timetable (same source as the dashboard).
  */
 import { useState, useEffect, useMemo } from "react";
-import { Card, Badge, Loader, PageHeader } from "../../../shared";
+import { Card, Badge, Loader } from "../../../shared";
 import { useUser } from "../../../contexts/UserContext";
-import { fetchTimetableLatest } from "../../../services/facultyApi";
+import { createClassReference, fetchCourseSyllabus, fetchTimetableLatest } from "../../../services/facultyApi";
 import { httpClient } from "../../../services/httpClient";
 import { colors, fonts, radius, shadows, transitions } from "../../../styles/tokens";
 import {
   BookOpen,
   ChevronDown,
-  ChevronUp,
   Clock,
   MapPin,
   Users,
@@ -45,10 +44,12 @@ const COURSE_COLORS = [
 export default function MyCourses() {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [courses, setCourses] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [enrollments, setEnrollments] = useState({});
   const [loadingEnrollments, setLoadingEnrollments] = useState({});
+  const [syllabusByCourse, setSyllabusByCourse] = useState({});
 
   /* ── Fetch timetable and extract my courses ──────────────── */
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function MyCourses() {
         setCourses(courseList);
       } catch (err) {
         console.error("Error loading courses:", err);
+        setLoadError("Unable to load courses right now.");
       } finally {
         setLoading(false);
       }
@@ -135,7 +137,17 @@ export default function MyCourses() {
   const handleToggle = (courseId, courseCode) => {
     const isExpanding = expandedId !== courseId;
     setExpandedId(isExpanding ? courseId : null);
-    if (isExpanding) fetchEnrolledStudents(courseCode);
+    if (isExpanding) {
+      fetchEnrolledStudents(courseCode);
+      if (!syllabusByCourse[courseCode]) {
+        fetchCourseSyllabus(courseCode)
+          .then((data) => {
+            const list = Array.isArray(data) ? data : (data?.references || data?.data?.references || []);
+            setSyllabusByCourse((prev) => ({ ...prev, [courseCode]: list?.[0] || null }));
+          })
+          .catch(() => setSyllabusByCourse((prev) => ({ ...prev, [courseCode]: null })));
+      }
+    }
   };
 
   /* ── Stats ─────────────────────────────────────────────────── */
@@ -143,23 +155,39 @@ export default function MyCourses() {
     () => courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0),
     [courses]
   );
+  const totalStudents = useMemo(
+    () => courses.reduce((sum, c) => sum + (c.students || 0), 0),
+    [courses]
+  );
 
   if (loading) return <Loader />;
 
   return (
-    <div>
-      <PageHeader
-        title="My Courses"
-        subtitle={`${courses.length} courses • ${totalSessions} sessions per week`}
-      />
+    <div
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        padding: "10px 14px 18px 24px",
+        background: `linear-gradient(180deg, ${colors.bg.deep} 0%, #f8fafc 100%)`,
+        borderRadius: radius.lg,
+      }}
+    >
+      <div style={{ maxWidth: 1220 }}>
+      {loadError && (
+        <Card style={{ marginBottom: 14, padding: "12px 14px", borderColor: colors.error.border, background: colors.error.ghost }}>
+          <div style={{ color: colors.error.main, fontSize: fonts.size.sm, fontWeight: fonts.weight.medium }}>
+            {loadError}
+          </div>
+        </Card>
+      )}
 
       {/* Quick Stats */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
           gap: "12px",
-          marginBottom: "20px",
+          marginBottom: "14px",
         }}
       >
         {[
@@ -178,22 +206,22 @@ export default function MyCourses() {
           {
             icon: <Users size={18} />,
             label: "Total Students",
-            value: courses.reduce((s, c) => s + (c.students || 0), 0),
+            value: totalStudents,
             color: "#16A34A",
           },
         ].map((stat) => (
-          <Card key={stat.label} style={{ padding: "16px" }}>
+          <Card key={stat.label} style={{ padding: "14px 16px", borderRadius: radius.lg }}>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
+                gap: "12px",
               }}
             >
               <div
                 style={{
-                  width: 36,
-                  height: 36,
+                  width: 38,
+                  height: 38,
                   borderRadius: radius.md,
                   background: `${stat.color}0F`,
                   display: "flex",
@@ -207,7 +235,7 @@ export default function MyCourses() {
               <div>
                 <div
                   style={{
-                    fontSize: fonts.size["2xl"],
+                    fontSize: "2rem",
                     fontWeight: fonts.weight.bold,
                     color: colors.text.primary,
                     fontFamily: fonts.heading,
@@ -246,7 +274,15 @@ export default function MyCourses() {
         </Card>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      {courses.length > 0 && (
+        <div style={{ marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ fontSize: fonts.size.sm, color: colors.text.secondary, fontWeight: fonts.weight.medium }}>
+            Course Directory
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {courses.map((course, idx) => {
           const palette = COURSE_COLORS[idx % COURSE_COLORS.length];
           const isExpanded = expandedId === course.id;
@@ -259,26 +295,31 @@ export default function MyCourses() {
                 padding: 0,
                 overflow: "hidden",
                 borderLeft: `3px solid ${palette.border}`,
+                transition: transitions.smooth,
+                borderRadius: radius.lg,
+                boxShadow: isExpanded ? shadows.md : shadows.sm,
               }}
             >
               {/* Header — always visible */}
               <div
                 style={{
-                  padding: "16px 18px",
+                  padding: "15px 16px",
                   display: "flex",
                   alignItems: "center",
-                  gap: "14px",
+                  gap: "12px",
                   cursor: "pointer",
                   transition: transitions.fast,
                   background: isExpanded ? palette.bg : "transparent",
                 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = isExpanded ? palette.bg : colors.bg.raised; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = isExpanded ? palette.bg : "transparent"; }}
                 onClick={() => handleToggle(course.id, course.code)}
               >
                 {/* Course icon */}
                 <div
                   style={{
-                    width: 42,
-                    height: 42,
+                    width: 40,
+                    height: 40,
                     borderRadius: radius.lg,
                     background: palette.bg,
                     border: `1px solid ${palette.border}`,
@@ -308,7 +349,10 @@ export default function MyCourses() {
                       style={{
                         fontWeight: fonts.weight.semibold,
                         color: colors.text.primary,
-                        fontSize: fonts.size.base,
+                        fontSize: fonts.size.lg,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
                       {course.name}
@@ -319,9 +363,10 @@ export default function MyCourses() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "12px",
+                      gap: "10px",
                       fontSize: fonts.size.xs,
                       color: colors.text.muted,
+                      flexWrap: "wrap",
                     }}
                   >
                     <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
@@ -345,6 +390,7 @@ export default function MyCourses() {
                     color: colors.text.muted,
                     transition: transitions.smooth,
                     transform: isExpanded ? "rotate(180deg)" : "rotate(0)",
+                    marginLeft: 8,
                   }}
                 >
                   <ChevronDown size={18} />
@@ -355,9 +401,10 @@ export default function MyCourses() {
               {isExpanded && (
                 <div
                   style={{
-                    padding: "0 18px 18px",
+                    padding: "0 16px 16px",
                     borderTop: `1px solid ${colors.border.subtle}`,
                     animation: "fadeIn 0.2s ease both",
+                    background: "linear-gradient(180deg, rgba(248,250,252,0.68) 0%, rgba(255,255,255,0.92) 100%)",
                   }}
                 >
                   {/* Schedule grid */}
@@ -379,18 +426,19 @@ export default function MyCourses() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-                        gap: "8px",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
+                        gap: "10px",
                       }}
                     >
                       {course.slots.map((slot, i) => (
                         <div
                           key={i}
                           style={{
-                            padding: "10px 12px",
+                            padding: "11px 12px",
                             borderRadius: radius.md,
                             background: palette.bg,
                             border: `1px solid ${palette.border}`,
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45)",
                           }}
                         >
                           <div
@@ -410,6 +458,7 @@ export default function MyCourses() {
                               gap: 6,
                               fontSize: fonts.size.xs,
                               color: colors.text.secondary,
+                              whiteSpace: "nowrap",
                             }}
                           >
                             <Clock size={10} />
@@ -423,6 +472,7 @@ export default function MyCourses() {
                               fontSize: fonts.size.xs,
                               color: colors.text.muted,
                               marginTop: 2,
+                              whiteSpace: "nowrap",
                             }}
                           >
                             <MapPin size={10} />
@@ -474,8 +524,8 @@ export default function MyCourses() {
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                          gap: "6px",
+                          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                          gap: "8px",
                         }}
                       >
                         {enrollments[course.code].map((student, i) => (
@@ -485,10 +535,11 @@ export default function MyCourses() {
                               display: "flex",
                               alignItems: "center",
                               gap: "8px",
-                              padding: "8px 10px",
+                              padding: "9px 10px",
                               borderRadius: radius.md,
                               background: colors.bg.raised,
                               fontSize: fonts.size.xs,
+                              border: `1px solid ${colors.border.subtle}`,
                             }}
                           >
                             <div
@@ -540,6 +591,7 @@ export default function MyCourses() {
                           padding: "14px",
                           borderRadius: radius.md,
                           background: colors.bg.raised,
+                          border: `1px dashed ${colors.border.medium}`,
                           textAlign: "center",
                           color: colors.text.muted,
                           fontSize: fonts.size.sm,
@@ -549,11 +601,80 @@ export default function MyCourses() {
                       </div>
                     )}
                   </div>
+
+                  {/* Course Resources */}
+                  <div style={{ marginTop: 14 }}>
+                    <h4
+                      style={{
+                        margin: "0 0 10px",
+                        fontSize: fonts.size.sm,
+                        fontWeight: fonts.weight.bold,
+                        color: colors.text.primary,
+                        fontFamily: fonts.heading,
+                      }}
+                    >
+                      Course Resources
+                    </h4>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const title = "Course Syllabus";
+                          const existing = syllabusByCourse[course.code]?.url || "https://";
+                          const url = window.prompt("Enter syllabus link:", existing);
+                          if (!url || !url.trim()) return;
+                          try {
+                            await createClassReference({
+                              courseCode: course.code,
+                              title,
+                              url: url.trim(),
+                              kind: "syllabus",
+                            });
+                            setSyllabusByCourse((prev) => ({
+                              ...prev,
+                              [course.code]: { title, url: url.trim() },
+                            }));
+                          } catch (err: any) {
+                            alert(err?.message || "Failed to save syllabus");
+                          }
+                        }}
+                        style={{
+                          padding: "7px 12px",
+                          borderRadius: radius.md,
+                          border: `1px solid ${colors.primary.border}`,
+                          background: colors.primary.ghost,
+                          color: colors.primary.main,
+                          fontSize: fonts.size.sm,
+                          fontWeight: fonts.weight.medium,
+                          cursor: "pointer",
+                          fontFamily: fonts.body,
+                          transition: transitions.fast,
+                        }}
+                      >
+                        {syllabusByCourse[course.code]?.url ? "Update Syllabus Link" : "Add Syllabus Link"}
+                      </button>
+                      {syllabusByCourse[course.code]?.url && (
+                        <a
+                          href={syllabusByCourse[course.code].url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: fonts.size.sm,
+                            color: colors.info.main || colors.primary.main,
+                            textDecoration: "none",
+                          }}
+                        >
+                          Open Course Syllabus
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </Card>
           );
         })}
+      </div>
       </div>
     </div>
   );

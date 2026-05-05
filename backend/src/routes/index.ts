@@ -9,6 +9,7 @@ import slotRouter from "../modules/slot/slot.routes.js";
 import catalogRouter from "../modules/catalog/catalog.routes.js";
 import studentRouter from "../modules/student/student.routes.js";
 import workspaceRouter from "../modules/workspace/workspace.routes.js";
+import referenceRouter from "../modules/reference/reference.routes.js";
 
 const apiRouter = Router();
 
@@ -22,6 +23,6 @@ apiRouter.use("/student", studentRouter);
 apiRouter.use("/exam", examRouter);
 apiRouter.use("/workspace", workspaceRouter);
 apiRouter.use("/analytics", analyticsRouter);
+apiRouter.use("/references", referenceRouter);
 
 export default apiRouter;
-

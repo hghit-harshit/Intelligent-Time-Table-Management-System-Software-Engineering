@@ -8,8 +8,6 @@ import { useUser } from "../../../../contexts/UserContext";
 import { fetchRescheduleRequests } from "../../../../services/facultyApi";
 import {
   LayoutDashboard,
-  CalendarClock,
-  Bell,
   RotateCcw,
   BookOpen,
   ClipboardList,
@@ -38,29 +36,17 @@ export default function FacultyLayout({ children }) {
 
   const navSections = [
     {
-      label: "OVERVIEW",
+      label: "",
       items: [
         { icon: LayoutDashboard, label: "Dashboard", path: "/FacultyPage" },
-        { icon: CalendarClock, label: "My Schedule", path: "/FacultyPage/schedule" },
         {
           icon: RotateCcw,
           label: "Reschedule Requests",
           path: "/FacultyPage/requests",
           badge: pendingRequestCount > 0 ? pendingRequestCount : undefined,
         },
-      ],
-    },
-    {
-      label: "ACADEMICS",
-      items: [
         { icon: BookOpen, label: "My Courses", path: "/FacultyPage/courses" },
         { icon: ClipboardList, label: "Exam Schedule", path: "/FacultyPage/exams" },
-      ],
-    },
-    {
-      label: "INSIGHTS",
-      items: [
-        { icon: Bell, label: "Notifications", path: "/FacultyPage/notifications" },
       ],
     },
   ];
@@ -80,8 +66,8 @@ export default function FacultyLayout({ children }) {
         bg: "rgba(124, 58, 237, 0.08)",
         color: "#7C3AED",
       }}
-      notificationPath="/FacultyPage/notifications"
-      settingsPath="/profile"
+      notificationPath={null}
+      settingsPath={null}
       onLogout={handleLogout}
       children={children}
     />

@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
-import { X, Bell, Calendar, AlignLeft, Tag } from "lucide-react";
+import { X, Bell, Calendar, Clock3, AlignLeft, Tag } from "lucide-react";
 
 interface AddTaskModalProps {
   onClose: () => void;
@@ -43,7 +43,8 @@ export default function AddTaskModal({ onClose, onSave }: AddTaskModalProps) {
   const [category, setCategory] = useState("Academic");
   const [reminder, setReminder] = useState(false);
   const [reminderTime, setReminderTime] = useState("15");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDatePart, setDueDatePart] = useState("");
+  const [dueTimePart, setDueTimePart] = useState("09:00");
   const [titleError, setTitleError] = useState(false);
 
   const handleSave = () => {
@@ -51,7 +52,15 @@ export default function AddTaskModal({ onClose, onSave }: AddTaskModalProps) {
       setTitleError(true);
       return;
     }
-    onSave({ title, description, category, reminder, reminderTime, dueDate });
+    const composedDueDate = dueDatePart ? `${dueDatePart}T${dueTimePart || "09:00"}` : "";
+    onSave({
+      title,
+      description,
+      category,
+      reminder,
+      reminderTime,
+      dueDate: composedDueDate,
+    });
     onClose();
   };
 
@@ -240,7 +249,7 @@ export default function AddTaskModal({ onClose, onSave }: AddTaskModalProps) {
           </div>
         </div>
 
-        {/* Due Date */}
+        {/* Due Date + Time */}
         <div style={{ marginBottom: "14px" }}>
           <label
             style={{
@@ -257,14 +266,59 @@ export default function AddTaskModal({ onClose, onSave }: AddTaskModalProps) {
           >
             <Calendar size={11} /> Due Date
           </label>
-          <input
-            type="datetime-local"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            style={inputStyle}
-            onFocus={(e) => (e.target.style.borderColor = colors.primary.main)}
-            onBlur={(e) => (e.target.style.borderColor = colors.border.medium)}
-          />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            <input
+              type="date"
+              value={dueDatePart}
+              onChange={(e) => setDueDatePart(e.target.value)}
+              style={inputStyle}
+              onFocus={(e) => (e.target.style.borderColor = colors.primary.main)}
+              onBlur={(e) => (e.target.style.borderColor = colors.border.medium)}
+            />
+            <div style={{ position: "relative" }}>
+              <Clock3
+                size={13}
+                style={{
+                  position: "absolute",
+                  left: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: colors.text.muted,
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                type="time"
+                value={dueTimePart}
+                onChange={(e) => setDueTimePart(e.target.value)}
+                style={{ ...inputStyle, paddingLeft: "30px" }}
+                onFocus={(e) => (e.target.style.borderColor = colors.primary.main)}
+                onBlur={(e) => (e.target.style.borderColor = colors.border.medium)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" }}>
+            {["08:00", "10:00", "14:00", "18:00"].map((time) => (
+              <button
+                key={time}
+                type="button"
+                onClick={() => setDueTimePart(time)}
+                style={{
+                  border: `1px solid ${dueTimePart === time ? colors.primary.border : colors.border.medium}`,
+                  background: dueTimePart === time ? colors.primary.ghost : colors.bg.raised,
+                  color: dueTimePart === time ? colors.primary.main : colors.text.secondary,
+                  borderRadius: radius.md,
+                  padding: "3px 8px",
+                  fontSize: "11px",
+                  fontFamily: fonts.body,
+                  cursor: "pointer",
+                }}
+              >
+                {time}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Reminder Toggle */}

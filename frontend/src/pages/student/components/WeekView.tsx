@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Box, Typography } from "@mui/material"
 import { colors, fonts, radius } from "../../../styles/tokens"
 
@@ -67,7 +67,41 @@ export default function WeekView({
   tasks,
   onNoteClick,
 }: any) {
+  type TimelineEvent = {
+    kind: "class" | "task" | "exam";
+    top: number;
+    height: number;
+    time?: string;
+    classItem?: any;
+    task?: any;
+    exam?: any;
+    lane?: number;
+  };
+
+  const assignLanes = (events: TimelineEvent[]) => {
+    const sorted = [...events].sort((a, b) => (a.top - b.top) || (a.height - b.height));
+    const laneEnds: number[] = [];
+    let maxLanes = 1;
+
+    for (const evt of sorted) {
+      const start = evt.top;
+      const end = evt.top + evt.height;
+      let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start + 1);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(end);
+      } else {
+        laneEnds[lane] = end;
+      }
+      evt.lane = lane;
+      if (lane + 1 > maxLanes) maxLanes = lane + 1;
+    }
+
+    return { events: sorted, laneCount: maxLanes };
+  };
+
   const scrollRef = useRef<HTMLDivElement>(null)
+  const hasAutoScrolledRef = useRef(false)
   const [currentMinutes, setCurrentMinutes] = useState(() => {
     const now = new Date()
     return now.getHours() * 60 + now.getMinutes()
@@ -81,11 +115,49 @@ export default function WeekView({
     return () => clearInterval(timer)
   }, [])
 
+  const scrollToDefaultHour = () => {
+    const node = scrollRef.current
+    if (!node) return
+    const target = (8 - START_HOUR) * HOUR_HEIGHT
+    node.scrollTop = target
+  }
+
+  // Set immediately on mount/week change before paint.
+  useLayoutEffect(() => {
+    hasAutoScrolledRef.current = false
+    scrollToDefaultHour()
+  }, [viewWeekStart])
+
+  // Reinforce after layout/data settle, since async render can reset scroll.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = (8 - START_HOUR) * HOUR_HEIGHT
-    }
-  }, [])
+    if (hasAutoScrolledRef.current) return
+    const target = (8 - START_HOUR) * HOUR_HEIGHT
+    let tries = 0
+    const maxTries = 50
+
+    const timer = setInterval(() => {
+      const node = scrollRef.current
+      if (!node) {
+        tries += 1
+        if (tries >= maxTries) {
+          clearInterval(timer)
+          hasAutoScrolledRef.current = true
+        }
+        return
+      }
+
+      node.scrollTop = target
+      const reached = Math.abs(node.scrollTop - target) <= 2
+
+      tries += 1
+      if (reached || tries >= maxTries) {
+        clearInterval(timer)
+        hasAutoScrolledRef.current = true
+      }
+    }, 40)
+
+    return () => clearInterval(timer)
+  }, [viewWeekStart, timetableData?.weeklySchedule?.length, timetableData?.weekDates?.join?.(",")])
 
   const hours          = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
   const days           = timetableData.weekDays     || []
@@ -244,7 +316,41 @@ export default function WeekView({
           </Box>
 
           {/* Day columns */}
-          {days.map((_: string, dayIdx: number) => (
+          {days.map((_: string, dayIdx: number) => {
+            const classTimeline: TimelineEvent[] = !examMode
+              ? (dayEvents[dayIdx] || []).map((evt) => ({
+                  kind: "class",
+                  top: evt.top,
+                  height: evt.height,
+                  time: evt.time,
+                  classItem: evt.classItem,
+                }))
+              : [];
+            const taskTimeline: TimelineEvent[] = (taskEvents[dayIdx] || []).map((evt) => ({
+              kind: "task",
+              top: evt.top,
+              height: evt.height,
+              task: evt.task,
+            }));
+            const examTimeline: TimelineEvent[] = examMode
+              ? (examEvents[dayIdx] || []).map((evt) => ({
+                  kind: "exam",
+                  top: evt.top,
+                  height: evt.height,
+                  exam: evt.exam,
+                }))
+              : [];
+
+            const { events: laidOutEvents, laneCount } = assignLanes([
+              ...classTimeline,
+              ...taskTimeline,
+              ...examTimeline,
+            ]);
+            const colPad = 2;
+            const laneGap = laneCount > 1 ? 4 : 0;
+            const laneWidthPct = 100 / laneCount;
+
+            return (
             <Box
               key={dayIdx}
               sx={{ position: "relative", borderLeft: `1px solid ${colors.border.subtle}` }}
@@ -264,94 +370,83 @@ export default function WeekView({
                 />
               ))}
 
-              {/* Class blocks — hidden in examMode */}
-              {!examMode && dayEvents[dayIdx]?.map((evt, evtIdx) => {
-                const cs         = getClassColor(evt.classItem)
-                const dateNum    = dates[dayIdx]
-                const classDate  = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(dateNum).padStart(2, "0")}`
-                const courseCode = evt.classItem.courseCode || extractCourseCode(evt.classItem.location || "")
-                return (
-                  <Box
-                    key={evtIdx}
-                    onClick={() => handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: days[dayIdx], classDate, courseCode })}
-                    sx={{
-                      position: "absolute",
-                      top: `${evt.top}px`,
-                      height: `${evt.height}px`,
-                      left: "2px", right: "2px",
-                      borderRadius: radius.sm,
-                      bgcolor: cs.bg,
-                      color: cs.text,
-                      border: `1px ${cs.borderStyle} ${cs.border}`,
-                      p: "4px 6px",
-                      cursor: "pointer",
-                      overflow: "hidden",
-                      zIndex: 1,
-                      transition: "filter 0.15s",
-                      "&:hover": { filter: "brightness(0.95)" },
-                    }}
-                  >
-                    <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
-                      {evt.classItem.name}
-                    </Typography>
-                    <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit", lineHeight: 1.3 }}>
-                      {evt.classItem.location}
-                    </Typography>
-                    <Typography sx={{ fontSize: "10px", opacity: 0.65, color: "inherit", lineHeight: 1.3 }}>
-                      {evt.classItem.professor}
-                    </Typography>
-                    {onNoteClick && (
-                      <Box
-                        component="span"
-                        onClick={(e: any) => { e.stopPropagation(); onNoteClick(courseCode, classDate) }}
-                        sx={{
-                          fontSize: "9px",
-                          color: colors.primary.main,
-                          cursor: "pointer",
-                          display: "block",
-                          mt: 0.5,
-                          "&:hover": { textDecoration: "underline" },
-                        }}
-                      >
-                        📝 Notes
-                      </Box>
-                    )}
-                  </Box>
-                )
-              })}
+              {laidOutEvents.map((evt, evtIdx) => {
+                const lane = evt.lane || 0;
+                const left = `calc(${colPad}px + ${lane * laneWidthPct}% + ${lane * laneGap}px)`;
+                const width = `calc(${laneWidthPct}% - ${(colPad * 2) + ((laneCount - 1) * laneGap) / laneCount}px)`;
 
-              {/* Exam blocks */}
-              {examMode && examEvents[dayIdx]?.map((evt, evtIdx) => (
-                <Box
-                  key={`exam-${evtIdx}`}
-                  onClick={() => handleTimeSlotClick({ ...evt.exam, type: "exam", day: days[dayIdx] })}
-                  sx={{
-                    position: "absolute",
-                    top: `${evt.top}px`,
-                    height: `${evt.height}px`,
-                    left: "2px", right: "2px",
-                    borderRadius: radius.sm,
-                    bgcolor: EXAM_COLOR.bg,
-                    color: EXAM_COLOR.text,
-                    border: `1px solid ${EXAM_COLOR.border}`,
-                    p: "4px 6px",
-                    cursor: "pointer",
-                    overflow: "hidden",
-                    zIndex: 2,
-                  }}
-                >
-                  <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
-                    📝 {evt.exam.subject || evt.exam.name}
-                  </Typography>
-                  <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit" }}>
-                    {evt.exam.location || ""}
-                  </Typography>
-                </Box>
-              ))}
+                if (evt.kind === "class" && evt.classItem) {
+                  const cs = getClassColor(evt.classItem);
+                  const dateNum = dates[dayIdx];
+                  const classDate = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(dateNum).padStart(2, "0")}`;
+                  const courseCode = evt.classItem.courseCode || extractCourseCode(evt.classItem.location || "");
+                  return (
+                    <Box
+                      key={`class-${evtIdx}`}
+                      onClick={() => handleTimeSlotClick({ ...evt.classItem, time: evt.time, day: days[dayIdx], classDate, courseCode })}
+                      sx={{
+                        position: "absolute",
+                        top: `${evt.top}px`,
+                        height: `${evt.height}px`,
+                        left,
+                        width,
+                        borderRadius: radius.sm,
+                        bgcolor: cs.bg,
+                        color: cs.text,
+                        border: `1px ${cs.borderStyle} ${cs.border}`,
+                        p: "4px 6px",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        zIndex: 2,
+                        transition: "filter 0.15s",
+                        "&:hover": { filter: "brightness(0.95)" },
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
+                        {evt.classItem.name}
+                      </Typography>
+                      <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit", lineHeight: 1.3 }}>
+                        {evt.classItem.location}
+                      </Typography>
+                      <Typography sx={{ fontSize: "10px", opacity: 0.65, color: "inherit", lineHeight: 1.3 }}>
+                        {evt.classItem.professor}
+                      </Typography>
+                    </Box>
+                  );
+                }
 
-              {/* Task blocks */}
-              {taskEvents[dayIdx]?.map((evt, evtIdx) => {
-                const tc = getTaskColor(evt.task.category)
+                if (evt.kind === "exam" && evt.exam) {
+                  return (
+                    <Box
+                      key={`exam-${evtIdx}`}
+                      onClick={() => handleTimeSlotClick({ ...evt.exam, type: "exam", day: days[dayIdx] })}
+                      sx={{
+                        position: "absolute",
+                        top: `${evt.top}px`,
+                        height: `${evt.height}px`,
+                        left,
+                        width,
+                        borderRadius: radius.sm,
+                        bgcolor: EXAM_COLOR.bg,
+                        color: EXAM_COLOR.text,
+                        border: `1px solid ${EXAM_COLOR.border}`,
+                        p: "4px 6px",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        zIndex: 2,
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
+                        📝 {evt.exam.subject || evt.exam.name}
+                      </Typography>
+                      <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit" }}>
+                        {evt.exam.location || ""}
+                      </Typography>
+                    </Box>
+                  );
+                }
+
+                const tc = getTaskColor(evt.task?.category);
                 return (
                   <Box
                     key={`task-${evtIdx}`}
@@ -359,7 +454,8 @@ export default function WeekView({
                       position: "absolute",
                       top: `${evt.top}px`,
                       height: `${evt.height}px`,
-                      left: "2px", right: "2px",
+                      left,
+                      width,
                       borderRadius: radius.sm,
                       bgcolor: tc.bg,
                       color: tc.text,
@@ -370,13 +466,13 @@ export default function WeekView({
                     }}
                   >
                     <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
-                      ✓ {evt.task.title}
+                      ✓ {evt.task?.title}
                     </Typography>
                   </Box>
-                )
+                );
               })}
             </Box>
-          ))}
+          )})}
 
           {/* Now line */}
           {showNowLine && (

@@ -10,6 +10,7 @@ import { TimetableResultModel } from "../../database/models/timetableResultModel
 import { ProfessorModel } from "../../database/models/professorModel.js";
 import { StudentEnrollmentModel } from "../../database/models/studentEnrollmentModel.js";
 import { NotificationModel } from "../../database/models/notificationModel.js";
+import { CourseModel } from "../../database/models/courseModel.js";
 
 type Assignment = Record<string, unknown>;
 
@@ -141,16 +142,89 @@ const getSlotConflicts = async (
   currentDay: string,
   currentStartTime: string,
 ) => {
-  const [timetable, enrollments] = await Promise.all([
-    TimetableResultModel.findOne({ isLatest: true }).sort({ generatedAt: -1 }).lean(),
-    StudentEnrollmentModel.find({
-      enrolledCourseIds: new mongoose.Types.ObjectId(courseId),
-    }).lean(),
-  ]);
+  const timetable = await TimetableResultModel.findOne({ isLatest: true })
+    .sort({ generatedAt: -1 })
+    .lean();
 
   if (!timetable) return [];
 
   const assignments = (timetable as any).assignments as Assignment[];
+
+  // Some timetable variants (especially seeded/demo data) may only store courseCode
+  // on assignments and omit courseId. Build a code -> ObjectId map so conflict
+  // detection still works and can report affected student counts.
+  const allCourseCodes = Array.from(
+    new Set(
+      assignments
+        .map((a) => (a.courseCode ? String(a.courseCode).trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+  const courseCodeToId = new Map<string, string>();
+  if (allCourseCodes.length > 0) {
+    const courseDocs = await CourseModel.find({
+      code: { $in: allCourseCodes },
+    })
+      .select("_id code")
+      .lean();
+    for (const doc of courseDocs) {
+      const code = String((doc as any).code || "").trim();
+      const id = String((doc as any)._id || "");
+      if (code && id) {
+        courseCodeToId.set(code, id);
+      }
+    }
+  }
+
+  const targetCourseObjectIds = new Set<string>();
+  const targetCourseCodes = new Set<string>();
+
+  for (const a of assignments) {
+    const aCourseId = a.courseId ? String(a.courseId) : "";
+    const aCourseCode = a.courseCode ? String(a.courseCode) : "";
+    const matched =
+      aCourseId === courseId ||
+      aCourseCode === courseId;
+
+    if (matched) {
+      if (aCourseId && mongoose.isValidObjectId(aCourseId)) {
+        targetCourseObjectIds.add(aCourseId);
+      }
+      if (aCourseCode) {
+        targetCourseCodes.add(aCourseCode);
+      }
+    }
+  }
+
+  if (targetCourseObjectIds.size === 0 && mongoose.isValidObjectId(courseId)) {
+    targetCourseObjectIds.add(courseId);
+  }
+
+  if (targetCourseCodes.size === 0 && !mongoose.isValidObjectId(courseId)) {
+    targetCourseCodes.add(courseId);
+  }
+
+  if (targetCourseObjectIds.size === 0 && targetCourseCodes.size > 0) {
+    const courseDocs = await CourseModel.find({
+      code: { $in: Array.from(targetCourseCodes) },
+    })
+      .select("_id")
+      .lean();
+
+    for (const doc of courseDocs) {
+      targetCourseObjectIds.add(String((doc as any)._id));
+    }
+  }
+
+  const enrollmentQueryIds = Array.from(targetCourseObjectIds).map(
+    (id) => new mongoose.Types.ObjectId(id),
+  );
+
+  const enrollments = enrollmentQueryIds.length
+    ? await StudentEnrollmentModel.find({
+        enrolledCourseIds: { $in: enrollmentQueryIds },
+      }).lean()
+    : [];
 
   // Collect all unique candidate target slots (exclude the being-rescheduled slot)
   const slotMap = new Map<string, { day: string; startTime: string; endTime: string }>();
@@ -178,12 +252,21 @@ const getSlotConflicts = async (
     const otherCourseIds = new Set(
       (enrollment.enrolledCourseIds as any[])
         .map((id) => String(id))
-        .filter((id) => id !== courseId),
+        .filter((id) => !targetCourseObjectIds.has(id)),
     );
 
     for (const a of assignments) {
-      if (!a.courseId) continue;
-      if (!otherCourseIds.has(String(a.courseId))) continue;
+      const aCourseId = a.courseId ? String(a.courseId) : "";
+      const aCourseCode = a.courseCode ? String(a.courseCode) : "";
+      const effectiveCourseId =
+        (aCourseId && mongoose.isValidObjectId(aCourseId) ? aCourseId : "") ||
+        (aCourseCode ? courseCodeToId.get(aCourseCode) || "" : "");
+
+      if (effectiveCourseId && targetCourseObjectIds.has(effectiveCourseId)) continue;
+      if (aCourseCode && targetCourseCodes.has(aCourseCode)) continue;
+
+      if (!effectiveCourseId) continue;
+      if (!otherCourseIds.has(effectiveCourseId)) continue;
       const key = `${a.day}|${a.startTime}`;
       if (!conflictMap.has(key)) conflictMap.set(key, new Set());
       conflictMap.get(key)!.add(studentId);

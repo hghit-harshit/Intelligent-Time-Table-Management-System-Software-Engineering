@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
-import { SubPageHeader, StatsGrid } from "../../../shared";
+import { StatsGrid } from "../../../shared";
 import {
   fetchFacultyCourses,
   fetchAvailableSlots,
@@ -41,7 +41,7 @@ export default function FacultyExamScheduler() {
   const card = { background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.lg, boxShadow: shadows.sm };
   const heading = { fontFamily: fonts.heading, fontWeight: fonts.weight.semibold, color: colors.text.primary };
   const labelSt = { display: "block", fontSize: fonts.size.xs, color: colors.text.muted, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6, fontWeight: 500 };
-  const inputSt = { width: "100%", padding: "8px 12px", background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.md, color: colors.text.primary, fontSize: fonts.size.sm, fontFamily: fonts.body, outline: "none", boxSizing: "border-box" };
+  const inputSt = { width: "100%", padding: "9px 12px", background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: radius.md, color: colors.text.primary, fontSize: fonts.size.sm, fontFamily: fonts.body, outline: "none", boxSizing: "border-box" };
   const btnP = { padding: "8px 20px", background: colors.primary.main, color: "#fff", border: "none", borderRadius: radius.md, fontSize: fonts.size.sm, fontWeight: 500, cursor: "pointer", fontFamily: fonts.body };
   const btnG = { ...btnP, background: colors.bg.raised, color: colors.text.primary, border: `1px solid ${colors.border.medium}` };
 
@@ -159,22 +159,25 @@ export default function FacultyExamScheduler() {
 
   /* ── RENDER ────────────────────────────────────────────────── */
   return (
-    <>
-      <SubPageHeader title="Exam Scheduler" subtitle={`${courses.length} courses · ${pendingCount} pending`} accentColor="#7C3AED"
-        actions={dateWindow ? (
-          <span style={{ padding: "6px 14px", background: colors.success.ghost, color: colors.success.main, borderRadius: radius.md, fontSize: fonts.size.xs, fontWeight: 500 }}>
+    <div style={{ padding: "12px 14px 16px", boxSizing: "border-box", height: "100%" }}>
+      <div style={{ ...card, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ fontSize: fonts.size.sm, color: colors.text.secondary }}>
+          {courses.length} courses · {pendingCount} pending
+        </div>
+        {dateWindow ? (
+          <span style={{ padding: "6px 12px", background: colors.success.ghost, color: colors.success.main, borderRadius: radius.md, fontSize: fonts.size.xs, fontWeight: 500 }}>
             Exam window active · {dateWindow.dates?.length} dates
           </span>
         ) : (
-          <span style={{ padding: "6px 14px", background: colors.warning.ghost, color: colors.warning.main, borderRadius: radius.md, fontSize: fonts.size.xs, fontWeight: 500 }}>
+          <span style={{ padding: "6px 12px", background: colors.warning.ghost, color: colors.warning.main, borderRadius: radius.md, fontSize: fonts.size.xs, fontWeight: 500 }}>
             Exam dates not yet published
           </span>
         )}
-      />
+      </div>
 
-      <div style={{ flex: 1, display: "flex", margin: 12, gap: 12, overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", gap: 12, overflow: "hidden", minHeight: 0 }}>
         {/* LEFT */}
-        <div style={{ flex: 1, overflowY: "auto", paddingRight: 8 }}>
+        <div style={{ flex: 1, overflowY: "auto", paddingRight: 8, minWidth: 0 }}>
           <StatsGrid stats={[
             { num: String(courses.length), label: "My Courses", color: colors.primary.main },
             { num: String(pendingCount), label: "Pending", color: colors.warning.main },
@@ -184,19 +187,19 @@ export default function FacultyExamScheduler() {
 
           {/* COURSES */}
           <div style={{ ...card, marginBottom: 12, overflow: "hidden" }}>
-            <div style={{ padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
-              <h3 style={{ ...heading, fontSize: 13, margin: 0 }}>My Courses — Find Available Slots</h3>
+            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
+              <h3 style={{ ...heading, fontSize: fonts.size.lg, margin: 0 }}>My Courses - Find Available Slots</h3>
             </div>
             {courses.length === 0 ? (
               <div style={{ padding: 24, textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>No courses assigned.</div>
             ) : courses.map((c, i) => (
               <div key={c.id} style={{ padding: "12px 16px", borderBottom: i < courses.length - 1 ? `1px solid ${colors.border.subtle}` : "none", display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary }}>{c.code} — {c.name}</div>
+                  <div style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary }}>{c.code} - {c.name}</div>
                   <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: 2 }}>{c.students} students · {c.department}</div>
                 </div>
                 <button onClick={() => handleFindSlots(c.id)} disabled={slotsLoading && selectedCourse?.id === c.id}
-                  style={{ ...btnP, padding: "6px 14px", fontSize: fonts.size.xs, opacity: slotsLoading && selectedCourse?.id === c.id ? 0.6 : 1 }}>
+                  style={{ ...btnP, padding: "8px 14px", fontSize: fonts.size.sm, opacity: slotsLoading && selectedCourse?.id === c.id ? 0.6 : 1 }}>
                   {slotsLoading && selectedCourse?.id === c.id ? "Finding..." : "Find Slots"}
                 </button>
               </div>
@@ -210,9 +213,9 @@ export default function FacultyExamScheduler() {
           {/* ══════ CALENDAR GRID ══════ */}
           {gridData && (
             <div style={{ ...card, marginBottom: 12, overflow: "hidden" }}>
-              <div style={{ padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${colors.border.medium}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ ...heading, fontSize: 13, margin: 0 }}>
-                  Availability Grid — {gridData.courseCode} ({gridData.enrolledStudents} enrolled)
+                  Availability Grid - {gridData.courseCode} ({gridData.enrolledStudents} enrolled)
                 </h3>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: fonts.size.xs, color: colors.text.muted }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "#10b981" }} /> Available</span>
@@ -226,12 +229,12 @@ export default function FacultyExamScheduler() {
               </div>
 
               <div style={{ overflow: "auto", padding: "0 16px 16px" }}>
-                <table style={{ borderCollapse: "collapse", width: "100%", minWidth: gridData.timeLabels?.length * 52 }}>
+                <table style={{ borderCollapse: "separate", borderSpacing: 0, width: "100%", minWidth: gridData.timeLabels?.length * 52 }}>
                   <thead>
                     <tr>
-                      <th style={{ padding: "6px 8px", fontSize: fonts.size.xs, color: colors.text.muted, textAlign: "left", fontWeight: 600, position: "sticky", left: 0, background: colors.bg.base, zIndex: 2, minWidth: 90, borderBottom: `1px solid ${colors.border.medium}` }}>Date</th>
+                      <th style={{ padding: "8px 8px", fontSize: fonts.size.xs, color: colors.text.muted, textAlign: "left", fontWeight: 600, position: "sticky", left: 0, top: 0, background: colors.bg.base, zIndex: 3, minWidth: 90, borderBottom: `1px solid ${colors.border.medium}` }}>Date</th>
                       {(gridData.timeLabels || []).map((t) => (
-                        <th key={t} style={{ padding: "6px 2px", fontSize: 10, color: colors.text.muted, fontWeight: 500, textAlign: "center", borderBottom: `1px solid ${colors.border.medium}`, minWidth: 48 }}>
+                        <th key={t} style={{ padding: "8px 2px", fontSize: 10, color: colors.text.muted, fontWeight: 500, textAlign: "center", borderBottom: `1px solid ${colors.border.medium}`, minWidth: 48, position: "sticky", top: 0, background: colors.bg.base, zIndex: 2 }}>
                           {fmt12(t)}
                         </th>
                       ))}
@@ -242,7 +245,7 @@ export default function FacultyExamScheduler() {
                       const row = gridData.grid?.[date] || {};
                       return (
                         <tr key={date}>
-                          <td style={{ padding: "6px 8px", fontSize: fonts.size.xs, fontWeight: 600, color: colors.primary.main, whiteSpace: "nowrap", position: "sticky", left: 0, background: colors.bg.base, zIndex: 1, borderBottom: `1px solid ${colors.border.subtle}` }}>{formatted}</td>
+                          <td style={{ padding: "8px 8px", fontSize: fonts.size.xs, fontWeight: 600, color: colors.primary.main, whiteSpace: "nowrap", position: "sticky", left: 0, background: colors.bg.base, zIndex: 1, borderBottom: `1px solid ${colors.border.subtle}` }}>{formatted}</td>
                           {(gridData.timeLabels || []).map((time) => {
                             const cell = row[time] || { available: false, venues: [] };
                             const selected = isSel(date, time);
@@ -259,18 +262,24 @@ export default function FacultyExamScheduler() {
                             }
 
                             return (
-                              <td key={time} style={{ padding: 2, borderBottom: `1px solid ${colors.border.subtle}` }}>
+                              <td key={time} style={{ padding: 3, borderBottom: `1px solid ${colors.border.subtle}` }}>
                                 <div
                                   onClick={() => handleCellClick(date, time, cell)}
-                                  title={cell.available ? `${fmt12(time)} — ${cell.venues.length} venue(s)` : `${fmt12(time)} — Unavailable`}
+                                  title={cell.available ? `${fmt12(time)} - ${cell.venues.length} venue(s)` : `${fmt12(time)} - Unavailable`}
                                   style={{
-                                    width: "100%", height: 32, borderRadius: 4,
+                                    width: "100%", height: 34, borderRadius: 6,
                                     background: bg, border, cursor, color,
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     fontSize: 10, fontWeight: 600,
                                     transition: "all 0.1s ease",
                                     position: "relative",
                                     boxShadow: isStartCell ? `0 0 0 2px ${colors.primary.main}40` : "none",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (cell.available && !selected) (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    (e.currentTarget as HTMLDivElement).style.transform = "none";
                                   }}
                                 >
                                   {!cell.available && <span style={{ fontSize: 14, opacity: 0.5 }}>✕</span>}
@@ -290,7 +299,7 @@ export default function FacultyExamScheduler() {
               {/* selection summary */}
               {selStart && !selEnd && (
                 <div style={{ padding: "8px 16px 12px", fontSize: fonts.size.xs, color: colors.primary.main, fontWeight: 500 }}>
-                  Start: {gridData.dates?.find((d) => d.date === selStart.date)?.formatted} at {fmt12(selStart.time)} — now click an end cell on the same row
+                  Start: {gridData.dates?.find((d) => d.date === selStart.date)?.formatted} at {fmt12(selStart.time)} - now click an end cell on the same row
                 </div>
               )}
             </div>
@@ -299,14 +308,14 @@ export default function FacultyExamScheduler() {
           {/* MY SCHEDULED EXAMS */}
           {myExams.length > 0 && (
             <div style={{ ...card, overflow: "hidden", marginBottom: 12 }}>
-              <div style={{ padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${colors.border.medium}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ ...heading, fontSize: 13, margin: 0 }}>My Scheduled Exams</h3>
                 <span style={{ padding: "2px 8px", background: colors.success.ghost, color: colors.success.main, borderRadius: radius.sm, fontSize: fonts.size.xs, fontWeight: 500 }}>{myExams.length} exam{myExams.length !== 1 ? "s" : ""}</span>
               </div>
               {myExams.map((exam, i) => (
                 <div key={exam._id} style={{ padding: "12px 16px", borderBottom: i < myExams.length - 1 ? `1px solid ${colors.border.subtle}` : "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary }}>{exam.courseCode} — {exam.examName || exam.courseName}</span>
+                    <span style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary }}>{exam.courseCode} - {exam.examName || exam.courseName}</span>
                     <span style={{ padding: "2px 8px", background: colors.success.ghost, color: colors.success.main, borderRadius: radius.sm, fontSize: fonts.size.xs, fontWeight: 500 }}>Scheduled</span>
                   </div>
                   <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>
@@ -320,7 +329,7 @@ export default function FacultyExamScheduler() {
           {/* MY REQUESTS */}
           {myRequests.length > 0 && (
             <div style={{ ...card, overflow: "hidden" }}>
-              <div style={{ padding: "10px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${colors.border.medium}` }}>
                 <h3 style={{ ...heading, fontSize: 13, margin: 0 }}>My Exam Requests</h3>
               </div>
               {myRequests.map((req, i) => {
@@ -328,7 +337,7 @@ export default function FacultyExamScheduler() {
                 return (
                   <div key={req._id} style={{ padding: "12px 16px", borderBottom: i < myRequests.length - 1 ? `1px solid ${colors.border.subtle}` : "none" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary }}>{req.courseCode} — {req.examName}</span>
+                      <span style={{ fontSize: fonts.size.base, fontWeight: 500, color: colors.text.primary }}>{req.courseCode} - {req.examName}</span>
                       <span style={{ padding: "2px 8px", background: sc.bg, color: sc.text, borderRadius: radius.sm, fontSize: fonts.size.xs, fontWeight: 500 }}>{req.status.charAt(0).toUpperCase() + req.status.slice(1)}</span>
                     </div>
                     <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>
@@ -345,15 +354,15 @@ export default function FacultyExamScheduler() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
           {showForm && selectedCourse && selStart && selEnd ? (
             <div style={{ ...card, padding: 16 }}>
               <h4 style={{ ...heading, fontSize: fonts.size.sm, margin: "0 0 4px" }}>Schedule Exam Request</h4>
-              <p style={{ fontSize: fonts.size.xs, color: colors.text.muted, margin: "0 0 16px" }}>{selectedCourse.code} — {selectedCourse.name}</p>
+              <p style={{ fontSize: fonts.size.xs, color: colors.text.muted, margin: "0 0 16px" }}>{selectedCourse.code} - {selectedCourse.name}</p>
 
               <div style={{ padding: "8px 12px", background: colors.primary.ghost, borderRadius: radius.md, marginBottom: 16, fontSize: fonts.size.sm, color: colors.primary.main, fontWeight: 500 }}>
                 {gridData?.dates?.find((d) => d.date === selStart.date)?.formatted}<br />
-                {fmt12(selStart.time)} — {fmt12(selEnd)}<br />
+                {fmt12(selStart.time)} - {fmt12(selEnd)}<br />
                 <span style={{ fontSize: fonts.size.xs, fontWeight: 400, opacity: 0.8 }}>
                   Duration: {(() => { const m = toMin(selEnd) - toMin(selStart.time); return m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m}m`; })()}
                 </span>
@@ -417,6 +426,6 @@ export default function FacultyExamScheduler() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
