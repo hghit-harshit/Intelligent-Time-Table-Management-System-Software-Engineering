@@ -13,7 +13,7 @@ import {
   clearSolverResults,
 } from "../../../stores/timetableEngine.store";
 import { colors, fonts, radius } from "../../../styles/tokens";
-import { Play, Save, Clock } from "lucide-react";
+import { Play, Save, Clock, Search } from "lucide-react";
 import ConstraintTogglesCard from "../components/engine/ConstraintTogglesCard";
 import SlotAllocationView from "../components/engine/SlotAllocationView";
 import ClassroomAllocationView from "../components/engine/ClassroomAllocationView";
@@ -36,6 +36,7 @@ export default function TimetableEngine() {
   const [slotAssignments, setSlotAssignments] = useState([]); // Results from slot solver
   const [classroomAssignments, setClassroomAssignments] = useState([]); // Results from classroom solver
   const [cellModal, setCellModal] = useState(null); // { timeLabel, day, slots[] }
+  const [previewSearch, setPreviewSearch] = useState("");
   const [constraints, setConstraints] = useState({
     hc1_enabled: true,
     hc2_enabled: true,
@@ -281,6 +282,34 @@ export default function TimetableEngine() {
 
   const hasAnyData = hasLatestAssignments || (engine.generatedSchedule?.length > 0 && engine.generatedSchedule[0]?.slots?.length > 0);
 
+  const getSlotLabel = (slot) =>
+    slot?.slotLabel ||
+    slot?.timeslotLabel ||
+    slot?.originalLabel ||
+    slot?.slotName ||
+    slot?.timeslotId ||
+    "Unlabeled Slot";
+
+  const getSlotVenue = (slot) => slot?.roomName || slot?.room || slot?.venue || "Venue TBD";
+
+  const searchQuery = previewSearch.trim().toLowerCase();
+  const highlightedCells = new Set();
+  if (searchQuery && hasLatestAssignments) {
+    assignments.forEach((item) => {
+      const haystack = [
+        item.courseName,
+        item.courseCode,
+        item.professorName,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (haystack.includes(searchQuery)) {
+        highlightedCells.add(`${item.day}|${item.startTime}|${item.endTime}`);
+      }
+    });
+  }
+
   return (
     <div>
       {/* WHY: Replaced inline flex wrapper + h1+p with shared PageHeader, passing badges+buttons as action */}
@@ -419,6 +448,36 @@ export default function TimetableEngine() {
               Weekly schedule by day and time. Empty cells indicate no class
               assigned.
             </div>
+            {hasLatestAssignments && (
+              <div
+                style={{
+                  marginBottom: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  border: `1px solid ${colors.border.medium}`,
+                  borderRadius: radius.md,
+                  background: colors.bg.base,
+                  padding: "8px 10px",
+                }}
+              >
+                <Search size={14} color={colors.text.muted} />
+                <input
+                  value={previewSearch}
+                  onChange={(e) => setPreviewSearch(e.target.value)}
+                  placeholder="Search course name or code to highlight slot"
+                  style={{
+                    border: "none",
+                    outline: "none",
+                    width: "100%",
+                    fontSize: fonts.size.sm,
+                    color: colors.text.primary,
+                    background: "transparent",
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+            )}
 
             <div
           style={{
@@ -499,6 +558,8 @@ export default function TimetableEngine() {
                     const slots = hasLatestAssignments
                       ? (row.slotsByDay[day] || [])
                       : (row.slotsByDay[day]?.course ? [row.slotsByDay[day]] : []);
+                    const cellKey = `${day}|${row.key.split("|")[0]}|${row.key.split("|")[1]}`;
+                    const isHighlighted = highlightedCells.has(cellKey);
 
                     if (slots.length === 0) {
                       return (
@@ -508,49 +569,68 @@ export default function TimetableEngine() {
                       );
                     }
 
-                    const visible = slots.slice(0, 2);
-                    const overflow = slots.length - 2;
+                    const groupedBySlot = Object.values(
+                      slots.reduce((acc, slot) => {
+                        const label = getSlotLabel(slot);
+                        if (!acc[label]) acc[label] = { label, items: [] };
+                        acc[label].items.push(slot);
+                        return acc;
+                      }, {}),
+                    );
 
                     return (
-                      <td key={day} style={{ padding: "8px", borderBottom: `1px solid ${colors.border.subtle}`, background: colors.bg.base, verticalAlign: "top" }}>
+                      <td
+                        key={day}
+                        style={{
+                          padding: "8px",
+                          borderBottom: `1px solid ${colors.border.subtle}`,
+                          background: isHighlighted ? colors.warning.ghost : colors.bg.base,
+                          verticalAlign: "top",
+                        }}
+                      >
                         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                          {visible.map((s, i) => (
-                            <div
-                              key={i}
+                          {groupedBySlot.map((slotGroup: any, i) => (
+                            <button
+                              key={`${slotGroup.label}-${i}`}
+                              type="button"
                               style={{
                                 background: colors.bg.raised,
-                                border: `1px solid ${colors.primary.border}`,
+                                border: `1px solid ${isHighlighted ? colors.warning.border : colors.primary.border}`,
                                 borderRadius: radius.md,
-                                padding: "8px",
+                                padding: "7px 8px",
                                 cursor: "pointer",
+                                textAlign: "left",
                               }}
-                              onClick={() => setCellModal({ timeLabel: row.timeLabel, day, slots })}
+                              onClick={() =>
+                                setCellModal({
+                                  timeLabel: row.timeLabel,
+                                  day,
+                                  slotLabel: slotGroup.label,
+                                  slots: slotGroup.items,
+                                })
+                              }
                             >
-                              <div style={{ fontWeight: fonts.weight.semibold, color: colors.primary.main, fontSize: fonts.size.sm, lineHeight: 1.3 }}>
-                                {hasLatestAssignments ? s.courseName : s.course}
+                              <div
+                                style={{
+                                  fontWeight: fonts.weight.semibold,
+                                  color: colors.primary.main,
+                                  fontSize: fonts.size.sm,
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {slotGroup.label}
                               </div>
-                              <div style={{ color: colors.text.muted, fontSize: fonts.size.xs, marginTop: "3px" }}>
-                                {hasLatestAssignments ? s.professorName : `${s.room} • ${s.faculty}`}
+                              <div
+                                style={{
+                                  color: colors.text.muted,
+                                  fontSize: fonts.size.xs,
+                                  marginTop: "2px",
+                                }}
+                              >
+                                {slotGroup.items.length} course{slotGroup.items.length !== 1 ? "s" : ""}
                               </div>
-                            </div>
-                          ))}
-                          {overflow > 0 && (
-                            <button
-                              onClick={() => setCellModal({ timeLabel: row.timeLabel, day, slots })}
-                              style={{
-                                background: "none",
-                                border: `1px dashed ${colors.border.medium}`,
-                                borderRadius: radius.md,
-                                padding: "4px 8px",
-                                cursor: "pointer",
-                                fontSize: fonts.size.xs,
-                                color: colors.text.muted,
-                                textAlign: "center",
-                              }}
-                            >
-                              +{overflow} more
                             </button>
-                          )}
+                          ))}
                         </div>
                       </td>
                     );
@@ -647,6 +727,7 @@ export default function TimetableEngine() {
                 {cellModal.day} · {cellModal.timeLabel}
               </div>
               <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "2px" }}>
+                {cellModal.slotLabel ? `${cellModal.slotLabel} · ` : ""}
                 {cellModal.slots.length} class{cellModal.slots.length !== 1 ? "es" : ""} scheduled in this slot
               </div>
             </div>
@@ -661,9 +742,14 @@ export default function TimetableEngine() {
                   <div style={{ fontWeight: fonts.weight.semibold, color: colors.primary.main, fontSize: fonts.size.sm }}>
                     {hasLatestAssignments ? s.courseName : s.course}
                   </div>
+                  {s.courseCode && (
+                    <div style={{ fontSize: fonts.size.xs, color: colors.text.secondary, marginTop: "2px" }}>
+                      {s.courseCode}
+                    </div>
+                  )}
                   <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "4px" }}>
                     {hasLatestAssignments ? s.professorName : `${s.room} • ${s.faculty}`}
-                    {s.roomName && <span> · {s.roomName}</span>}
+                    <span> · {getSlotVenue(s)}</span>
                     {s.students && <span> · {s.students} students</span>}
                   </div>
                 </div>

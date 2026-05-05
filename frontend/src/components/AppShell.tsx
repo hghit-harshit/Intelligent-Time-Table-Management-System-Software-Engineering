@@ -118,6 +118,7 @@ export default function AppShell({
   };
 
   const avatarColor = user.avatarColor || colors.primary.main;
+  const contentGutterX = collapsed ? "16px" : "24px";
 
   return (
     <div
@@ -693,6 +694,7 @@ export default function AppShell({
             flex: 1,
             overflowY: "auto",
             animation: "fadeUp 0.35s ease",
+            padding: `16px ${contentGutterX} 24px`,
           }}
         >
           {children}

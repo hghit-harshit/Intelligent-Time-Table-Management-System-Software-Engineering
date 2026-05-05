@@ -20,7 +20,6 @@ import {
   ChevronsLeftRight,
   Settings,
 } from "lucide-react";
-import { fetchPendingRequestCount } from "../../services/adminApi";
 
 export default function AdminLayout({ children }) {
   const { user, logout } = useUser();
@@ -30,7 +29,6 @@ export default function AdminLayout({ children }) {
     name: "Admin",
     subtitle: "Administrator",
   });
-  const [notificationCount, setNotificationCount] = useState(0);
 
   const navSections = [
     {
@@ -42,7 +40,6 @@ export default function AdminLayout({ children }) {
           icon: RotateCcw,
           label: "Reschedule Requests",
           path: "/AdminPage/requests",
-          badge: notificationCount > 0 ? notificationCount : undefined,
         },
         {
           icon: CalendarClock,
@@ -102,11 +99,6 @@ export default function AdminLayout({ children }) {
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchPendingRequestCount()
-      .then(setNotificationCount)
-      .catch(() => setNotificationCount(0));
-  }, []);
 
   const handleLogout = () => {
     logout();
@@ -119,8 +111,6 @@ export default function AdminLayout({ children }) {
       portalSubtitle="DISHA — Admin Console"
       user={userData}
       roleBadge={{ text: "ADMIN", bg: colors.primary.main, color: "#fff" }}
-      notificationCount={notificationCount}
-      notificationPath="/AdminPage/requests"
       onLogout={handleLogout}
       children={children}
     />

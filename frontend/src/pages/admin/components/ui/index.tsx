@@ -405,26 +405,26 @@ export function StatCard({
   };
 
   return (
-    <Card onClick={onClick} style={{ padding: "18px" }}>
+    <Card onClick={onClick} style={{ padding: "10px 12px", borderRadius: radius.md }}>
       <div
         style={{
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          marginBottom: "12px",
+          marginBottom: "4px",
         }}
       >
         <div
           style={{
-            width: "36px",
-            height: "36px",
+            width: "28px",
+            height: "28px",
             borderRadius: radius.lg,
             background: `${color}12`,
             border: `1px solid ${color}20`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "16px",
+            fontSize: "14px",
           }}
         >
           {icon}
@@ -432,10 +432,10 @@ export function StatCard({
       </div>
       <div
         style={{
-          fontSize: fonts.size["2xl"],
+          fontSize: fonts.size.xl,
           fontWeight: fonts.weight.bold,
           color: colors.text.primary,
-          marginBottom: "4px",
+          marginBottom: "0px",
           fontFamily: fonts.heading,
         }}
       >
@@ -445,7 +445,7 @@ export function StatCard({
         style={{
           fontSize: fonts.size.xs,
           color: colors.text.muted,
-          marginBottom: "4px",
+          marginBottom: "0px",
         }}
       >
         {title}

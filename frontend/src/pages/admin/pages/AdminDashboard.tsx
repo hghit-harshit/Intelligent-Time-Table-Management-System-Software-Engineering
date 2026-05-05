@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import MetricsCards from "../components/dashboard/MetricsCards";
 import TimetablePreview from "../components/dashboard/TimetablePreview";
-import AdminQuickActions from "../components/dashboard/AdminQuickActions";
 import ActivityFeed from "../components/dashboard/ActivityFeed";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
 import { Loader, PageHeader } from "../../../shared";
@@ -56,7 +55,7 @@ export default function AdminDashboard() {
   if (loading) return <Loader />;
 
   return (
-    <div>
+    <div style={{ paddingTop: "16px" }}>
       {/* WHY: Replaced inline h1+p with shared PageHeader to remove duplication */}
       <PageHeader title="Admin Dashboard" subtitle="University Timetable Operations Center" />
 
@@ -71,7 +70,6 @@ export default function AdminDashboard() {
         marginTop: "16px",
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <AdminQuickActions />
           <ActivityFeed activities={data.recentActivity} />
         </div>
         <PendingApprovals

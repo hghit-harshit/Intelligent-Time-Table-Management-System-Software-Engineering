@@ -34,8 +34,8 @@ export default function TimetablePreview() {
       });
   }, []);
 
-  const openModal = (courses, day, time) => {
-    setModalData({ courses, day, time });
+  const openModal = (courses, day, time, slotLabel) => {
+    setModalData({ courses, day, time, slotLabel });
     setSearchQuery("");
   };
 
@@ -210,7 +210,7 @@ export default function TimetablePreview() {
             </tr>
           </thead>
           <tbody>
-            {previewRows.map((row) => (
+            {previewRows.map((row, rowIndex) => (
               <tr key={row.key}>
                 <td style={{ 
                   padding: "8px", 
@@ -218,7 +218,12 @@ export default function TimetablePreview() {
                   fontWeight: fonts.weight.semibold,
                   borderBottom: `1px solid ${colors.border.subtle}`,
                 }}>
-                  {row.timeLabel}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <span>{row.timeLabel}</span>
+                    <span style={{ fontSize: "10px", color: colors.text.muted, letterSpacing: "0.06em" }}>
+                      SLOT {String.fromCharCode(65 + rowIndex)}
+                    </span>
+                  </div>
                 </td>
                 {previewDays.map((day) => {
                   const slot = row.slotsByDay[day];
@@ -252,6 +257,8 @@ export default function TimetablePreview() {
                     );
                   }
 
+                  const slotLabel = `Slot ${String.fromCharCode(65 + rowIndex)}`;
+
                   return (
                     <td 
                       key={day} 
@@ -261,7 +268,7 @@ export default function TimetablePreview() {
                         background: colors.bg.base,
                         cursor: "pointer",
                       }}
-                      onClick={() => openModal(courses, day, row.timeLabel)}
+                      onClick={() => openModal(courses, day, row.timeLabel, slotLabel)}
                       title={`${courseCount} course(s) - Click to view all`}
                     >
                       <div style={{ 
@@ -358,10 +365,10 @@ export default function TimetablePreview() {
             }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: fonts.size.lg, fontFamily: fonts.heading }}>
-                  {modalData.day} - {modalData.time}
+                  {modalData.day} · {modalData.time}
                 </h3>
                 <p style={{ margin: "4px 0 0", fontSize: fonts.size.xs, color: colors.text.muted }}>
-                  {modalData.courses.length} course(s)
+                  {modalData.slotLabel || ""} · {modalData.courses.length} course(s)
                 </p>
               </div>
               <button 
