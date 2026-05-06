@@ -805,4 +805,65 @@ router.post("/bulk-reschedule", async (req, res) => {
   }
 });
 
+// ─── Conflict Monitor ────────────────────────────────────────────
+// Returns conflicts from the latest timetable in a shape the frontend expects.
+
+const typeDisplayMap: Record<string, string> = {
+  room_conflict: "Room Conflict",
+  faculty_conflict: "Faculty Conflict",
+  student_conflict: "Student Conflict",
+};
+
+const severityMap: Record<string, string> = {
+  error: "critical",
+  warning: "warning",
+};
+
+router.get("/conflicts", async (req, res) => {
+  try {
+    const timetable = await TimetableResultModel.findOne({ isLatest: true }).lean();
+    if (!timetable) return ok(res, []);
+
+    const rawConflicts: any[] = (timetable as any).conflicts ?? [];
+    const conflicts = rawConflicts.map((c, i) => ({
+      id: `conflict-${i}`,
+      type: typeDisplayMap[c.type] || c.type || "Unknown",
+      course1: c.conflictingCourseCodes?.join(", ") || c.courseCode || "",
+      room: c.affectedRooms?.join(", ") || "",
+      slot: c.day && c.startTime ? `${c.day} ${c.startTime}–${c.endTime}` : "",
+      severity: severityMap[c.severity] || "warning",
+      suggestedFix: c.description || "",
+      status: (c as any).status || "unresolved",
+    }));
+
+    return ok(res, conflicts);
+  } catch (error) {
+    return fail(res, "Failed to fetch conflicts", 500, error instanceof Error ? error.message : error);
+  }
+});
+
+// Resolve or override a conflict by updating its status in the timetable doc.
+router.patch("/conflicts/:id/resolve", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body as { action?: string };
+    const index = parseInt(id.replace("conflict-", ""), 10);
+    if (Number.isNaN(index)) return fail(res, "Invalid conflict id", 400);
+
+    const timetable = await TimetableResultModel.findOne({ isLatest: true });
+    if (!timetable) return fail(res, "No timetable found", 404);
+
+    const conflicts: any[] = (timetable as any).conflicts ?? [];
+    if (index < 0 || index >= conflicts.length) return fail(res, "Conflict not found", 404);
+
+    conflicts[index].status = action === "override" ? "overridden" : "resolved";
+
+    await timetable.save();
+
+    return ok(res, { success: true, id, action, status: conflicts[index].status });
+  } catch (error) {
+    return fail(res, "Failed to resolve conflict", 500, error instanceof Error ? error.message : error);
+  }
+});
+
 export default router;
