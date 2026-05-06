@@ -10,7 +10,7 @@
  * The "×" button in the notifications pane returns to "classes".
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 import { fetchStudentNotifications, fetchStudentExams, deleteStudentNotification, markStudentNotificationRead } from "../../../services/studentApi";
 import { CheckCheck, Trash2 } from "lucide-react";
@@ -63,6 +63,7 @@ interface RightPaneProps {
   paneState: PaneState;
   setPaneState: (s: PaneState) => void;
   todaysClasses: TodayClass[];
+  examsData?: any[];
   currentDate: { dayName: string; day: number; month: number; year: number };
   onViewFullDay: () => void;
   onAddNotes?: (cls: TodayClass) => void;
@@ -88,19 +89,36 @@ function daysLeftFromDate(dateStr: string): number {
   return Math.ceil((examDate.getTime() - today.getTime()) / 86400000);
 }
 
+function normalizeExam(exam: any): Exam {
+  const startTime = exam.time ?? exam.startTime ?? "";
+  const endTime = exam.endTime ?? "";
+  const duration = exam.duration ?? (() => {
+    if (!startTime || !endTime) return "";
+    const [sh, sm] = String(startTime).split(":").map(Number);
+    const [eh, em] = String(endTime).split(":").map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (!Number.isFinite(diff) || diff <= 0) return "";
+    return diff % 60 === 0 ? `${diff / 60}h` : `${diff}m`;
+  })();
+  return {
+    ...exam,
+    courseName: exam.courseName ?? exam.subject ?? exam.courseCode ?? "Exam",
+    courseCode: exam.courseCode ?? "",
+    date: exam.date ?? exam.examDate ?? "",
+    time: startTime,
+    duration,
+    hall: exam.hall ?? exam.location ?? exam.room ?? "",
+    seat: exam.seat ?? "",
+    row: exam.row ?? "",
+  };
+}
+
 function daysLeftBadgeColor(days: number): { bg: string; text: string } {
   if (days <= 10) return { bg: "rgba(220,38,38,0.08)", text: "#DC2626" };
   if (days <= 17) return { bg: "rgba(217,119,6,0.08)", text: "#D97706" };
   return { bg: "rgba(37,99,235,0.08)", text: "#2563EB" };
 }
 
-function notifDotColor(notif: Notification): string {
-  if (notif.read) return colors.border.medium;
-  const t = (notif.type || "").toLowerCase();
-  if (t.includes("reschedule")) return "#F59E0B";
-  if (t.includes("exam")) return "#DC2626";
-  return colors.primary.main;
-}
 
 const MONTH_NAMES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -143,6 +161,7 @@ export default function RightPane({
   paneState,
   setPaneState,
   todaysClasses,
+  examsData = [],
   currentDate,
   onViewFullDay,
   onAddNotes,
@@ -156,46 +175,94 @@ export default function RightPane({
   const [exams, setExams] = useState<Exam[]>([]);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [loadingExams, setLoadingExams] = useState(false);
+  // Track IDs pending deletion so a fast re-fetch doesn't resurrect them
+  const deletedIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
-    if (paneState === "notifs" && notifications.length === 0) {
-      setLoadingNotifs(true);
-      fetchStudentNotifications()
-        .then((data) => setNotifications(Array.isArray(data) ? data : data?.notifications || []))
-        .catch(() => setNotifications([]))
-        .finally(() => setLoadingNotifs(false));
-    }
+    if (paneState !== "notifs") return;
+    if (notifications.length === 0) setLoadingNotifs(true);
+    fetchStudentNotifications()
+      .then((data) => {
+        const fetched: Notification[] = Array.isArray(data) ? data : data?.notifications || [];
+        const normalized = fetched.map((n: any) => ({
+          ...n,
+          id: n.id || n._id,
+          read: Boolean(n.read ?? n.isRead),
+        }));
+        setNotifications(normalized.filter((n) => !deletedIdsRef.current.has(n.id)));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingNotifs(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paneState]);
 
   useEffect(() => {
-    if (paneState === "exams" && exams.length === 0) {
+    if (paneState !== "exams") return;
+
+    if (Array.isArray(examsData) && examsData.length > 0) {
+      setExams(examsData.map(normalizeExam));
+      return;
+    }
+
+    if (exams.length === 0) {
       setLoadingExams(true);
       fetchStudentExams()
-        .then((data) => setExams(Array.isArray(data) ? data : data?.exams || []))
+        .then((data) => {
+          const raw = Array.isArray(data) ? data : data?.exams || [];
+          setExams(raw.map(normalizeExam));
+        })
         .catch(() => setExams([]))
         .finally(() => setLoadingExams(false));
     }
-  }, [paneState]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paneState, examsData]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const visibleNotifs = notifications.slice(0, 8);
-  const validExams = exams.filter((exam) => {
-    const date = new Date(exam.date);
-    return Boolean(exam.date) && !Number.isNaN(date.getTime());
-  });
+  const visibleNotifs = notifications.slice(0, 20);
+  const validExams = exams
+    .filter((exam) => {
+      const date = new Date(exam.date);
+      if (!exam.date || Number.isNaN(date.getTime())) return false;
+      return daysLeftFromDate(exam.date) >= 0;
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const getNotifId = (notif: Notification, index: number) =>
-    notif.id || (notif as any)._id || `notif-${index}`;
+  const removeIds = (ids: string[]) => {
+    ids.forEach((id) => deletedIdsRef.current.add(id));
+    setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+    Promise.allSettled(ids.map((id) => deleteStudentNotification(id))).then((results) => {
+      const failedIds = results
+        .map((result, index) => (result.status === "rejected" ? ids[index] : null))
+        .filter(Boolean);
+
+      failedIds.forEach((id) => deletedIdsRef.current.delete(id));
+      if (failedIds.length > 0) {
+        fetchStudentNotifications()
+          .then((data) => {
+            const fetched: Notification[] = Array.isArray(data) ? data : data?.notifications || [];
+            const normalized = fetched.map((n: any) => ({
+              ...n,
+              id: n.id || n._id,
+              read: Boolean(n.read ?? n.isRead),
+            }));
+            setNotifications(normalized.filter((n) => !deletedIdsRef.current.has(n.id)));
+          })
+          .catch(() => {});
+      }
+    });
+  };
+
+  const handleDeleteSingle = (id: string) => {
+    removeIds([id]);
+    setSelectedNotifIds((prev) => prev.filter((sid) => sid !== id));
+    if (selectedNotifIds.length <= 1) setSelectionMode(false);
+  };
 
   const toggleNotifSelected = (id: string) => {
     setSelectedNotifIds((prev) =>
       prev.includes(id) ? prev.filter((nid) => nid !== id) : [...prev, id],
     );
   };
-
-  const clearNotifSelection = () => setSelectedNotifIds([]);
-
-  const selectAllVisible = () => setSelectedNotifIds(visibleNotifs.map(getNotifId));
 
   const handleReadAll = () => {
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
@@ -208,10 +275,8 @@ export default function RightPane({
 
   const handleDeleteSelected = () => {
     if (selectedNotifIds.length === 0) return;
-    const ids = selectedNotifIds;
-    setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+    removeIds([...selectedNotifIds]);
     setSelectedNotifIds([]);
-    ids.forEach((id) => deleteStudentNotification(id).catch(() => {}));
     setSelectionMode(false);
   };
 
@@ -221,9 +286,7 @@ export default function RightPane({
   };
 
   useEffect(() => {
-    if (selectionMode && selectedNotifIds.length === 0) {
-      setSelectionMode(false);
-    }
+    if (selectionMode && selectedNotifIds.length === 0) setSelectionMode(false);
   }, [selectionMode, selectedNotifIds.length]);
 
   return (
@@ -647,102 +710,118 @@ export default function RightPane({
               No notifications.
             </div>
           ) : (
-            visibleNotifs.map((notif, i) => {
-              const notifId = getNotifId(notif, i);
+            visibleNotifs.map((notif) => {
+              const type = (notif.type || "").toLowerCase();
+              const isExam = type.includes("exam");
+              const isReschedule = type.includes("reschedule") || type.includes("schedule_change") || type.includes("schedule");
+              const accent = isExam ? "#DC2626" : isReschedule ? "#D97706" : colors.primary.main;
+              const accentBg = isExam ? "rgba(220,38,38,0.07)" : isReschedule ? "rgba(217,119,6,0.07)" : "rgba(37,99,235,0.05)";
+              const badge = isExam ? "📝 EXAM" : isReschedule ? "↺ RESCHEDULED" : "🔔 UPDATE";
+              const details: string[] = ((notif as any).details || "")
+                .split("\n")
+                .map((s: string) => s.trim())
+                .filter(Boolean);
+
               return (
               <div
-                key={notifId}
+                key={notif.id}
                 style={{
-                  padding: "12px 16px",
                   borderTop: `1px solid ${colors.border.subtle}`,
-                  display: "flex",
-                  gap: "10px",
-                  alignItems: "flex-start",
-                  cursor: "pointer",
+                  borderLeft: `3px solid ${notif.read ? colors.border.medium : accent}`,
+                  background: notif.read ? "transparent" : accentBg,
+                  position: "relative",
+                  opacity: notif.read ? 0.65 : 1,
                 }}
-                onClick={() => handleTapSelect(notifId)}
               >
-                {selectionMode && (
-                  <input
-                    type="checkbox"
-                    checked={selectedNotifIds.includes(notifId)}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleNotifSelected(notifId);
-                    }}
-                    style={{ marginTop: "4px" }}
-                  />
-                )}
-                {/* Colored dot */}
                 <div
-                  style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: notifDotColor(notif),
-                    flexShrink: 0,
-                    marginTop: "5px",
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: "3px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: fonts.weight.semibold,
-                        fontSize: fonts.size.sm,
-                        color: notif.read ? colors.text.secondary : colors.text.primary,
-                      }}
-                    >
-                      {notif.title}
+                  style={{ padding: "10px 12px 10px 12px", cursor: selectionMode ? "pointer" : "default" }}
+                  onClick={() => selectionMode && handleTapSelect(notif.id)}
+                >
+                  {/* Top row: badge + time + delete */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "5px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {selectionMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedNotifIds.includes(notif.id)}
+                          onChange={(e) => { e.stopPropagation(); toggleNotifSelected(notif.id); }}
+                          style={{ cursor: "pointer" }}
+                        />
+                      )}
+                      <span style={{
+                        fontSize: "9px", fontWeight: 700, letterSpacing: "0.05em",
+                        color: notif.read ? colors.text.muted : accent,
+                        background: notif.read ? colors.bg.raised : accentBg,
+                        border: `1px solid ${notif.read ? colors.border.medium : accent}`,
+                        borderRadius: "4px", padding: "1px 6px",
+                      }}>
+                        {badge}
+                      </span>
+                      {!notif.read && (
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent, display: "inline-block", flexShrink: 0 }} />
+                      )}
                     </div>
-                    <div
-                      style={{
-                        fontSize: fonts.size.xs,
-                        color: colors.text.muted,
-                        flexShrink: 0,
-                        marginLeft: "8px",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {timeAgo(notif.createdAt)}
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: fonts.size.xs, color: colors.text.muted, whiteSpace: "nowrap" }}>
+                        {timeAgo(notif.createdAt)}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSingle(notif.id); }}
+                        title="Delete"
+                        style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          color: colors.text.muted, fontSize: "14px", lineHeight: 1,
+                          padding: "0 2px", fontFamily: fonts.body,
+                        }}
+                      >×</button>
                     </div>
                   </div>
-                  <div
-                    style={{
-                      fontSize: fonts.size.xs,
-                      color: colors.text.secondary,
-                      lineHeight: 1.5,
-                    }}
-                  >
+
+                  {/* Title */}
+                  <div style={{
+                    fontWeight: fonts.weight.semibold,
+                    fontSize: fonts.size.sm,
+                    color: notif.read ? colors.text.secondary : colors.text.primary,
+                    marginBottom: "3px",
+                    lineHeight: 1.35,
+                  }}>
+                    {notif.title}
+                  </div>
+
+                  {/* Message */}
+                  <div style={{ fontSize: fonts.size.xs, color: colors.text.secondary, lineHeight: 1.5, marginBottom: details.length ? "6px" : 0 }}>
                     {notif.message}
                   </div>
+
+                  {/* Structured details */}
+                  {details.length > 0 && (
+                    <div style={{
+                      background: colors.bg.raised,
+                      border: `1px solid ${colors.border.subtle}`,
+                      borderRadius: radius.sm,
+                      padding: "5px 8px",
+                      display: "flex", flexDirection: "column", gap: "2px",
+                    }}>
+                      {details.map((line, li) => (
+                        <div key={li} style={{ fontSize: "10px", color: accent, fontWeight: li === 0 ? fonts.weight.semibold : fonts.weight.regular, lineHeight: 1.4 }}>
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Mark read */}
                   {!notif.read && (
                     <button
-                      onClick={() => {
-                        setNotifications((prev) =>
-                          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)),
-                        );
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNotifications((prev) => prev.map((n) => n.id === notif.id ? { ...n, read: true } : n));
                         markStudentNotificationRead(notif.id).catch(() => {});
-                        setSelectedNotifIds([]);
-                        setSelectionMode(false);
                       }}
                       style={{
-                        marginTop: "6px",
-                        background: colors.primary.ghost,
-                        border: "none",
-                        borderRadius: radius.sm,
-                        padding: "2px 8px",
-                        color: colors.primary.main,
-                        fontSize: "10px",
-                        cursor: "pointer",
-                        fontFamily: fonts.body,
+                        marginTop: "6px", background: "none", border: `1px solid ${accent}`,
+                        borderRadius: radius.sm, padding: "2px 8px", color: accent,
+                        fontSize: "10px", cursor: "pointer", fontFamily: fonts.body,
                       }}
                     >
                       Mark read

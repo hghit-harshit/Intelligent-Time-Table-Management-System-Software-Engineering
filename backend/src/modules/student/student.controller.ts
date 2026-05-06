@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import type { Request, Response } from "express";
 import { CourseModel } from "../../database/models/courseModel.js";
+import { ExamDateWindowModel } from "../../database/models/examDateWindowModel.js";
 import { ExamScheduleModel } from "../../database/models/examScheduleModel.js";
 import { NotificationModel } from "../../database/models/notificationModel.js";
 import { ProfessorModel } from "../../database/models/professorModel.js";
@@ -75,6 +76,25 @@ const formatTime24 = (time: string) => {
   return `${hours}:${String(minutes).padStart(2, "0")}`;
 };
 
+const normalizeStartTime = (value: unknown) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const m24 = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (m24) {
+    return `${String(Number(m24[1])).padStart(2, "0")}:${m24[2]}`;
+  }
+  const m12 = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (m12) {
+    let hh = Number(m12[1]);
+    const mm = m12[2];
+    const ampm = m12[3].toUpperCase();
+    if (ampm === "PM" && hh !== 12) hh += 12;
+    if (ampm === "AM" && hh === 12) hh = 0;
+    return `${String(hh).padStart(2, "0")}:${mm}`;
+  }
+  return raw;
+};
+
 const formatTime12 = (time: string) => {
   const [hours, minutes] = time.split(":").map(Number);
   if (Number.isNaN(hours) || Number.isNaN(minutes)) {
@@ -133,12 +153,14 @@ const getWeekDates = (today: Date) => {
 };
 
 const buildClassItem = (assignment: Record<string, any>) => {
+  const isRescheduleSource = Boolean(assignment.isRescheduleSource);
   return {
     name: assignment.courseName || assignment.courseCode || "Untitled",
     courseCode: assignment.courseCode || "",
-    location: assignment.roomName || "TBD",
+    location: isRescheduleSource ? "Course moved from this slot" : (assignment.roomName || "TBD"),
     professor: assignment.professorName || "TBA",
     isRescheduled: Boolean(assignment.isRescheduled),
+    isRescheduleSource,
   };
 };
 
@@ -187,12 +209,23 @@ const buildDashboardPayload = (
     ),
   ).sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
 
+  const pickCellAssignment = (dayName: string, time: string) => {
+    const matches =
+      assignmentsByDay
+        .get(dayName)
+        ?.filter((assignment) => assignment.startTime === time) ?? [];
+    if (matches.length === 0) return null;
+    return matches.sort((a, b) => {
+      const score = (x: AssignmentRecord) =>
+        x.isRescheduled ? 3 : (x.isRescheduleSource ? 1 : 2);
+      return score(b) - score(a);
+    })[0];
+  };
+
   const weeklySchedule = timeSlots.map((time) => ({
     time: formatTime24(time),
     classes: weekDayNames.map((dayName) => {
-      const match = assignmentsByDay
-        .get(dayName)
-        ?.find((assignment) => assignment.startTime === time);
+      const match = pickCellAssignment(dayName, time);
       return match ? buildClassItem(match) : null;
     }),
   }));
@@ -471,45 +504,90 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
           { currentDate: { $exists: true, $nin: [null, ""] } },
           { requestedDate: { $exists: true, $nin: [null, ""] } },
         ],
-      }).lean();
+      })
+        .populate("courseId", "code")
+        .lean();
 
       for (const rescheduled of approvedReschedules) {
         const fromDateStr = (rescheduled as any).currentDate as string | undefined;
         const toDateStr = (rescheduled as any).requestedDate as string | undefined;
         if (!fromDateStr && !toDateStr) continue;
 
-        const fromDate = fromDateStr ? new Date(fromDateStr) : null;
-        const toDate = toDateStr ? new Date(toDateStr) : null;
-        const courseIdStr = String((rescheduled as any).courseId);
+        const fromDate = fromDateStr ? new Date(fromDateStr + "T00:00:00") : null;
+        const toDate = toDateStr ? new Date(toDateStr + "T00:00:00") : null;
+        const courseRef = (rescheduled as any).courseId;
+        const courseIdStr = courseRef && typeof courseRef === "object"
+          ? String(courseRef._id)
+          : String(courseRef ?? "");
+        const courseCode = courseRef && typeof courseRef === "object"
+          ? String(courseRef.code || "")
+          : String((rescheduled as any).courseCode || "");
         const curSlot = (rescheduled as any).currentSlot;
         const reqSlot = (rescheduled as any).requestedSlot;
-        const curStart = curSlot?.time?.split("-")[0]?.trim();
-        const reqStart = reqSlot?.time?.split("-")[0]?.trim();
+        const curStart = normalizeStartTime(curSlot?.time?.split("-")[0]?.trim());
+        const reqStart = normalizeStartTime(reqSlot?.time?.split("-")[0]?.trim());
         const reqEnd = reqSlot?.time?.split("-")[1]?.trim();
+
+        const matchesCourse = (a: Record<string, any>) =>
+          (courseIdStr && String(a.courseId) === courseIdStr) ||
+          (courseCode && String(a.courseCode) === courseCode);
 
         // Remove the original slot from its day if currentDate is in this week
         if (fromDate && fromDate >= weekStart && fromDate <= weekEnd && curStart && curSlot?.day) {
-          assignments = assignments.filter(
-            (a) =>
-              !(String(a.courseId) === courseIdStr &&
-                a.startTime === curStart &&
-                normalizeDayName(a.day) === normalizeDayName(curSlot.day)),
-          );
+          assignments = assignments.map((a) => {
+            const isOriginalSlot =
+              matchesCourse(a) &&
+              normalizeStartTime(a.startTime || a.time) === curStart &&
+              normalizeDayName(a.day) === normalizeDayName(curSlot.day);
+            if (!isOriginalSlot) return a;
+            return {
+              ...a,
+              isRescheduleSource: true,
+              isRescheduled: false,
+            };
+          });
         }
 
         // Insert the rescheduled slot if requestedDate is in this week
         if (toDate && toDate >= weekStart && toDate <= weekEnd && reqStart && reqSlot?.day) {
-          const original = rawAssignments.find((a) => String(a.courseId) === courseIdStr);
+          const original =
+            assignments.find((a) => matchesCourse(a)) ||
+            rawAssignments.find((a) => matchesCourse(a));
           if (original) {
             assignments.push({
               ...original,
               day: normalizeDayName(reqSlot.day),
               startTime: reqStart,
               endTime: reqEnd || original.endTime,
+              isRescheduleSource: false,
               isRescheduled: true,
             });
           }
         }
+      }
+    }
+
+    // Strip classes that fall on admin-selected exam dates.
+    const examWindow = await ExamDateWindowModel.findOne({ isActive: true }).lean();
+    if (examWindow) {
+      const weekDatesForExam = getWeekDates(now);
+      const examDayIndices = new Set<number>();
+      for (const examDate of (examWindow as any).dates as Date[]) {
+        const ed = new Date(examDate);
+        ed.setHours(0, 0, 0, 0);
+        for (let i = 0; i < weekDatesForExam.length; i++) {
+          const wd = new Date(weekDatesForExam[i]);
+          wd.setHours(0, 0, 0, 0);
+          if (wd.getTime() === ed.getTime()) examDayIndices.add(i);
+        }
+      }
+      if (examDayIndices.size > 0) {
+        const blockedDays = new Set(
+          Array.from(examDayIndices).map((i) => weekDayNames[i]),
+        );
+        assignments = assignments.filter(
+          (a) => !blockedDays.has(normalizeDayName(a.day)),
+        );
       }
     }
 

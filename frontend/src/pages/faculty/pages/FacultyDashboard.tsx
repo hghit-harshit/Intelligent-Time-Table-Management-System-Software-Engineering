@@ -11,6 +11,7 @@ import {
   createClassReference,
   fetchClassReferences,
 } from "../../../services/facultyApi";
+import { fetchExamDateWindow, fetchMyScheduledExams } from "../../../services/examApi";
 import { fetchTimetablePublishedAt } from "../../../services/studentApi";
 import { Clock, MapPin } from "lucide-react";
 
@@ -90,12 +91,33 @@ const normalizeName = (value: string) =>
 const normalizeDay = (value: string) => {
   const map: Record<string, string> = {
     mon: "Monday", monday: "Monday",
-    tue: "Tuesday", tuesday: "Tuesday",
-    wed: "Wednesday", wednesday: "Wednesday",
-    thu: "Thursday", thursday: "Thursday",
+    tue: "Tuesday", tues: "Tuesday", tuesday: "Tuesday",
+    wed: "Wednesday", weds: "Wednesday", wednesday: "Wednesday",
+    thu: "Thursday", thur: "Thursday", thurs: "Thursday", thursday: "Thursday",
     fri: "Friday", friday: "Friday",
+    sat: "Saturday", saturday: "Saturday",
+    sun: "Sunday", sunday: "Sunday",
   };
   return map[String(value || "").toLowerCase()] ?? value;
+};
+
+const normalizeStartTime = (value: string) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const m24 = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (m24) {
+    return `${String(Number(m24[1])).padStart(2, "0")}:${m24[2]}`;
+  }
+  const m12 = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (m12) {
+    let hh = Number(m12[1]);
+    const mm = m12[2];
+    const ampm = m12[3].toUpperCase();
+    if (ampm === "PM" && hh !== 12) hh += 12;
+    if (ampm === "AM" && hh === 12) hh = 0;
+    return `${String(hh).padStart(2, "0")}:${mm}`;
+  }
+  return raw;
 };
 
 const formatTime12 = (value: string) => {
@@ -141,14 +163,25 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
     .filter(Boolean)
     .sort((a: string, b: string) => timeToMinutes(a) - timeToMinutes(b));
 
+  const pickCellAssignment = (day: string, time: string) => {
+    const matches = (byDay.get(day) || []).filter((a) => (a.startTime || a.time) === time);
+    if (matches.length === 0) return null;
+    return matches.sort((a, b) => {
+      const score = (x: any) => (x.isRescheduled ? 3 : (x.isRescheduleSource ? 1 : 2));
+      return score(b) - score(a);
+    })[0];
+  };
+
   const weeklySchedule = timeSlots.map((time) => ({
     time: formatTime12(time),
     classes: WEEK_DAY_NAMES.map((day) => {
-      const match = byDay.get(day)?.find((a) => (a.startTime || a.time) === time);
+      const match = pickCellAssignment(day, time);
       if (!match) return null;
       return {
         name: match.courseName || match.courseCode || "Untitled",
-        location: [match.courseCode, match.roomName].filter(Boolean).join(" · ") || "TBD",
+        location: match.isRescheduleSource
+          ? "Course moved from this slot"
+          : ([match.courseCode, match.roomName].filter(Boolean).join(" · ") || "TBD"),
         professor: "",
         duration: formatDuration(match.startTime, match.endTime),
         courseCode: match.courseCode || "",
@@ -159,6 +192,7 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
         day: day,
         room: match.roomName || "TBD",
         isRescheduled: Boolean(match.isRescheduled),
+        isRescheduleSource: Boolean(match.isRescheduleSource),
       };
     }),
   }));
@@ -171,7 +205,9 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
       time: formatTime12(item.startTime || item.time),
       class: {
         name: item.courseName || item.courseCode || "Untitled",
-        location: [item.courseCode, item.roomName].filter(Boolean).join(" · ") || "TBD",
+        location: item.isRescheduleSource
+          ? "Course moved from this slot"
+          : ([item.courseCode, item.roomName].filter(Boolean).join(" · ") || "TBD"),
         professor: "",
         duration: formatDuration(item.startTime, item.endTime),
         courseCode: item.courseCode || "",
@@ -182,6 +218,7 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
         day: dayName,
         room: item.roomName || "TBD",
         isRescheduled: Boolean(item.isRescheduled),
+        isRescheduleSource: Boolean(item.isRescheduleSource),
       },
     }));
   });
@@ -220,6 +257,25 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
   };
 }
 
+function filterAssignmentsOnExamDates(assignments: any[], examDates: string[], weekStart: Date): any[] {
+  if (!examDates.length) return assignments;
+  const ws = new Date(weekStart);
+  ws.setHours(0, 0, 0, 0);
+  const blockedDays = new Set<string>();
+  for (const dateStr of examDates) {
+    const ed = new Date(dateStr);
+    ed.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 5; i++) {
+      const wd = new Date(ws);
+      wd.setDate(ws.getDate() + i);
+      if (wd.getTime() === ed.getTime()) {
+        blockedDays.add(WEEK_DAY_NAMES[i]);
+      }
+    }
+  }
+  return blockedDays.size ? assignments.filter((a) => !blockedDays.has(normalizeDay(a.day))) : assignments;
+}
+
 function applyFacultyRescheduleOverlays(
   assignments: any[],
   approvedReschedules: any[],
@@ -252,8 +308,8 @@ function applyFacultyRescheduleOverlays(
 
     const curSlot = req.currentSlot;
     const reqSlot = req.requestedSlot;
-    const curStart = curSlot?.time?.split("-")[0]?.trim();
-    const reqStart = reqSlot?.time?.split("-")[0]?.trim();
+    const curStart = normalizeStartTime(curSlot?.time?.split("-")[0]?.trim());
+    const reqStart = normalizeStartTime(reqSlot?.time?.split("-")[0]?.trim());
     const reqEnd = reqSlot?.time?.split("-")[1]?.trim();
 
     const matchesCourse = (a: any) =>
@@ -261,14 +317,18 @@ function applyFacultyRescheduleOverlays(
       (courseCode && String(a.courseCode) === courseCode);
 
     if (fromDate && fromDate >= ws && fromDate <= we && curStart && curSlot?.day) {
-      result = result.filter(
-        (a) =>
-          !(
-            matchesCourse(a) &&
-            a.startTime === curStart &&
-            normalizeDay(a.day) === normalizeDay(curSlot.day)
-          ),
-      );
+      result = result.map((a) => {
+        const isOriginalSlot =
+          matchesCourse(a) &&
+          normalizeStartTime(a.startTime || a.time) === curStart &&
+          normalizeDay(a.day) === normalizeDay(curSlot.day);
+        if (!isOriginalSlot) return a;
+        return {
+          ...a,
+          isRescheduleSource: true,
+          isRescheduled: false,
+        };
+      });
     }
 
     if (toDate && toDate >= ws && toDate <= we && reqStart && reqSlot?.day) {
@@ -279,6 +339,7 @@ function applyFacultyRescheduleOverlays(
           day: normalizeDay(reqSlot.day),
           startTime: reqStart,
           endTime: reqEnd || original.endTime,
+          isRescheduleSource: false,
           isRescheduled: true,
         });
       }
@@ -297,20 +358,43 @@ const mapFacultyNotifications = (requests: any[]) => {
 
   return requests
     .map((request, index) => {
+      const courseRef = request.courseId;
+      const courseCode = (courseRef as any)?.code || request.courseCode || "Course";
+      const courseName = (courseRef as any)?.name || request.course || "";
+      const courseLabel = [courseCode, courseName].filter(Boolean).join(" — ");
+      const cur = request.currentSlot || {};
       const reqSlot = request.requestedSlot || {};
-      const slotText = request.requestedDate
-        ? `${request.requestedDate}`
-        : `${reqSlot.day || ""} ${reqSlot.time || ""}`.trim();
+      const from = request.currentDate
+        ? `${request.currentDate} (${cur.day || "—"} ${cur.time || "—"})`
+        : `${cur.day || "—"} ${cur.time || "—"}`.trim();
+      const to = request.requestedDate
+        ? `${request.requestedDate} (${reqSlot.day || "—"} ${reqSlot.time || "—"})`
+        : `${reqSlot.day || "—"} ${reqSlot.time || "—"}`.trim();
       const status = String(request.status || "pending").toLowerCase();
+      const isApproved = status === "approved";
+      const detailsLines = [
+        `From: ${from}`,
+        `To: ${to}`,
+      ];
+      if (status === "approved") {
+        detailsLines.push("Your reschedule request was approved by the admin. Please update your schedule.");
+      } else if (status === "rejected") {
+        detailsLines.push("Your reschedule request was rejected by the admin.");
+      } else {
+        detailsLines.push("Your request is pending admin review.");
+      }
       return {
         id: String(request._id || request.id || index),
-        title: `${statusText[status] || "Update"}: Reschedule Request`,
-        message: slotText
-          ? `Requested slot: ${slotText}`
-          : "Your reschedule request has been updated.",
+        title: isApproved
+          ? `Class Rescheduled: ${courseLabel}`
+          : `${statusText[status] || "Update"}: Reschedule Request`,
+        message: isApproved
+          ? `${courseLabel} has been moved from ${from} to ${to}.`
+          : `Requested move from ${from} to ${to}.`,
+        details: detailsLines.join("\n"),
         createdAt: request.createdAt || new Date().toISOString(),
-        read: status === "approved",
-        type: status,
+        read: status !== "pending",
+        type: isApproved ? "schedule_change" : status,
       };
     })
     .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
@@ -341,6 +425,9 @@ export default function FacultyDashboard() {
   const [refsLoading, setRefsLoading] = useState(false);
 
   const [approvedReschedules, setApprovedReschedules] = useState<any[]>([]);
+  const [examWindowDates, setExamWindowDates] = useState<string[]>([]);
+  const [examData, setExamData] = useState<any[]>([]);
+  const [examMode, setExamMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -373,9 +460,11 @@ export default function FacultyDashboard() {
     setStale(false);
 
     try {
-      const [timetable, requestData] = await Promise.all([
+      const [timetable, requestData, examWindowData, myExams] = await Promise.all([
         fetchTimetableLatest(),
         user?._id ? fetchRescheduleRequests(user._id) : Promise.resolve([]),
+        fetchExamDateWindow().catch(() => null),
+        fetchMyScheduledExams().catch(() => []),
       ]);
 
       const assignments = Array.isArray(timetable?.assignments) ? timetable.assignments : [];
@@ -393,9 +482,32 @@ export default function FacultyDashboard() {
 
       const requests = Array.isArray(requestData) ? requestData : [];
       const approved = requests.filter((r) => String(r.status || "").toLowerCase() === "approved");
+      const examDates: string[] = Array.isArray(examWindowData?.dates)
+        ? (examWindowData.dates as string[]).map((d: string) => d.split("T")[0])
+        : [];
       setApprovedReschedules(approved);
+      setExamWindowDates(examDates);
       setRawAssignments(filtered);
-      setDashboardData(buildFacultyDashboard(applyFacultyRescheduleOverlays(filtered, approved, viewWeekStart), viewWeekStart));
+      const rawExams: any[] = Array.isArray(myExams) ? myExams : [];
+      setExamData(rawExams.map((e: any) => ({
+        ...e,
+        date: e.date ?? e.examDate,
+        time: e.time ?? e.startTime,
+        duration: e.duration ?? (() => {
+          const [sh, sm] = (e.startTime || "0:0").split(":").map(Number);
+          const [eh, em] = (e.endTime || "0:0").split(":").map(Number);
+          const diff = (eh * 60 + em) - (sh * 60 + sm);
+          return diff > 0 ? (diff % 60 === 0 ? `${diff / 60}h` : `${diff}m`) : "";
+        })(),
+        hall: e.hall ?? e.location ?? e.room,
+        subject: e.subject ?? e.courseName ?? e.courseCode,
+      })));
+      const overlaid = filterAssignmentsOnExamDates(
+        applyFacultyRescheduleOverlays(filtered, approved, viewWeekStart),
+        examDates,
+        viewWeekStart,
+      );
+      setDashboardData(buildFacultyDashboard(overlaid, viewWeekStart));
       const mappedNotifications = mapFacultyNotifications(requests);
       setNotifications(mappedNotifications);
       setNotificationCount(requests.filter((req) => String(req.status || "").toLowerCase() === "pending").length);
@@ -432,8 +544,13 @@ export default function FacultyDashboard() {
 
   useEffect(() => {
     if (!rawAssignments.length) return;
-    setDashboardData(buildFacultyDashboard(applyFacultyRescheduleOverlays(rawAssignments, approvedReschedules, viewWeekStart), viewWeekStart));
-  }, [rawAssignments, approvedReschedules, viewWeekStart]);
+    const overlaid = filterAssignmentsOnExamDates(
+      applyFacultyRescheduleOverlays(rawAssignments, approvedReschedules, viewWeekStart),
+      examWindowDates,
+      viewWeekStart,
+    );
+    setDashboardData(buildFacultyDashboard(overlaid, viewWeekStart));
+  }, [rawAssignments, approvedReschedules, examWindowDates, viewWeekStart]);
 
   const handlePrev = () => {
     if (selectedView === "week") {
@@ -742,6 +859,9 @@ export default function FacultyDashboard() {
               onAddTask={() => setShowAddTask(true)}
               onBell={handleBell}
               notificationCount={notificationCount}
+              examMode={examMode}
+              examData={examData}
+              onToggleExamMode={() => setExamMode((v) => !v)}
             />
           ) : (
             <div style={{ background: colors.bg.base, border: `1px solid ${colors.border.medium}`, borderRadius: "14px", padding: "24px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>

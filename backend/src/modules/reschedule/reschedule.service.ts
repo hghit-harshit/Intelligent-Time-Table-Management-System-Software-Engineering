@@ -11,8 +11,69 @@ import { ProfessorModel } from "../../database/models/professorModel.js";
 import { StudentEnrollmentModel } from "../../database/models/studentEnrollmentModel.js";
 import { NotificationModel } from "../../database/models/notificationModel.js";
 import { CourseModel } from "../../database/models/courseModel.js";
+import { UserModel } from "../../database/models/userModel.js";
 
 type Assignment = Record<string, unknown>;
+
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeName = (value: unknown) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/^dr\.?\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const resolveProfessorForUser = async (userId: string) => {
+  if (!userId || !mongoose.isValidObjectId(userId)) return null;
+
+  const objectId = new mongoose.Types.ObjectId(userId);
+
+  // Primary link: professor.userId -> users._id
+  const byUserId = await ProfessorModel.findOne({ userId: objectId }).lean();
+  if (byUserId) return byUserId;
+
+  // Some datasets store professor._id directly in the user/profile linkage.
+  const byProfessorId = await ProfessorModel.findById(objectId).lean();
+  if (byProfessorId) return byProfessorId;
+
+  const user = await UserModel.findById(objectId)
+    .select("email firstName lastName profileId role")
+    .lean();
+  if (!user) return null;
+
+  // Profile link fallback: users.profileId -> professors._id
+  if ((user as any).profileId && mongoose.isValidObjectId(String((user as any).profileId))) {
+    const byProfile = await ProfessorModel.findById((user as any).profileId).lean();
+    if (byProfile) return byProfile;
+  }
+
+  // Email fallback (case-insensitive)
+  const email = String((user as any).email || "").trim();
+  if (email) {
+    const byEmail = await ProfessorModel.findOne({
+      email: { $regex: `^${escapeRegex(email)}$`, $options: "i" },
+    }).lean();
+    if (byEmail) return byEmail;
+  }
+
+  // Name fallback for legacy seeded datasets
+  const fullName = [String((user as any).firstName || "").trim(), String((user as any).lastName || "").trim()]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  if (fullName) {
+    const byName = await ProfessorModel.findOne({
+      name: { $regex: `^(dr\\.?\\s+)?${escapeRegex(fullName)}$`, $options: "i" },
+    }).lean();
+    if (byName) {
+      return byName;
+    }
+  }
+
+  return null;
+};
 
 const detectRequestConflicts = async (
   assignments: Assignment[],
@@ -90,12 +151,23 @@ const updateRequestStatus = async (
 };
 
 const getProfessorCourses = async (userId: string) => {
-  const professor = await ProfessorModel.findOne({
-    userId: new mongoose.Types.ObjectId(userId),
-  }).lean();
+  const professor = await resolveProfessorForUser(userId);
+  const user = mongoose.isValidObjectId(userId)
+    ? await UserModel.findById(userId).select("firstName lastName").lean()
+    : null;
+  const userFullName = [
+    String((user as any)?.firstName || "").trim(),
+    String((user as any)?.lastName || "").trim(),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
-  if (!professor) {
-    throw new AppError("Professor profile not found for current user", 404);
+  if (!professor && !userFullName) {
+    throw new AppError(
+      "Professor profile not found for current user. Please contact admin to link your faculty account.",
+      404,
+    );
   }
 
   const timetable = await TimetableResultModel.findOne({ isLatest: true })
@@ -105,13 +177,23 @@ const getProfessorCourses = async (userId: string) => {
   if (!timetable) return [];
 
   const assignments = (timetable as any).assignments as Assignment[];
-  const profIdStr = (professor as any)._id.toString();
-  const profName = (professor as any).name as string | undefined;
+  const profIdStr = professor ? String((professor as any)._id) : "";
+  const profName = professor ? String((professor as any).name || "") : "";
+  const profTarget = normalizeName(profName);
+  const userTarget = normalizeName(userFullName);
 
   const profAssignments = assignments.filter(
     (a) =>
-      (a.professorId && String(a.professorId) === profIdStr) ||
-      (profName && a.professorName === profName),
+      (profIdStr && a.professorId && String(a.professorId) === profIdStr) ||
+      (() => {
+        const name = normalizeName(a.professorName);
+        if (!name) return false;
+        const matchesProf =
+          profTarget && (name === profTarget || name.includes(profTarget) || profTarget.includes(name));
+        const matchesUser =
+          userTarget && (name === userTarget || name.includes(userTarget) || userTarget.includes(name));
+        return Boolean(matchesProf || matchesUser);
+      })(),
   );
 
   const courseMap = new Map<string, { courseId: string; courseCode: string; courseName: string; slots: { day: string; startTime: string; endTime: string; room: string }[] }>();
@@ -285,15 +367,9 @@ export const rescheduleService = {
     // but the request model references the Professor collection.
     // Look up the Professor by userId so populate() works on the admin side.
     let resolvedProfessorId = payload.professorId;
-    try {
-      const professor = await ProfessorModel.findOne({
-        userId: new mongoose.Types.ObjectId(payload.professorId),
-      }).lean();
-      if (professor) {
-        resolvedProfessorId = String((professor as any)._id);
-      }
-    } catch {
-      // Not a valid ObjectId or no professor found — use the value as-is
+    const resolvedProfessor = await resolveProfessorForUser(payload.professorId);
+    if (resolvedProfessor) {
+      resolvedProfessorId = String((resolvedProfessor as any)._id);
     }
 
     // Reject requests where the target date is today or in the past
@@ -303,6 +379,13 @@ export const rescheduleService = {
       const requested = new Date(payload.requestedDate + "T00:00:00");
       if (requested <= today) {
         throw new AppError("Requested date must be in the future", 400);
+      }
+    }
+    if (payload.currentDate && payload.requestedDate) {
+      const current = new Date(payload.currentDate + "T00:00:00");
+      const requested = new Date(payload.requestedDate + "T00:00:00");
+      if (!Number.isNaN(current.getTime()) && !Number.isNaN(requested.getTime()) && requested < current) {
+        throw new AppError("Requested date cannot be before the current class date", 400);
       }
     }
 
@@ -382,13 +465,9 @@ export const rescheduleService = {
     if (query.professorId) {
       // The faculty sends their User._id; resolve to Professor._id for the filter.
       let resolvedId = query.professorId;
-      try {
-        const professor = await ProfessorModel.findOne({
-          userId: new mongoose.Types.ObjectId(query.professorId),
-        }).lean();
-        if (professor) resolvedId = String((professor as any)._id);
-      } catch {
-        // Not a valid ObjectId — use as-is
+      const professor = await resolveProfessorForUser(query.professorId);
+      if (professor) {
+        resolvedId = String((professor as any)._id);
       }
       filter.professorId = resolvedId;
     }

@@ -47,6 +47,24 @@ const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"]
 
+const calcDuration = (start?: string, end?: string) => {
+  if (!start || !end) return ""
+  const [sh, sm] = start.split(":").map(Number)
+  const [eh, em] = end.split(":").map(Number)
+  const diff = (eh * 60 + em) - (sh * 60 + sm)
+  if (diff <= 0) return ""
+  return diff % 60 === 0 ? `${diff / 60}h` : `${diff}m`
+}
+
+const normalizeExam = (exam: any) => ({
+  ...exam,
+  date: exam.date ?? exam.examDate,
+  time: exam.time ?? exam.startTime,
+  duration: exam.duration ?? calcDuration(exam.startTime, exam.endTime),
+  hall: exam.hall ?? exam.location ?? exam.room,
+  subject: exam.subject ?? exam.courseName ?? exam.courseCode,
+})
+
 const getMondayOf = (date: Date): Date => {
   const d = new Date(date)
   const day = d.getDay()
@@ -156,7 +174,10 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchStudentExams()
-      .then((data) => setExamData(Array.isArray(data) ? data : data?.exams || []))
+      .then((data) => {
+        const raw: any[] = Array.isArray(data) ? data : data?.exams || []
+        setExamData(raw.map(normalizeExam))
+      })
       .catch(() => {})
   }, [])
 
@@ -308,7 +329,20 @@ export default function StudentDashboard() {
     return shorts[new Date(selectedYear, selectedMonth - 1, date).getDay()]
   }
 
+  const isDateInLoadedWeek = (date: Date) => {
+    const start = new Date(viewWeekStart)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(viewWeekStart)
+    end.setDate(end.getDate() + 4)
+    end.setHours(23, 59, 59, 999)
+    return date >= start && date <= end
+  }
+
   const getScheduleForExactDate = (date: Date) => {
+    if (isDateInLoadedWeek(date)) {
+      const fromCache = dashboardData.dailySchedules?.[date.getDate().toString()]
+      if (Array.isArray(fromCache) && fromCache.length > 0) return fromCache
+    }
     const jsDay = date.getDay()
     if (jsDay === 0 || jsDay === 6) return []
     const weekDayIdx = jsDay - 1
@@ -518,6 +552,7 @@ export default function StudentDashboard() {
             paneState={paneState}
             setPaneState={setPaneState}
             todaysClasses={rightPaneClasses}
+            examsData={examData}
             currentDate={rightPaneCurrentDate}
             onViewFullDay={() => setSelectedView("day")}
             onAddNotes={() => { window.location.href = "/StudentPage/notes" }}

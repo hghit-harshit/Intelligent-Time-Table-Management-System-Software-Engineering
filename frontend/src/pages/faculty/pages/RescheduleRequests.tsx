@@ -315,12 +315,14 @@ const toLocalISO = (d: Date) => {
 };
 
 // Returns the next N dates (as "YYYY-MM-DD" in LOCAL time) on which `dayName` falls.
-// startOffset=0 → include today; startOffset=1 → strictly future (tomorrow onward).
-const upcomingDatesForDay = (dayName, count = 6, startOffset = 0) => {
+// By default, it anchors from today. If anchorISO is provided, it anchors from that date.
+// startOffset=0 → include anchor day; startOffset=1 → strictly after anchor day.
+const upcomingDatesForDay = (dayName, count = 6, startOffset = 0, anchorISO = "") => {
   const targetIdx = DAY_JS_INDEX[dayName];
   if (targetIdx == null) return [];
   const results = [];
-  const d = new Date();
+  const base = anchorISO ? new Date(`${anchorISO}T00:00:00`) : new Date();
+  const d = Number.isNaN(base.getTime()) ? new Date() : base;
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + startOffset);
   for (let i = 0; results.length < count; i++) {
@@ -435,7 +437,13 @@ function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
     setRequestedDate("");
     // Pre-fill the from-date with the nearest upcoming occurrence of this day
     const upcoming = upcomingDatesForDay(slot.day, 1);
-    setCurrentDate(upcoming[0] || "");
+    const nextCurrentDate = upcoming[0] || "";
+    setCurrentDate(nextCurrentDate);
+    // Keep "to date" aligned to the selected "from date"
+    if (selectedTarget?.day) {
+      const targetUpcoming = upcomingDatesForDay(selectedTarget.day, 1, 1, nextCurrentDate);
+      setRequestedDate(targetUpcoming[0] || "");
+    }
     setSlotsLoading(true);
     setSlotsError(null);
     setStep("calendar");
@@ -454,10 +462,19 @@ function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
 
   const handleTargetSelect = (slot) => {
     setSelectedTarget(slot);
-    // Auto-fill the to-date with the nearest FUTURE (not today) occurrence of the target day
-    const upcoming = upcomingDatesForDay(slot.day, 1, 1);
+    // Auto-fill from the selected "from" date so we never jump to an earlier week by accident
+    const anchorDate = currentDate || toLocalISO(new Date());
+    const upcoming = upcomingDatesForDay(slot.day, 1, 1, anchorDate);
     setRequestedDate(upcoming[0] || "");
   };
+
+  useEffect(() => {
+    if (!selectedTarget?.day || !currentDate) return;
+    if (!requestedDate || requestedDate < currentDate) {
+      const next = upcomingDatesForDay(selectedTarget.day, 1, 1, currentDate);
+      setRequestedDate(next[0] || "");
+    }
+  }, [selectedTarget, currentDate, requestedDate]);
 
   const handleSubmit = async () => {
     if (!selectedTarget || !reason.trim()) return;
@@ -616,7 +633,7 @@ function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
   // ── Step: Calendar + Reason ──────────────────────────────────
   if (step === "calendar") {
     const todayISO = toLocalISO(new Date());
-    const requestedDateIsValid = requestedDate && requestedDate > todayISO;
+    const requestedDateIsValid = requestedDate && requestedDate > todayISO && (!currentDate || requestedDate >= currentDate);
     const canSubmit = selectedTarget && currentDate && requestedDateIsValid && reason.trim().length > 0;
     return (
       <div style={{ ...card, marginBottom: "12px" }}>
@@ -694,7 +711,7 @@ function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
                 <option value="">
                   {selectedTarget ? "Select date…" : "Pick a target slot first"}
                 </option>
-                {selectedTarget && upcomingDatesForDay(selectedTarget.day, 8, 1).map((iso) => (
+                {selectedTarget && upcomingDatesForDay(selectedTarget.day, 8, 1, currentDate || "").map((iso) => (
                   <option key={iso} value={iso}>{fmtDateLabel(iso)}</option>
                 ))}
               </select>

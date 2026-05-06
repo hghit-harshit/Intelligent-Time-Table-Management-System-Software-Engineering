@@ -57,12 +57,14 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function notifDotColor(notif: NotificationItem): string {
-  if (notif.read) return colors.border.medium;
+function notifAccent(notif: NotificationItem): { accent: string; accentBg: string; badge: string } {
   const t = (notif.type || "").toLowerCase();
-  if (t.includes("rejected")) return colors.error.main;
-  if (t.includes("approved")) return colors.success.main;
-  return "#F59E0B";
+  if (t.includes("exam")) return { accent: "#DC2626", accentBg: "rgba(220,38,38,0.07)", badge: "📝 EXAM" };
+  if (t.includes("reschedule") || t.includes("schedule_change") || t.includes("schedule"))
+    return { accent: "#D97706", accentBg: "rgba(217,119,6,0.07)", badge: "↺ RESCHEDULED" };
+  if (t === "approved") return { accent: "#059669", accentBg: "rgba(5,150,105,0.07)", badge: "✓ APPROVED" };
+  if (t === "rejected") return { accent: "#DC2626", accentBg: "rgba(220,38,38,0.07)", badge: "✕ REJECTED" };
+  return { accent: colors.primary.main, accentBg: "rgba(37,99,235,0.05)", badge: "🔔 UPDATE" };
 }
 
 function getTaskCategoryColor(category: string): { bg: string; text: string; border: string } {
@@ -371,40 +373,94 @@ export default function FacultyRightPane({
               No notifications.
             </div>
           ) : (
-            visibleNotifications.map((notif, i) => (
-              <div
-                key={notif.id || i}
-                style={{
-                  padding: "12px 16px",
-                  borderTop: `1px solid ${colors.border.subtle}`,
-                  display: "flex",
-                  gap: "10px",
-                  alignItems: "flex-start",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedNotifIds.includes(notif.id)}
-                  onChange={() => toggleSelectedNotif(notif.id)}
-                  aria-label={`Select notification ${notif.title}`}
-                  style={{ marginTop: "3px", cursor: "pointer", flexShrink: 0 }}
-                />
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: notifDotColor(notif), flexShrink: 0, marginTop: "5px" }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "3px" }}>
-                    <div style={{ fontWeight: fonts.weight.semibold, fontSize: fonts.size.sm, color: colors.text.primary }}>
+            visibleNotifications.map((notif, i) => {
+              const { accent, accentBg, badge } = notifAccent(notif);
+              const details: string[] = ((notif as any).details || "")
+                .split("\n").map((s: string) => s.trim()).filter(Boolean);
+              return (
+                <div
+                  key={notif.id || i}
+                  style={{
+                    borderTop: `1px solid ${colors.border.subtle}`,
+                    borderLeft: `3px solid ${notif.read ? colors.border.medium : accent}`,
+                    background: notif.read ? "transparent" : accentBg,
+                  }}
+                >
+                  <div style={{ padding: "10px 12px" }}>
+                    {/* Top row: checkbox + badge + time + delete */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "5px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedNotifIds.includes(notif.id)}
+                          onChange={() => toggleSelectedNotif(notif.id)}
+                          aria-label={`Select notification ${notif.title}`}
+                          style={{ cursor: "pointer", flexShrink: 0 }}
+                        />
+                        <span style={{
+                          fontSize: "9px", fontWeight: 700, letterSpacing: "0.05em",
+                          color: notif.read ? colors.text.muted : accent,
+                          background: notif.read ? colors.bg.raised : accentBg,
+                          border: `1px solid ${notif.read ? colors.border.medium : accent}`,
+                          borderRadius: "4px", padding: "1px 6px",
+                        }}>
+                          {badge}
+                        </span>
+                        {!notif.read && (
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent, display: "inline-block", flexShrink: 0 }} />
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ fontSize: fonts.size.xs, color: colors.text.muted, whiteSpace: "nowrap" }}>
+                          {timeAgo(notif.createdAt)}
+                        </span>
+                        <button
+                          onClick={() => onDeleteNotifications?.([notif.id])}
+                          title="Delete"
+                          style={{
+                            background: "none", border: "none", cursor: "pointer",
+                            color: colors.text.muted, fontSize: "14px", lineHeight: 1,
+                            padding: "0 2px", fontFamily: fonts.body,
+                          }}
+                        >×</button>
+                      </div>
+                    </div>
+
+                    {/* Title */}
+                    <div style={{
+                      fontWeight: fonts.weight.semibold, fontSize: fonts.size.sm,
+                      color: notif.read ? colors.text.secondary : colors.text.primary,
+                      marginBottom: "3px", lineHeight: 1.35,
+                    }}>
                       {notif.title}
                     </div>
-                    <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, flexShrink: 0, marginLeft: "8px", whiteSpace: "nowrap" }}>
-                      {timeAgo(notif.createdAt)}
+
+                    {/* Message */}
+                    <div style={{ fontSize: fonts.size.xs, color: colors.text.secondary, lineHeight: 1.5, marginBottom: details.length ? "6px" : 0 }}>
+                      {notif.message}
                     </div>
-                  </div>
-                  <div style={{ fontSize: fonts.size.xs, color: colors.text.secondary, lineHeight: 1.5 }}>
-                    {notif.message}
+
+                    {/* Structured details */}
+                    {details.length > 0 && (
+                      <div style={{
+                        background: colors.bg.raised, border: `1px solid ${colors.border.subtle}`,
+                        borderRadius: radius.sm, padding: "5px 8px",
+                        display: "flex", flexDirection: "column", gap: "2px",
+                      }}>
+                        {details.map((line, li) => (
+                          <div key={li} style={{
+                            fontSize: "10px", color: accent, lineHeight: 1.4,
+                            fontWeight: li === 0 ? fonts.weight.semibold : fonts.weight.regular,
+                          }}>
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

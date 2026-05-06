@@ -10,8 +10,10 @@ const HEADER_HEIGHT = 44
 const TIME_COL_WIDTH = 56
 
 const getClassColor = (classItem: any) => {
+  if (classItem?.isRescheduleSource)
+    return { bg: "rgba(148,163,184,0.10)", text: "#475569", border: "rgba(100,116,139,0.55)", borderStyle: "dashed" }
   if (classItem?.isRescheduled)
-    return { bg: "rgba(245,158,11,0.10)", text: "#D97706", border: "rgba(217,119,6,0.3)", borderStyle: "dashed" }
+    return { bg: "rgba(245,158,11,0.14)", text: "#92400E", border: "rgba(217,119,6,0.55)", borderStyle: "solid" }
   const name = (classItem?.name || "").toLowerCase()
   if (name.includes("math"))
     return { bg: "rgba(139,92,246,0.08)", text: "#7C3AED", border: "rgba(139,92,246,0.2)", borderStyle: "solid" }
@@ -31,7 +33,7 @@ const getTaskColor = (category: string) => {
   return { bg: "rgba(99,102,241,0.12)", text: "#6366f1", border: "rgba(99,102,241,0.3)" }
 }
 
-const EXAM_COLOR = { bg: "rgba(220,38,38,0.10)", text: "#DC2626", border: "rgba(220,38,38,0.3)" }
+const EXAM_COLOR = { bg: "rgba(220,38,38,0.18)", text: "#B91C1C", border: "rgba(220,38,38,0.45)" }
 
 function timeStrToMinutes(timeStr: string): number {
   if (!timeStr) return 0
@@ -394,7 +396,11 @@ export default function WeekView({
                         bgcolor: cs.bg,
                         color: cs.text,
                         border: `1px ${cs.borderStyle} ${cs.border}`,
-                        borderLeft: evt.classItem.isRescheduled ? "3px solid #D97706" : `1px ${cs.borderStyle} ${cs.border}`,
+                        borderLeft: evt.classItem.isRescheduleSource
+                          ? "3px solid #64748B"
+                          : evt.classItem.isRescheduled
+                            ? "3px solid #D97706"
+                            : `1px ${cs.borderStyle} ${cs.border}`,
                         cursor: "pointer",
                         overflow: "hidden",
                         zIndex: 2,
@@ -418,6 +424,22 @@ export default function WeekView({
                           flexShrink: 0,
                         }}>
                           ↺ RESCHEDULED
+                        </Box>
+                      )}
+                      {evt.classItem.isRescheduleSource && (
+                        <Box sx={{
+                          width: "100%",
+                          background: "#64748B",
+                          color: "#fff",
+                          fontSize: "9px",
+                          fontWeight: "bold",
+                          letterSpacing: "0.04em",
+                          lineHeight: 1,
+                          px: "6px",
+                          py: "3px",
+                          flexShrink: 0,
+                        }}>
+                          CHANGED
                         </Box>
                       )}
                       <Box sx={{ p: "4px 6px", overflow: "hidden", flex: 1 }}>
@@ -450,18 +472,37 @@ export default function WeekView({
                         bgcolor: EXAM_COLOR.bg,
                         color: EXAM_COLOR.text,
                         border: `1px solid ${EXAM_COLOR.border}`,
-                        p: "4px 6px",
+                        borderLeft: "3px solid #DC2626",
                         cursor: "pointer",
                         overflow: "hidden",
                         zIndex: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        "&:hover": { filter: "brightness(0.95)" },
                       }}
                     >
-                      <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
-                        📝 {evt.exam.subject || evt.exam.name}
-                      </Typography>
-                      <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit" }}>
-                        {evt.exam.location || ""}
-                      </Typography>
+                      <Box sx={{
+                        width: "100%",
+                        background: "#DC2626",
+                        color: "#fff",
+                        fontSize: "9px",
+                        fontWeight: "bold",
+                        letterSpacing: "0.04em",
+                        lineHeight: 1,
+                        px: "6px",
+                        py: "3px",
+                        flexShrink: 0,
+                      }}>
+                        📝 EXAM
+                      </Box>
+                      <Box sx={{ p: "4px 6px", overflow: "hidden", flex: 1 }}>
+                        <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
+                          {evt.exam.subject || evt.exam.courseName || evt.exam.courseCode || evt.exam.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit" }}>
+                          {evt.exam.location || ""}
+                        </Typography>
+                      </Box>
                     </Box>
                   );
                 }

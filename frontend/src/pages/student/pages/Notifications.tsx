@@ -154,11 +154,33 @@ export default function Notifications() {
   const clearSelection = () => setSelectedIds([]);
 
   const deleteSelected = () => {
-    const ids = selectedIds;
+    const ids = [...selectedIds];
     if (ids.length === 0) return;
     setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
     setSelectedIds([]);
-    ids.forEach((id) => deleteStudentNotification(id).catch(() => {}));
+    Promise.allSettled(ids.map((id) => deleteStudentNotification(id))).then(
+      (results) => {
+        const failedIds = results
+          .map((result, index) => (result.status === "rejected" ? ids[index] : null))
+          .filter(Boolean);
+
+        if (failedIds.length > 0) {
+          fetchStudentNotifications()
+            .then((data) => {
+              const normalized = (data || []).map((notification) => ({
+                ...notification,
+                id: notification.id || notification._id,
+                isRead: Boolean(notification.isRead),
+                priority: notification.priority || "low",
+                time: notification.time || formatRelativeTime(notification.createdAt),
+                color: getNotificationColor(notification),
+              }));
+              setNotifications(normalized);
+            })
+            .catch(() => {});
+        }
+      },
+    );
   };
 
   const getTypeLabel = (type) => {
@@ -341,6 +363,7 @@ export default function Notifications() {
                     borderLeft: !notification.isRead
                       ? `3px solid ${colors.primary.main}`
                       : "3px solid transparent",
+                    opacity: notification.isRead ? 0.62 : 1,
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = colors.bg.raised)

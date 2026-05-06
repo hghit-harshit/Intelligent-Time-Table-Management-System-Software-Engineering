@@ -22,8 +22,10 @@ const GRID_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT;
 const HEADER_HEIGHT = 44;
 
 const getClassColor = (classItem: any) => {
+  if (classItem?.isRescheduleSource)
+    return { bg: "rgba(148,163,184,0.10)", text: "#475569", border: "rgba(100,116,139,0.55)", borderStyle: "dashed" };
   if (classItem?.isRescheduled)
-    return { bg: "rgba(245,158,11,0.10)", text: "#D97706", border: "rgba(217,119,6,0.3)", borderStyle: "dashed" };
+    return { bg: "rgba(245,158,11,0.14)", text: "#92400E", border: "rgba(217,119,6,0.55)", borderStyle: "solid" };
   const name = (classItem?.name || "").toLowerCase();
   if (name.includes("math"))
     return { bg: "rgba(139,92,246,0.08)", text: "#7C3AED", border: "rgba(139,92,246,0.2)", borderStyle: "solid" };
@@ -43,7 +45,7 @@ const getTaskColor = (category: string) => {
   return { bg: "rgba(99,102,241,0.12)", text: "#6366f1", border: "rgba(99,102,241,0.3)" };
 };
 
-const EXAM_COLOR = { bg: "rgba(220,38,38,0.10)", text: "#DC2626", border: "rgba(220,38,38,0.3)" };
+const EXAM_COLOR = { bg: "rgba(220,38,38,0.18)", text: "#B91C1C", border: "rgba(220,38,38,0.45)" };
 
 function timeStrToMinutes(timeStr: string): number {
   if (!timeStr) return 0;
@@ -346,7 +348,11 @@ export default function DayView({
                     height: `${evt.height}px`,
                     background: cs.bg,
                     border: `1px ${cs.borderStyle} ${cs.border}`,
-                    borderLeft: evt.classItem.isRescheduled ? "4px solid #D97706" : `1px ${cs.borderStyle} ${cs.border}`,
+                    borderLeft: evt.classItem.isRescheduleSource
+                      ? "4px solid #64748B"
+                      : evt.classItem.isRescheduled
+                        ? "4px solid #D97706"
+                        : `1px ${cs.borderStyle} ${cs.border}`,
                     borderRadius: radius.md,
                     padding: "8px 12px",
                     cursor: "pointer",
@@ -366,6 +372,17 @@ export default function DayView({
                       letterSpacing: "0.03em",
                     }}>
                       ↺ Rescheduled
+                    </div>
+                  )}
+                  {evt.classItem.isRescheduleSource && (
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", gap: "4px",
+                      background: "#64748B", color: "#fff",
+                      borderRadius: "4px", padding: "2px 7px",
+                      fontSize: fonts.size.xs, fontWeight: 700, marginBottom: "6px",
+                      letterSpacing: "0.03em",
+                    }}>
+                      CHANGED
                     </div>
                   )}
                   <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: cs.text, marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -395,23 +412,38 @@ export default function DayView({
                     height: `${evt.height}px`,
                     background: EXAM_COLOR.bg,
                     border: `1px solid ${EXAM_COLOR.border}`,
+                    borderLeft: "4px solid #DC2626",
                     borderRadius: radius.md,
-                    padding: "8px 12px",
                     overflow: "hidden",
                     zIndex: 3,
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
-                  <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: EXAM_COLOR.text, marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {evt.exam.courseName || evt.exam.courseCode}
+                  <div style={{
+                    background: "#DC2626",
+                    color: "#fff",
+                    fontSize: fonts.size.xs,
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    padding: "3px 10px",
+                    flexShrink: 0,
+                  }}>
+                    📝 EXAM
                   </div>
-                  <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.8 }}>
-                    Exam · {evt.exam.time || ""}{evt.exam.duration ? ` · ${evt.exam.duration}` : ""}
-                  </div>
-                  {evt.exam.hall && (
-                    <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.7, marginTop: "2px" }}>
-                      {evt.exam.hall}{evt.exam.seat ? ` · Seat ${evt.exam.seat}` : ""}
+                  <div style={{ padding: "6px 10px", overflow: "hidden", flex: 1 }}>
+                    <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: EXAM_COLOR.text, marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {evt.exam.courseName || evt.exam.courseCode}
                     </div>
-                  )}
+                    <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.8 }}>
+                      {evt.exam.time || ""}{evt.exam.duration ? ` · ${evt.exam.duration}` : ""}
+                    </div>
+                    {evt.exam.location && (
+                      <div style={{ fontSize: fonts.size.xs, color: EXAM_COLOR.text, opacity: 0.7, marginTop: "2px" }}>
+                        {evt.exam.location}{evt.exam.seat ? ` · Seat ${evt.exam.seat}` : ""}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             }
