@@ -125,14 +125,18 @@ export async function fetchDashboard() {
 }
 
 // ─── Conflicts ──────────────────────────────────────────────
-// NOTE: No dedicated conflict backend exists yet.
-// Return empty array so the page doesn't break; this can be wired up later.
 export async function fetchConflicts() {
-  return [];
+  const data = await httpClient.get("/timetable/conflicts");
+  return Array.isArray(data) ? data : [];
 }
 
 export async function resolveConflict(conflictId, action) {
-  return { success: true, conflictId, action };
+  const data = await httpClient.request(`/timetable/conflicts/${conflictId}/resolve`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action }),
+  });
+  return data;
 }
 
 // ─── Reschedule Requests ────────────────────────────────────
@@ -460,9 +464,9 @@ export async function fetchTimeSlots() {
 }
 
 // ─── Exams ──────────────────────────────────────────────────
-// NOTE: No dedicated exam schedule backend exists yet. Return empty.
 export async function fetchExamSchedule() {
-  return [];
+  const data = await httpClient.get("/exam/schedule");
+  return Array.isArray(data) ? data : [];
 }
 
 // ─── Analytics ──────────────────────────────────────────────
