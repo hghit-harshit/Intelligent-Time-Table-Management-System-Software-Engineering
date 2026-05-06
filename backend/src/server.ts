@@ -9,37 +9,43 @@ import authRouter from "./modules/auth/auth.routes.js";
 import { autoCleanupPastExams } from "./modules/exam/exam.controller.js";
 import { logger } from "./shared/logger/index.js";
 
-const app = express();
+export const createApp = () => {
+  const app = express();
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  }),
-);
-app.use(express.json());
+  app.use(
+    cors({
+      origin: true,
+      credentials: true,
+    }),
+  );
+  app.use(express.json());
 
-// Request logging middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    logger.info(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  // Request logging middleware
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      logger.info(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+    });
+    next();
   });
-  next();
-});
 
-app.get("/ping", (_req, res) => {
-  res.json({ message: "pong" });
-});
+  app.get("/ping", (_req, res) => {
+    res.json({ message: "pong" });
+  });
 
-// Public routes (auth - no middleware)
-app.use("/api/auth", authRouter);
+  // Public routes (auth - no middleware)
+  app.use("/api/auth", authRouter);
 
-// Protected routes - require authentication
-app.use("/api", authMiddleware, apiRouter);
+  // Protected routes - require authentication
+  app.use("/api", authMiddleware, apiRouter);
 
-app.use(errorMiddleware);
+  app.use(errorMiddleware);
+
+  return app;
+};
+
+const app = createApp();
 
 const startServer = async () => {
   await connectDatabase();
@@ -52,8 +58,12 @@ const startServer = async () => {
   });
 };
 
-startServer().catch((error) => {
-  logger.error("Unable to start server", error);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== "test") {
+  startServer().catch((error) => {
+    logger.error("Unable to start server", error);
+    process.exit(1);
+  });
+}
+
+export default app;
 
