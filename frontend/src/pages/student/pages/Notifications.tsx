@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
 /* WHY: Import shared components to replace duplicated top-bar, stats grid, and modal */
-import { SubPageHeader, StatsGrid, Modal } from "../../../shared";
+import { SubPageHeader, StatsGrid, Modal, NotificationBulkActions } from "../../../shared";
 import {
   deleteStudentNotification,
   fetchStudentNotifications,
@@ -34,28 +34,6 @@ export default function Notifications() {
   };
   const muted = { fontSize: fonts.size.sm, color: colors.text.secondary };
   const caption = { fontSize: fonts.size.xs, color: colors.text.muted };
-  const btn = {
-    background: colors.primary.main,
-    border: "none",
-    borderRadius: radius.md,
-    padding: "6px 14px",
-    color: "#fff",
-    fontSize: fonts.size.sm,
-    fontWeight: 500,
-    cursor: "pointer",
-    fontFamily: fonts.body,
-  };
-  const btnGhost = {
-    background: colors.bg.raised,
-    border: `1px solid ${colors.border.medium}`,
-    borderRadius: radius.md,
-    padding: "8px 16px",
-    color: colors.text.primary,
-    fontSize: fonts.size.sm,
-    fontWeight: 500,
-    cursor: "pointer",
-    fontFamily: fonts.body,
-  };
 
   const formatRelativeTime = (value) => {
     if (!value) return "";
@@ -227,35 +205,21 @@ export default function Notifications() {
               <option value="announcement">Announcements</option>
               <option value="system">System</option>
             </select>
-            <button
-              onClick={markAllAsRead}
-              style={{
-                ...btn,
-                background: unreadCount > 0 ? colors.primary.main : colors.bg.raised,
-                color: unreadCount > 0 ? "#fff" : colors.text.muted,
-                cursor: unreadCount > 0 ? "pointer" : "not-allowed",
-              }}
-              disabled={unreadCount === 0}
-            >
-              Mark All Read
-            </button>
-            <button
-              onClick={selectedIds.length === filteredNotifications.length ? clearSelection : selectAllVisible}
-              style={btnGhost}
-            >
-              {selectedIds.length === filteredNotifications.length ? "Clear Selection" : "Select All"}
-            </button>
-            <button
-              onClick={deleteSelected}
-              style={{
-                ...btnGhost,
-                borderColor: colors.error.border,
-                color: colors.error.main,
-              }}
-              disabled={selectedIds.length === 0}
-            >
-              Delete Selected ({selectedIds.length})
-            </button>
+            <NotificationBulkActions
+              allSelected={
+                filteredNotifications.length > 0 &&
+                selectedIds.length === filteredNotifications.length
+              }
+              selectedCount={selectedIds.length}
+              onToggleSelectAll={
+                selectedIds.length === filteredNotifications.length
+                  ? clearSelection
+                  : selectAllVisible
+              }
+              onDeleteSelected={deleteSelected}
+              onMarkAllRead={markAllAsRead}
+              canMarkAllRead={unreadCount > 0}
+            />
           </>
         }
       />

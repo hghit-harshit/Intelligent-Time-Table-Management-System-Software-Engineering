@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
+import { NotificationBulkActions } from "../../../shared";
 
 type PaneState = "classes" | "notifs";
 
@@ -33,6 +35,8 @@ interface FacultyRightPaneProps {
   currentDate: { dayName: string; day: number; month: number; year: number };
   onViewFullDay: () => void;
   notifications: NotificationItem[];
+  onMarkAllNotificationsRead?: () => void;
+  onDeleteNotifications?: (ids: string[]) => void;
   tasks?: Task[];
   onToggleTask?: (id: string) => void;
   onDeleteTask?: (id: string) => void;
@@ -82,11 +86,39 @@ export default function FacultyRightPane({
   currentDate,
   onViewFullDay,
   notifications,
+  onMarkAllNotificationsRead,
+  onDeleteNotifications,
   tasks = [],
   onToggleTask,
   onDeleteTask,
 }: FacultyRightPaneProps) {
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const visibleNotifications = notifications.slice(0, 12);
+  const [selectedNotifIds, setSelectedNotifIds] = useState<string[]>([]);
+  const allVisibleSelected =
+    visibleNotifications.length > 0 &&
+    selectedNotifIds.length === visibleNotifications.length &&
+    visibleNotifications.every((notif) => selectedNotifIds.includes(notif.id));
+
+  const toggleSelectedNotif = (id: string) => {
+    setSelectedNotifIds((prev) => (prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]));
+  };
+
+  const selectAllVisibleNotifs = () => {
+    setSelectedNotifIds(visibleNotifications.map((notif) => notif.id));
+  };
+
+  const clearSelectedNotifs = () => setSelectedNotifIds([]);
+
+  const deleteSelectedNotifs = () => {
+    if (selectedNotifIds.length === 0) return;
+    onDeleteNotifications?.(selectedNotifIds);
+    setSelectedNotifIds([]);
+  };
+
+  useEffect(() => {
+    setSelectedNotifIds((prev) => prev.filter((id) => notifications.some((notif) => notif.id === id)));
+  }, [notifications]);
 
   return (
     <div
@@ -304,9 +336,18 @@ export default function FacultyRightPane({
                 )}
               </div>
               <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "3px" }}>
-                Updates on your reschedule requests
+                Latest updates
               </div>
             </div>
+            <NotificationBulkActions
+              allSelected={allVisibleSelected}
+              selectedCount={selectedNotifIds.length}
+              onToggleSelectAll={allVisibleSelected ? clearSelectedNotifs : selectAllVisibleNotifs}
+              onDeleteSelected={deleteSelectedNotifs}
+              onMarkAllRead={onMarkAllNotificationsRead}
+              canMarkAllRead={unreadCount > 0}
+              showSelectAll={visibleNotifications.length > 0}
+            />
             <button
               onClick={() => setPaneState("classes")}
               style={{
@@ -330,7 +371,7 @@ export default function FacultyRightPane({
               No notifications.
             </div>
           ) : (
-            notifications.slice(0, 12).map((notif, i) => (
+            visibleNotifications.map((notif, i) => (
               <div
                 key={notif.id || i}
                 style={{
@@ -341,6 +382,13 @@ export default function FacultyRightPane({
                   alignItems: "flex-start",
                 }}
               >
+                <input
+                  type="checkbox"
+                  checked={selectedNotifIds.includes(notif.id)}
+                  onChange={() => toggleSelectedNotif(notif.id)}
+                  aria-label={`Select notification ${notif.title}`}
+                  style={{ marginTop: "3px", cursor: "pointer", flexShrink: 0 }}
+                />
                 <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: notifDotColor(notif), flexShrink: 0, marginTop: "5px" }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "3px" }}>

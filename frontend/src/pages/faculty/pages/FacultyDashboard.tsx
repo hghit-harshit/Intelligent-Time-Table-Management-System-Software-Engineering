@@ -581,6 +581,20 @@ export default function FacultyDashboard() {
     setTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
+  const handleDeleteNotifications = (ids: string[]) => {
+    const idSet = new Set(ids);
+    setNotifications((prev) => {
+      const next = prev.filter((notification) => !idSet.has(notification.id));
+      setNotificationCount(next.filter((notification) => !notification.read).length);
+      return next;
+    });
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })));
+    setNotificationCount(0);
+  };
+
   return (
     <div
       style={{
@@ -674,6 +688,8 @@ export default function FacultyDashboard() {
             currentDate={dashboardData?.currentDate || { dayName: "", day: 0, month: 0, year: 0 }}
             onViewFullDay={() => setSelectedView("day")}
             notifications={notifications}
+            onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+            onDeleteNotifications={handleDeleteNotifications}
             tasks={tasks}
             onToggleTask={handleToggleTask}
             onDeleteTask={handleDeleteTask}

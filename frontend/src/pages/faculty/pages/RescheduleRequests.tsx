@@ -887,11 +887,21 @@ export default function RescheduleRequests() {
       {/* Request history */}
       {(!showWizard || wizardStep === "course") && (
       <div style={{ ...card, padding: "16px 18px", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", gap: "10px", flexWrap: "wrap" }}>
           <h3 style={{ fontFamily: fonts.heading, fontWeight: fonts.weight.semibold, fontSize: fonts.size.base, margin: 0, color: colors.text.primary }}>
             Request History
           </h3>
-          <span style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>{requests.length} total</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "auto" }}>
+            <span style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>{requests.length} total</span>
+            {!showWizard && (
+              <button
+                onClick={() => { setWizardPrefill(null); setShowWizard(true); }}
+                style={{ ...btnPrimary, padding: "6px 12px" }}
+              >
+                <Plus size={14} /> New Request
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -933,14 +943,6 @@ export default function RescheduleRequests() {
             <p style={{ fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, color: colors.text.primary, margin: 0 }}>
               No reschedule requests yet
             </p>
-            {!showWizard && (
-              <button
-                onClick={() => { setWizardPrefill(null); setShowWizard(true); }}
-                style={{ ...btnPrimary, margin: "14px auto 0" }}
-              >
-                <Plus size={14} /> New Request
-              </button>
-            )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
