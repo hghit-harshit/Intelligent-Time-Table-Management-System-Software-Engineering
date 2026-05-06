@@ -256,7 +256,7 @@ export default function TasksPage() {
           {sortedTasks.map((task) => {
             const StatusIcon = statusIcons[task.status];
             return (
-              <Card key={task.id} style={{ padding: "14px 16px", opacity: task.status === "completed" ? 0.7 : 1 }} hover={false}>
+              <Card key={task.id} style={{ padding: "14px 16px", opacity: task.status === "completed" ? 0.55 : 1 }} hover={false}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <button
                     onClick={() => handleToggleStatus(task)}
@@ -283,12 +283,22 @@ export default function TasksPage() {
                       </Badge>
                     </div>
                     {task.description && (
-                      <p style={{ margin: "4px 0 0", fontSize: fonts.size.xs, color: colors.text.muted }}>
+                      <p style={{
+                        margin: "4px 0 0",
+                        fontSize: fonts.size.xs,
+                        color: colors.text.muted,
+                        textDecoration: task.status === "completed" ? "line-through" : "none",
+                      }}>
                         {task.description}
                       </p>
                     )}
                     {task.dueDate && (
-                      <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "4px" }}>
+                      <div style={{
+                        fontSize: fonts.size.xs,
+                        color: colors.text.muted,
+                        marginTop: "4px",
+                        textDecoration: task.status === "completed" ? "line-through" : "none",
+                      }}>
                         Due: {new Date(task.dueDate).toLocaleDateString()}
                       </div>
                     )}

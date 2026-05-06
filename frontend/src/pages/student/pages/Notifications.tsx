@@ -12,6 +12,7 @@ export default function Notifications() {
   const [filterType, setFilterType] = useState("all");
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
@@ -137,10 +138,14 @@ export default function Notifications() {
       );
     });
   };
-  const markAllAsRead = () =>
+  const markAllAsRead = () => {
+    const unread = notifications.filter((n) => !n.isRead).map((n) => n.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    unread.forEach((id) => markStudentNotificationRead(id).catch(() => {}));
+  };
   const removeNotification = (id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setSelectedIds((prev) => prev.filter((sid) => sid !== id));
     deleteStudentNotification(id).catch(() => {
       fetchStudentNotifications()
         .then((data) => {
@@ -156,6 +161,26 @@ export default function Notifications() {
         })
         .catch(() => {});
     });
+  };
+
+  const toggleSelected = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id],
+    );
+  };
+
+  const selectAllVisible = () => {
+    setSelectedIds(filteredNotifications.map((n) => n.id));
+  };
+
+  const clearSelection = () => setSelectedIds([]);
+
+  const deleteSelected = () => {
+    const ids = selectedIds;
+    if (ids.length === 0) return;
+    setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+    setSelectedIds([]);
+    ids.forEach((id) => deleteStudentNotification(id).catch(() => {}));
   };
 
   const getTypeLabel = (type) => {
@@ -202,11 +227,35 @@ export default function Notifications() {
               <option value="announcement">Announcements</option>
               <option value="system">System</option>
             </select>
-            {unreadCount > 0 && (
-              <button onClick={markAllAsRead} style={btn}>
-                Mark All Read
-              </button>
-            )}
+            <button
+              onClick={markAllAsRead}
+              style={{
+                ...btn,
+                background: unreadCount > 0 ? colors.primary.main : colors.bg.raised,
+                color: unreadCount > 0 ? "#fff" : colors.text.muted,
+                cursor: unreadCount > 0 ? "pointer" : "not-allowed",
+              }}
+              disabled={unreadCount === 0}
+            >
+              Mark All Read
+            </button>
+            <button
+              onClick={selectedIds.length === filteredNotifications.length ? clearSelection : selectAllVisible}
+              style={btnGhost}
+            >
+              {selectedIds.length === filteredNotifications.length ? "Clear Selection" : "Select All"}
+            </button>
+            <button
+              onClick={deleteSelected}
+              style={{
+                ...btnGhost,
+                borderColor: colors.error.border,
+                color: colors.error.main,
+              }}
+              disabled={selectedIds.length === 0}
+            >
+              Delete Selected ({selectedIds.length})
+            </button>
           </>
         }
       />
@@ -349,6 +398,15 @@ export default function Notifications() {
                       gap: "14px",
                     }}
                   >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(notification.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleSelected(notification.id);
+                      }}
+                      style={{ marginTop: "4px" }}
+                    />
                     <div
                       style={{
                         width: "10px",

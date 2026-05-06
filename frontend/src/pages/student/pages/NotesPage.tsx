@@ -91,6 +91,15 @@ function buildTimeRange(startStr: string, duration: string): string {
   return `${formatMinutes(startMins)}–${formatMinutes(startMins + durMins)}`;
 }
 
+function buildSessionStart(date: Date, timeStr: string): Date {
+  const mins = timeStrToMinutes(timeStr || "00:00");
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const dt = new Date(date);
+  dt.setHours(h, m, 0, 0);
+  return dt;
+}
+
 function formatSessionDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
     weekday: "short",
@@ -113,40 +122,54 @@ function extractCode(location: string): string {
   return location.split("·")[0].split("·")[0].trim();
 }
 
+function normalizeKey(value: string): string {
+  return (value || "").toLowerCase().replace(/\s+/g, "").trim();
+}
+
 // Build course sessions from dashboard timetable data
 function buildCourseSessionMap(
   dashData: any,
 ): Record<string, CourseSession[]> {
   const map: Record<string, CourseSession[]> = {};
   const weeklySchedule = dashData?.weeklySchedule || [];
-  const weekDates: number[] = dashData?.weekDates || [];
-  const currentMonth: number = dashData?.currentDate?.month ?? new Date().getMonth() + 1;
-  const currentYear: number = dashData?.currentDate?.year ?? new Date().getFullYear();
+  const now = new Date();
+  const monday = new Date(now);
+  const jsDay = monday.getDay();
+  monday.setDate(monday.getDate() - (jsDay === 0 ? 6 : jsDay - 1));
+  monday.setHours(0, 0, 0, 0);
+  const weeksBack = 8;
 
-  weeklySchedule.forEach((slot: any) => {
-    slot.classes?.forEach((classItem: any, dayIdx: number) => {
-      if (!classItem) return;
-      const code = extractCode(classItem.location || "");
-      const name = classItem.name || "";
-      const key = code || name;
-      if (!key) return;
+  const addSession = (classItem: any, slot: any, date: Date) => {
+    const code = classItem.courseCode || classItem.code || extractCode(classItem.location || "");
+    const name = classItem.name || "";
+    const key = code || name;
+    if (!key) return;
+    const timeRange = buildTimeRange(slot.time || "", classItem.duration || "1h");
 
-      const weekDate = weekDates[dayIdx];
-      if (!weekDate) return;
+    if (!map[key]) map[key] = [];
+    map[key].push({
+      date,
+      time: slot.time || "",
+      endTime: timeRange,
+      hasNotes: false,
+      notesUrl: undefined,
+    });
+  };
 
-      const date = new Date(currentYear, currentMonth - 1, weekDate);
-      const timeRange = buildTimeRange(slot.time || "", classItem.duration || "1h");
+  for (let w = weeksBack; w >= 0; w--) {
+    const weekStart = new Date(monday);
+    weekStart.setDate(monday.getDate() - w * 7);
 
-      if (!map[key]) map[key] = [];
-      map[key].push({
-        date,
-        time: slot.time || "",
-        endTime: timeRange,
-        hasNotes: false,
-        notesUrl: undefined,
+    weeklySchedule.forEach((slot: any) => {
+      slot.classes?.forEach((classItem: any, dayIdx: number) => {
+        if (!classItem) return;
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + dayIdx);
+        if (date > now) return;
+        addSession(classItem, slot, date);
       });
     });
-  });
+  }
 
   return map;
 }
@@ -180,12 +203,15 @@ export default function NotesPage() {
         const notes: CourseNotes[] = enrolled.map((raw: any) => {
           const code = raw.code || "";
           const name = raw.name || raw.title || "";
+          const normalizedCode = normalizeKey(code);
+          const normalizedName = normalizeKey(name);
           const sessions =
             sessionMap[code] ||
+            Object.entries(sessionMap).find(([k]) => normalizeKey(k) === normalizedCode)?.[1] ||
             Object.entries(sessionMap).find(
               ([k]) =>
-                k.toLowerCase().includes(name.toLowerCase().split(" ")[0]) ||
-                name.toLowerCase().includes(k.toLowerCase()),
+                normalizeKey(k).includes(normalizedName) ||
+                normalizedName.includes(normalizeKey(k)),
             )?.[1] ||
             buildMockSessions(code);
 
@@ -264,9 +290,13 @@ export default function NotesPage() {
   const todayStr = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
   if (selectedCourse) {
-    const sessionCount = selectedCourse.sessions.length;
-    const earliest = sessionCount > 0 ? formatSessionDate(selectedCourse.sessions[0].date) : "";
-    const latest   = sessionCount > 0 ? formatSessionDate(selectedCourse.sessions[sessionCount - 1].date) : "";
+    const now = new Date();
+    const eligibleSessions = selectedCourse.sessions.filter(
+      (session) => buildSessionStart(session.date, session.time) <= now,
+    );
+    const sessionCount = eligibleSessions.length;
+    const earliest = sessionCount > 0 ? formatSessionDate(eligibleSessions[0].date) : "";
+    const latest   = sessionCount > 0 ? formatSessionDate(eligibleSessions[sessionCount - 1].date) : "";
 
     return (
       <div style={{ minHeight: "100%", background: colors.bg.deep, padding: "28px 32px" }}>
@@ -356,12 +386,12 @@ export default function NotesPage() {
               overflow: "hidden",
             }}
           >
-            {selectedCourse.sessions.length === 0 ? (
+            {eligibleSessions.length === 0 ? (
               <div style={{ padding: "48px", textAlign: "center", color: colors.text.muted, fontSize: fonts.size.sm }}>
-                No sessions found for this course.
+                Notes will appear here after your first class session.
               </div>
             ) : (
-              selectedCourse.sessions.map((session, i) => (
+              eligibleSessions.map((session, i) => (
                 <div
                   key={i}
                   style={{
@@ -401,6 +431,7 @@ export default function NotesPage() {
                   {/* Notes action */}
                   {(() => {
                     const classDate = session.date.toISOString().split("T")[0];
+                    const isAvailable = buildSessionStart(session.date, session.time) <= new Date();
                     const existingUrl = noteMap[classDate] || (session.hasNotes ? session.notesUrl : null);
                     if (existingUrl) {
                       const docId = existingUrl.match(/\/d\/([^/]+)/)?.[1] || "";
@@ -428,22 +459,22 @@ export default function NotesPage() {
                     return (
                       <button
                         onClick={() => openNotes(selectedCourse.code, classDate, selectedCourse.name)}
-                        disabled={addingNote === classDate}
+                        disabled={addingNote === classDate || !isAvailable}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: "5px",
                           padding: "6px 14px",
-                          background: addingNote === classDate ? colors.bg.raised : "rgba(37,99,235,0.06)",
+                          background: addingNote === classDate || !isAvailable ? colors.bg.raised : "rgba(37,99,235,0.06)",
                           border: "1px solid rgba(37,99,235,0.20)",
                           borderRadius: radius.md,
-                          color: "#2563EB",
+                          color: !isAvailable ? colors.text.muted : "#2563EB",
                           fontSize: fonts.size.xs,
                           fontWeight: fonts.weight.semibold,
-                          cursor: addingNote === classDate ? "wait" : "pointer",
+                          cursor: addingNote === classDate ? "wait" : !isAvailable ? "not-allowed" : "pointer",
                           fontFamily: fonts.body,
                           transition: "all 0.15s ease",
                         }}
                       >
-                        {addingNote === classDate ? "⏳ Opening…" : "✏️ Add Notes"}
+                        {addingNote === classDate ? "⏳ Opening…" : !isAvailable ? "⏳ Available after class" : "✏️ Add Notes"}
                       </button>
                     );
                   })()}

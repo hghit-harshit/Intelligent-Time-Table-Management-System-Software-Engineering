@@ -308,6 +308,54 @@ export default function StudentDashboard() {
     return shorts[new Date(selectedYear, selectedMonth - 1, date).getDay()]
   }
 
+  const getScheduleForExactDate = (date: Date) => {
+    const jsDay = date.getDay()
+    if (jsDay === 0 || jsDay === 6) return []
+    const weekDayIdx = jsDay - 1
+    const baseSchedule = (dashboardData as any).baseWeeklySchedule ?? dashboardData.weeklySchedule ?? []
+    const result: any[] = []
+    for (const slot of baseSchedule) {
+      const classItem = slot.classes?.[weekDayIdx]
+      if (classItem) {
+        result.push({
+          time: slot.time,
+          class: {
+            ...classItem,
+            duration: classItem.duration || slot.duration || "",
+          },
+        })
+      }
+    }
+    return result
+  }
+
+  const buildRightPaneClasses = (date: Date) => {
+    const schedule = getScheduleForExactDate(date)
+    return schedule.map((slot) => {
+      const classItem = slot.class || {}
+      return {
+        subject: classItem.name || classItem.subject || "Class",
+        time: slot.time || "",
+        duration: classItem.duration || "",
+        location: classItem.location || classItem.room || classItem.hall || "TBA",
+        status: "Scheduled",
+        statusColor: colors.primary.main,
+        isLive: false,
+        dotColor: colors.primary.main,
+        notes: classItem.notes,
+      }
+    })
+  }
+
+  const rightPaneDate = selectedView === "day" ? viewDayDate : new Date()
+  const rightPaneCurrentDate = {
+    day: rightPaneDate.getDate(),
+    month: rightPaneDate.getMonth() + 1,
+    year: rightPaneDate.getFullYear(),
+    dayName: DAY_NAMES[rightPaneDate.getDay()],
+  }
+  const rightPaneClasses = buildRightPaneClasses(rightPaneDate)
+
   const getScheduleForDate = (date: number) => {
     const fromCache = dashboardData.dailySchedules[date.toString()]
     if (fromCache && fromCache.length > 0) return fromCache
@@ -469,8 +517,8 @@ export default function StudentDashboard() {
           <RightPane
             paneState={paneState}
             setPaneState={setPaneState}
-            todaysClasses={dashboardData.todaysClasses}
-            currentDate={dashboardData.currentDate}
+            todaysClasses={rightPaneClasses}
+            currentDate={rightPaneCurrentDate}
             onViewFullDay={() => setSelectedView("day")}
             onAddNotes={() => { window.location.href = "/StudentPage/notes" }}
             tasks={tasks}

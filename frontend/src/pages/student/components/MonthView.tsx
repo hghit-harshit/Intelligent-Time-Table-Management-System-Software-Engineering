@@ -135,7 +135,7 @@ export default function MonthView({
           const dayTasks = dayTaskMap[dayNum] || [];
 
           // Collect chips based on mode
-          type Chip = { label: string; bg: string; text: string };
+          type Chip = { label: string; bg: string; text: string; completed?: boolean };
           const chips: Chip[] = [];
           if (!examMode) {
             dayClasses.forEach((name) => {
@@ -144,7 +144,7 @@ export default function MonthView({
             });
             dayTasks.forEach((task) => {
               const c = getTaskChipColor(task.category);
-              chips.push({ label: `✓ ${task.title}`, bg: c.bg, text: c.text });
+              chips.push({ label: `✓ ${task.title}`, bg: c.bg, text: c.text, completed: task.status === "completed" });
             });
           }
           dayExams.forEach((name) => {
@@ -213,6 +213,8 @@ export default function MonthView({
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
+                            opacity: chip.completed ? 0.55 : 1,
+                            textDecoration: chip.completed ? "line-through" : "none",
                           }}
                         >
                           {chip.label}

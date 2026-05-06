@@ -12,7 +12,8 @@
 
 import { useState, useEffect } from "react";
 import { colors, fonts, radius, shadows } from "../../../styles/tokens";
-import { fetchStudentNotifications, fetchStudentExams } from "../../../services/studentApi";
+import { fetchStudentNotifications, fetchStudentExams, deleteStudentNotification, markStudentNotificationRead } from "../../../services/studentApi";
+import { CheckCheck, Trash2 } from "lucide-react";
 
 interface TodayClass {
   subject: string;
@@ -120,6 +121,24 @@ function formatTaskDueDate(dueDate: string): string {
     " · " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
+function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return 0;
+  let h = parseInt(match[1]);
+  const m = parseInt(match[2]);
+  const ampm = match[3]?.toUpperCase();
+  if (ampm === "PM" && h !== 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function hasClassStarted(timeStr: string): boolean {
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return nowMins >= parseTimeToMinutes(timeStr);
+}
+
 export default function RightPane({
   paneState,
   setPaneState,
@@ -132,6 +151,8 @@ export default function RightPane({
   onDeleteTask,
 }: RightPaneProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [selectedNotifIds, setSelectedNotifIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [loadingExams, setLoadingExams] = useState(false);
@@ -157,6 +178,53 @@ export default function RightPane({
   }, [paneState]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const visibleNotifs = notifications.slice(0, 8);
+  const validExams = exams.filter((exam) => {
+    const date = new Date(exam.date);
+    return Boolean(exam.date) && !Number.isNaN(date.getTime());
+  });
+
+  const getNotifId = (notif: Notification, index: number) =>
+    notif.id || (notif as any)._id || `notif-${index}`;
+
+  const toggleNotifSelected = (id: string) => {
+    setSelectedNotifIds((prev) =>
+      prev.includes(id) ? prev.filter((nid) => nid !== id) : [...prev, id],
+    );
+  };
+
+  const clearNotifSelection = () => setSelectedNotifIds([]);
+
+  const selectAllVisible = () => setSelectedNotifIds(visibleNotifs.map(getNotifId));
+
+  const handleReadAll = () => {
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    unreadIds.forEach((id) => markStudentNotificationRead(id).catch(() => {}));
+    setSelectedNotifIds([]);
+    setSelectionMode(false);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedNotifIds.length === 0) return;
+    const ids = selectedNotifIds;
+    setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+    setSelectedNotifIds([]);
+    ids.forEach((id) => deleteStudentNotification(id).catch(() => {}));
+    setSelectionMode(false);
+  };
+
+  const handleTapSelect = (id: string) => {
+    if (!selectionMode) setSelectionMode(true);
+    toggleNotifSelected(id);
+  };
+
+  useEffect(() => {
+    if (selectionMode && selectedNotifIds.length === 0) {
+      setSelectionMode(false);
+    }
+  }, [selectionMode, selectedNotifIds.length]);
 
   return (
     <div
@@ -290,36 +358,41 @@ export default function RightPane({
                 >
                   {cls.notes
                     ? `Notes: ${cls.notes}`
-                    : "Notes: No notes taken for this completed session."}
+                    : hasClassStarted(cls.time)
+                      ? "Notes: Class in progress. You can add notes now."
+                      : "Notes: Available once class starts."}
                 </div>
 
                 {/* Add notes button */}
                 <button
                   onClick={() => onAddNotes?.(cls)}
+                  disabled={!hasClassStarted(cls.time)}
                   style={{
                     padding: "5px 12px",
-                    background: colors.bg.raised,
+                    background: !hasClassStarted(cls.time) ? colors.bg.raised : colors.bg.raised,
                     border: `1px solid ${colors.border.medium}`,
                     borderRadius: radius.md,
-                    color: colors.text.secondary,
+                    color: !hasClassStarted(cls.time) ? colors.text.muted : colors.text.secondary,
                     fontSize: fonts.size.xs,
-                    cursor: "pointer",
+                    cursor: !hasClassStarted(cls.time) ? "not-allowed" : "pointer",
                     fontFamily: fonts.body,
                     fontWeight: fonts.weight.medium,
                     transition: "all 0.15s ease",
                   }}
                   onMouseEnter={(e) => {
+                    if (!hasClassStarted(cls.time)) return;
                     (e.currentTarget as HTMLButtonElement).style.background = colors.primary.ghost;
                     (e.currentTarget as HTMLButtonElement).style.borderColor = colors.primary.border;
                     (e.currentTarget as HTMLButtonElement).style.color = colors.primary.main;
                   }}
                   onMouseLeave={(e) => {
+                    if (!hasClassStarted(cls.time)) return;
                     (e.currentTarget as HTMLButtonElement).style.background = colors.bg.raised;
                     (e.currentTarget as HTMLButtonElement).style.borderColor = colors.border.medium;
                     (e.currentTarget as HTMLButtonElement).style.color = colors.text.secondary;
                   }}
                 >
-                  Add notes
+                  {hasClassStarted(cls.time) ? "Add notes" : "Available at class time"}
                 </button>
               </div>
             ))
@@ -497,19 +570,41 @@ export default function RightPane({
             </div>
             <button
               style={{
-                background: "none",
-                border: "none",
-                color: colors.primary.main,
-                fontSize: fonts.size.xs,
-                cursor: "pointer",
-                fontFamily: fonts.body,
-                fontWeight: fonts.weight.medium,
-                flexShrink: 0,
-                paddingTop: "4px",
+                background: colors.bg.raised,
+                border: `1px solid ${colors.border.medium}`,
+                color: unreadCount > 0 ? colors.primary.main : colors.text.muted,
+                borderRadius: radius.sm,
+                width: 26,
+                height: 26,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: unreadCount > 0 ? "pointer" : "not-allowed",
               }}
-              onClick={() => {}}
+              onClick={handleReadAll}
+              disabled={unreadCount === 0}
+              title="Mark all read"
             >
-              Read all
+              <CheckCheck size={14} />
+            </button>
+            <button
+              style={{
+                background: colors.bg.raised,
+                border: `1px solid ${colors.border.medium}`,
+                color: selectedNotifIds.length === 0 ? colors.text.muted : colors.error.main,
+                borderRadius: radius.sm,
+                width: 26,
+                height: 26,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: selectedNotifIds.length === 0 ? "not-allowed" : "pointer",
+              }}
+              onClick={handleDeleteSelected}
+              disabled={selectedNotifIds.length === 0}
+              title="Delete selected"
+            >
+              <Trash2 size={14} />
             </button>
             <button
               onClick={() => setPaneState("classes")}
@@ -552,17 +647,32 @@ export default function RightPane({
               No notifications.
             </div>
           ) : (
-            notifications.slice(0, 8).map((notif, i) => (
+            visibleNotifs.map((notif, i) => {
+              const notifId = getNotifId(notif, i);
+              return (
               <div
-                key={notif.id || i}
+                key={notifId}
                 style={{
                   padding: "12px 16px",
                   borderTop: `1px solid ${colors.border.subtle}`,
                   display: "flex",
                   gap: "10px",
                   alignItems: "flex-start",
+                  cursor: "pointer",
                 }}
+                onClick={() => handleTapSelect(notifId)}
               >
+                {selectionMode && (
+                  <input
+                    type="checkbox"
+                    checked={selectedNotifIds.includes(notifId)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleNotifSelected(notifId);
+                    }}
+                    style={{ marginTop: "4px" }}
+                  />
+                )}
                 {/* Colored dot */}
                 <div
                   style={{
@@ -587,7 +697,7 @@ export default function RightPane({
                       style={{
                         fontWeight: fonts.weight.semibold,
                         fontSize: fonts.size.sm,
-                        color: colors.text.primary,
+                        color: notif.read ? colors.text.secondary : colors.text.primary,
                       }}
                     >
                       {notif.title}
@@ -613,9 +723,34 @@ export default function RightPane({
                   >
                     {notif.message}
                   </div>
+                  {!notif.read && (
+                    <button
+                      onClick={() => {
+                        setNotifications((prev) =>
+                          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)),
+                        );
+                        markStudentNotificationRead(notif.id).catch(() => {});
+                        setSelectedNotifIds([]);
+                        setSelectionMode(false);
+                      }}
+                      style={{
+                        marginTop: "6px",
+                        background: colors.primary.ghost,
+                        border: "none",
+                        borderRadius: radius.sm,
+                        padding: "2px 8px",
+                        color: colors.primary.main,
+                        fontSize: "10px",
+                        cursor: "pointer",
+                        fontFamily: fonts.body,
+                      }}
+                    >
+                      Mark read
+                    </button>
+                  )}
                 </div>
               </div>
-            ))
+            )})
           )}
         </div>
       )}
@@ -623,23 +758,6 @@ export default function RightPane({
       {/* ── STATE 3: Upcoming Exams ──────────────────────────── */}
       {paneState === "exams" && (
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {/* Header */}
-          <div style={{ padding: "16px 16px 6px" }}>
-            <div
-              style={{
-                fontWeight: fonts.weight.bold,
-                fontSize: fonts.size.lg,
-                color: colors.text.primary,
-                lineHeight: 1.3,
-              }}
-            >
-              Upcoming Exams
-            </div>
-            <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "3px" }}>
-              Next assessments in your schedule
-            </div>
-          </div>
-
           {loadingExams ? (
             <div
               style={{
@@ -651,97 +769,118 @@ export default function RightPane({
             >
               Loading...
             </div>
-          ) : exams.length === 0 ? (
-            <div
-              style={{
-                padding: "32px 16px",
-                textAlign: "center",
-                color: colors.text.muted,
-                fontSize: fonts.size.sm,
-              }}
-            >
-              No upcoming exams.
-            </div>
           ) : (
-            exams.map((exam, i) => {
-              const dl = daysLeftFromDate(exam.date);
-              const { bg, text } = daysLeftBadgeColor(dl);
-              return (
+            <>
+              {/* Header */}
+              <div style={{ padding: "16px 16px 6px" }}>
                 <div
-                  key={i}
                   style={{
-                    padding: "14px 16px",
-                    borderTop: `1px solid ${colors.border.subtle}`,
+                    fontWeight: fonts.weight.bold,
+                    fontSize: fonts.size.lg,
+                    color: colors.text.primary,
+                    lineHeight: 1.3,
                   }}
                 >
-                  {/* Course name + days badge */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: "5px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: fonts.weight.bold,
-                        fontSize: fonts.size.sm,
-                        color: colors.text.primary,
-                      }}
-                    >
-                      {exam.courseName}
-                    </div>
-                    <span
-                      style={{
-                        background: bg,
-                        color: text,
-                        fontSize: fonts.size.xs,
-                        fontWeight: fonts.weight.bold,
-                        padding: "2px 7px",
-                        borderRadius: radius.full,
-                        flexShrink: 0,
-                        marginLeft: "8px",
-                      }}
-                    >
-                      {dl}d
-                    </span>
-                  </div>
-
-                  {/* Course code + hall */}
-                  <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginBottom: "3px" }}>
-                    {exam.courseCode}
-                    {exam.hall ? ` · ${exam.hall}` : ""}
-                  </div>
-
-                  {/* Date + time */}
-                  <div
-                    style={{
-                      fontSize: fonts.size.xs,
-                      color: "#2563EB",
-                      marginBottom: "3px",
-                    }}
-                  >
-                    {new Date(exam.date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                    {exam.time ? ` · ${exam.time}` : ""}
-                    {exam.duration ? ` · ${exam.duration}` : ""}
-                  </div>
-
-                  {/* Seat info */}
-                  {(exam.row || exam.seat) && (
-                    <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>
-                      {exam.row ? `Row ${exam.row}` : ""}
-                      {exam.row && exam.seat ? ", " : ""}
-                      {exam.seat ? `Seat ${exam.seat}` : ""}
-                    </div>
-                  )}
+                  Upcoming Exams
                 </div>
-              );
-            })
+                <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginTop: "3px" }}>
+                  Next assessments in your schedule
+                </div>
+              </div>
+
+              {validExams.length === 0 ? (
+                <div
+                  style={{
+                    padding: "32px 16px",
+                    textAlign: "center",
+                    color: colors.text.muted,
+                    fontSize: fonts.size.sm,
+                  }}
+                >
+                  No upcoming exams.
+                </div>
+              ) : (
+                validExams.map((exam, i) => {
+                  const dl = daysLeftFromDate(exam.date);
+                  const { bg, text } = daysLeftBadgeColor(dl);
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        padding: "14px 16px",
+                        borderTop: `1px solid ${colors.border.subtle}`,
+                      }}
+                    >
+                      {/* Course name + days badge */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: "5px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontWeight: fonts.weight.bold,
+                            fontSize: fonts.size.sm,
+                            color: colors.text.primary,
+                          }}
+                        >
+                          {exam.courseName}
+                        </div>
+                        <span
+                          style={{
+                            background: bg,
+                            color: text,
+                            fontSize: fonts.size.xs,
+                            fontWeight: fonts.weight.bold,
+                            padding: "2px 7px",
+                            borderRadius: radius.full,
+                            flexShrink: 0,
+                            marginLeft: "8px",
+                          }}
+                        >
+                          {dl}d
+                        </span>
+                      </div>
+
+                      {/* Course code + hall */}
+                      <div style={{ fontSize: fonts.size.xs, color: colors.text.muted, marginBottom: "3px" }}>
+                        {exam.courseCode}
+                        {exam.hall ? ` · ${exam.hall}` : ""}
+                      </div>
+
+                      {/* Date + time */}
+                      <div
+                        style={{
+                          fontSize: fonts.size.xs,
+                          color: "#2563EB",
+                          marginBottom: "3px",
+                        }}
+                      >
+                        {new Date(exam.date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                        {exam.time ? ` · ${exam.time}` : ""}
+                        {exam.duration ? ` · ${exam.duration}` : ""}
+                      </div>
+
+                      {/* Seat info */}
+                      {(exam.row || exam.seat) && (
+                        <div style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>
+                          {exam.row ? `Row ${exam.row}` : ""}
+                          {exam.row && exam.seat ? ", " : ""}
+                          {exam.seat ? `Seat ${exam.seat}` : ""}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </>
           )}
         </div>
       )}
