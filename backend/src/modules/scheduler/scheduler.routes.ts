@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireRole } from "../../middlewares/auth.middleware.js";
 import {
   assignClassroomsToSlots,
   generateSchedule,
@@ -6,7 +7,7 @@ import {
 
 const schedulerRouter = Router();
 
-schedulerRouter.post("/generate", generateSchedule);
-schedulerRouter.post("/assign-classrooms", assignClassroomsToSlots);
+schedulerRouter.post("/generate", requireRole("admin"), generateSchedule);
+schedulerRouter.post("/assign-classrooms", requireRole("admin"), assignClassroomsToSlots);
 
 export default schedulerRouter;
