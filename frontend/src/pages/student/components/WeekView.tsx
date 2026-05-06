@@ -394,23 +394,43 @@ export default function WeekView({
                         bgcolor: cs.bg,
                         color: cs.text,
                         border: `1px ${cs.borderStyle} ${cs.border}`,
-                        p: "4px 6px",
+                        borderLeft: evt.classItem.isRescheduled ? "3px solid #D97706" : `1px ${cs.borderStyle} ${cs.border}`,
                         cursor: "pointer",
                         overflow: "hidden",
                         zIndex: 2,
                         transition: "filter 0.15s",
+                        display: "flex",
+                        flexDirection: "column",
                         "&:hover": { filter: "brightness(0.95)" },
                       }}
                     >
-                      <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
-                        {evt.classItem.name}
-                      </Typography>
-                      <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit", lineHeight: 1.3 }}>
-                        {evt.classItem.location}
-                      </Typography>
-                      <Typography sx={{ fontSize: "10px", opacity: 0.65, color: "inherit", lineHeight: 1.3 }}>
-                        {evt.classItem.professor}
-                      </Typography>
+                      {evt.classItem.isRescheduled && (
+                        <Box sx={{
+                          width: "100%",
+                          background: "#D97706",
+                          color: "#fff",
+                          fontSize: "9px",
+                          fontWeight: "bold",
+                          letterSpacing: "0.04em",
+                          lineHeight: 1,
+                          px: "6px",
+                          py: "3px",
+                          flexShrink: 0,
+                        }}>
+                          ↺ RESCHEDULED
+                        </Box>
+                      )}
+                      <Box sx={{ p: "4px 6px", overflow: "hidden", flex: 1 }}>
+                        <Typography sx={{ fontWeight: fonts.weight.bold, fontSize: "11px", color: "inherit", lineHeight: 1.3 }}>
+                          {evt.classItem.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: "10px", mt: 0.3, opacity: 0.75, color: "inherit", lineHeight: 1.3 }}>
+                          {evt.classItem.location}
+                        </Typography>
+                        <Typography sx={{ fontSize: "10px", opacity: 0.65, color: "inherit", lineHeight: 1.3 }}>
+                          {evt.classItem.professor}
+                        </Typography>
+                      </Box>
                     </Box>
                   );
                 }

@@ -158,7 +158,7 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
         endTime: match.endTime || "",
         day: day,
         room: match.roomName || "TBD",
-        isRescheduled: false,
+        isRescheduled: Boolean(match.isRescheduled),
       };
     }),
   }));
@@ -181,7 +181,7 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
         endTime: item.endTime || "",
         day: dayName,
         room: item.roomName || "TBD",
-        isRescheduled: false,
+        isRescheduled: Boolean(item.isRescheduled),
       },
     }));
   });
@@ -218,6 +218,74 @@ function buildFacultyDashboard(assignments: any[], weekStart: Date) {
       timeSlots: timeSlots.map(formatTime12),
     },
   };
+}
+
+function applyFacultyRescheduleOverlays(
+  assignments: any[],
+  approvedReschedules: any[],
+  weekStart: Date,
+): any[] {
+  if (!approvedReschedules.length) return assignments;
+
+  const ws = new Date(weekStart);
+  ws.setHours(0, 0, 0, 0);
+  const we = new Date(weekStart);
+  we.setDate(we.getDate() + 4);
+  we.setHours(23, 59, 59, 999);
+
+  let result = [...assignments];
+
+  for (const req of approvedReschedules) {
+    const fromDateStr: string | undefined = req.currentDate;
+    const toDateStr: string | undefined = req.requestedDate;
+    if (!fromDateStr && !toDateStr) continue;
+
+    const fromDate = fromDateStr ? new Date(fromDateStr + "T00:00:00") : null;
+    const toDate = toDateStr ? new Date(toDateStr + "T00:00:00") : null;
+
+    const courseRef = req.courseId;
+    const courseIdStr =
+      courseRef && typeof courseRef === "object"
+        ? String((courseRef as any)._id)
+        : String(courseRef ?? "");
+    const courseCode = (courseRef as any)?.code || req.courseCode || "";
+
+    const curSlot = req.currentSlot;
+    const reqSlot = req.requestedSlot;
+    const curStart = curSlot?.time?.split("-")[0]?.trim();
+    const reqStart = reqSlot?.time?.split("-")[0]?.trim();
+    const reqEnd = reqSlot?.time?.split("-")[1]?.trim();
+
+    const matchesCourse = (a: any) =>
+      (courseIdStr && String(a.courseId) === courseIdStr) ||
+      (courseCode && String(a.courseCode) === courseCode);
+
+    if (fromDate && fromDate >= ws && fromDate <= we && curStart && curSlot?.day) {
+      result = result.filter(
+        (a) =>
+          !(
+            matchesCourse(a) &&
+            a.startTime === curStart &&
+            normalizeDay(a.day) === normalizeDay(curSlot.day)
+          ),
+      );
+    }
+
+    if (toDate && toDate >= ws && toDate <= we && reqStart && reqSlot?.day) {
+      const original = assignments.find(matchesCourse);
+      if (original) {
+        result.push({
+          ...original,
+          day: normalizeDay(reqSlot.day),
+          startTime: reqStart,
+          endTime: reqEnd || original.endTime,
+          isRescheduled: true,
+        });
+      }
+    }
+  }
+
+  return result;
 }
 
 const mapFacultyNotifications = (requests: any[]) => {
@@ -272,6 +340,7 @@ export default function FacultyDashboard() {
   const [classReferences, setClassReferences] = useState<any[]>([]);
   const [refsLoading, setRefsLoading] = useState(false);
 
+  const [approvedReschedules, setApprovedReschedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -322,10 +391,11 @@ export default function FacultyDashboard() {
         if (byName.length > 0) filtered = byName;
       }
 
-      setRawAssignments(filtered);
-      setDashboardData(buildFacultyDashboard(filtered, viewWeekStart));
-
       const requests = Array.isArray(requestData) ? requestData : [];
+      const approved = requests.filter((r) => String(r.status || "").toLowerCase() === "approved");
+      setApprovedReschedules(approved);
+      setRawAssignments(filtered);
+      setDashboardData(buildFacultyDashboard(applyFacultyRescheduleOverlays(filtered, approved, viewWeekStart), viewWeekStart));
       const mappedNotifications = mapFacultyNotifications(requests);
       setNotifications(mappedNotifications);
       setNotificationCount(requests.filter((req) => String(req.status || "").toLowerCase() === "pending").length);
@@ -362,8 +432,8 @@ export default function FacultyDashboard() {
 
   useEffect(() => {
     if (!rawAssignments.length) return;
-    setDashboardData(buildFacultyDashboard(rawAssignments, viewWeekStart));
-  }, [rawAssignments, viewWeekStart]);
+    setDashboardData(buildFacultyDashboard(applyFacultyRescheduleOverlays(rawAssignments, approvedReschedules, viewWeekStart), viewWeekStart));
+  }, [rawAssignments, approvedReschedules, viewWeekStart]);
 
   const handlePrev = () => {
     if (selectedView === "week") {

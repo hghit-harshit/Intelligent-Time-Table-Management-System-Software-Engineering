@@ -45,6 +45,13 @@ const fmtSlot = (day, startTime, endTime) => {
   return `${day} · ${fmt12(startTime)}${endTime ? ` – ${fmt12(endTime)}` : ""}`;
 };
 
+// Formats a stored slot time string like "09:00-10:55" → "9:00 AM – 10:55 AM"
+const fmtSlotTime = (time) => {
+  if (!time) return "";
+  const [start, end] = time.split("-").map((t) => t.trim());
+  return end ? `${fmt12(start)} – ${fmt12(end)}` : fmt12(start);
+};
+
 // ─── Shared styles ───────────────────────────────────────────
 const card = {
   background: colors.bg.base,
@@ -307,13 +314,15 @@ const toLocalISO = (d: Date) => {
   return `${y}-${m}-${day}`;
 };
 
-// Returns the next N dates (as "YYYY-MM-DD" in LOCAL time) on which `dayName` falls, starting from today
-const upcomingDatesForDay = (dayName, count = 6) => {
+// Returns the next N dates (as "YYYY-MM-DD" in LOCAL time) on which `dayName` falls.
+// startOffset=0 → include today; startOffset=1 → strictly future (tomorrow onward).
+const upcomingDatesForDay = (dayName, count = 6, startOffset = 0) => {
   const targetIdx = DAY_JS_INDEX[dayName];
   if (targetIdx == null) return [];
   const results = [];
   const d = new Date();
   d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + startOffset);
   for (let i = 0; results.length < count; i++) {
     const candidate = new Date(d);
     candidate.setDate(d.getDate() + i);
@@ -445,8 +454,8 @@ function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
 
   const handleTargetSelect = (slot) => {
     setSelectedTarget(slot);
-    // Auto-fill the to-date with the nearest upcoming occurrence of the target day
-    const upcoming = upcomingDatesForDay(slot.day, 1);
+    // Auto-fill the to-date with the nearest FUTURE (not today) occurrence of the target day
+    const upcoming = upcomingDatesForDay(slot.day, 1, 1);
     setRequestedDate(upcoming[0] || "");
   };
 
@@ -606,7 +615,9 @@ function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
 
   // ── Step: Calendar + Reason ──────────────────────────────────
   if (step === "calendar") {
-    const canSubmit = selectedTarget && currentDate && requestedDate && reason.trim().length > 0;
+    const todayISO = toLocalISO(new Date());
+    const requestedDateIsValid = requestedDate && requestedDate > todayISO;
+    const canSubmit = selectedTarget && currentDate && requestedDateIsValid && reason.trim().length > 0;
     return (
       <div style={{ ...card, marginBottom: "12px" }}>
         {/* Header */}
@@ -683,7 +694,7 @@ function RequestWizard({ user, onClose, onSuccess, onStepChange, prefill }) {
                 <option value="">
                   {selectedTarget ? "Select date…" : "Pick a target slot first"}
                 </option>
-                {selectedTarget && upcomingDatesForDay(selectedTarget.day, 8).map((iso) => (
+                {selectedTarget && upcomingDatesForDay(selectedTarget.day, 8, 1).map((iso) => (
                   <option key={iso} value={iso}>{fmtDateLabel(iso)}</option>
                 ))}
               </select>
@@ -975,13 +986,27 @@ export default function RescheduleRequests() {
                     )}
                     {/* Slot info */}
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, color: colors.text.primary }}>
-                        {req.currentDate ? fmtDateLabel(req.currentDate) : req.currentSlot?.day} {!req.currentDate ? req.currentSlot?.time : ""}
-                      </span>
+                      <div>
+                        <span style={{ fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, color: colors.text.primary }}>
+                          {req.currentDate ? fmtDateLabel(req.currentDate) : req.currentSlot?.day}
+                        </span>
+                        {req.currentSlot?.time && (
+                          <span style={{ fontSize: fonts.size.xs, color: colors.text.secondary, display: "block" }}>
+                            {fmtSlotTime(req.currentSlot.time)}
+                          </span>
+                        )}
+                      </div>
                       <span style={{ fontSize: fonts.size.xs, color: colors.text.muted }}>→</span>
-                      <span style={{ fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, color: colors.primary.main }}>
-                        {req.requestedDate ? fmtDateLabel(req.requestedDate) : req.requestedSlot?.day} {!req.requestedDate ? req.requestedSlot?.time : ""}
-                      </span>
+                      <div>
+                        <span style={{ fontSize: fonts.size.sm, fontWeight: fonts.weight.semibold, color: colors.primary.main }}>
+                          {req.requestedDate ? fmtDateLabel(req.requestedDate) : req.requestedSlot?.day}
+                        </span>
+                        {req.requestedSlot?.time && (
+                          <span style={{ fontSize: fonts.size.xs, color: colors.text.secondary, display: "block" }}>
+                            {fmtSlotTime(req.requestedSlot.time)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {/* Reason */}
                     <p style={{ fontSize: fonts.size.xs, color: colors.text.secondary, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

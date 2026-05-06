@@ -346,6 +346,7 @@ export default function DayView({
                     height: `${evt.height}px`,
                     background: cs.bg,
                     border: `1px ${cs.borderStyle} ${cs.border}`,
+                    borderLeft: evt.classItem.isRescheduled ? "4px solid #D97706" : `1px ${cs.borderStyle} ${cs.border}`,
                     borderRadius: radius.md,
                     padding: "8px 12px",
                     cursor: "pointer",
@@ -356,20 +357,26 @@ export default function DayView({
                   onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "brightness(0.94)")}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.filter = "none")}
                 >
+                  {evt.classItem.isRescheduled && (
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", gap: "4px",
+                      background: "#D97706", color: "#fff",
+                      borderRadius: "4px", padding: "2px 7px",
+                      fontSize: fonts.size.xs, fontWeight: 700, marginBottom: "6px",
+                      letterSpacing: "0.03em",
+                    }}>
+                      ↺ Rescheduled
+                    </div>
+                  )}
                   <div style={{ fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, color: cs.text, marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {evt.classItem.name}
                   </div>
                   <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.8 }}>
                     {evt.time}{evt.classItem.duration ? ` · ${evt.classItem.duration}` : ""}
                   </div>
-                  {!evt.classItem.isRescheduled && evt.classItem.location && (
+                  {evt.classItem.location && (
                     <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.7, marginTop: "2px" }}>
                       {evt.classItem.location}{evt.classItem.professor ? ` · ${evt.classItem.professor}` : ""}
-                    </div>
-                  )}
-                  {evt.classItem.isRescheduled && (
-                    <div style={{ fontSize: fonts.size.xs, color: cs.text, opacity: 0.8, marginTop: "2px" }}>
-                      See notifications
                     </div>
                   )}
                 </div>

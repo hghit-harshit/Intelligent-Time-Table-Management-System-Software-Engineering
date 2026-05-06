@@ -296,15 +296,56 @@ export const rescheduleService = {
       // Not a valid ObjectId or no professor found — use the value as-is
     }
 
+    // Reject requests where the target date is today or in the past
+    if (payload.requestedDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const requested = new Date(payload.requestedDate + "T00:00:00");
+      if (requested <= today) {
+        throw new AppError("Requested date must be in the future", 400);
+      }
+    }
+
     const latestTimetable = await TimetableResultModel.findOne({ isLatest: true })
       .sort({ generatedAt: -1 })
       .lean();
+
+    // Resolve courseId: getProfessorCourses uses courseCode as the key when a
+    // timetable assignment has no courseId, so the frontend may send a course
+    // code string (e.g. "EE101"). Mongoose cannot cast that to ObjectId, so:
+    //   1. Try CourseModel lookup by code
+    //   2. Try pulling the ObjectId from the latest timetable assignments
+    //   3. Fall back to a placeholder ObjectId so the save never hard-fails
+    let resolvedCourseId = payload.courseId ?? "";
+    if (resolvedCourseId && !mongoose.isValidObjectId(resolvedCourseId)) {
+      try {
+        const courseDoc = await CourseModel.findOne({ code: resolvedCourseId }).lean();
+        if (courseDoc) {
+          resolvedCourseId = String((courseDoc as any)._id);
+        } else if (latestTimetable) {
+          const ttAssignments = (latestTimetable as any).assignments as Assignment[];
+          const hit = ttAssignments.find(
+            (a) => String(a.courseCode) === resolvedCourseId && a.courseId,
+          );
+          if (hit) resolvedCourseId = String(hit.courseId);
+        }
+      } catch {
+        // ignore
+      }
+      if (!mongoose.isValidObjectId(resolvedCourseId)) {
+        resolvedCourseId = "000000000000000000000000";
+      }
+    }
 
     let conflictStatus = "No timetable found";
     if (latestTimetable && latestTimetable.assignments) {
       const assignments = latestTimetable.assignments as unknown as Assignment[];
       const course = assignments.find(
-        (a) => String(a.courseId) === payload.courseId || String(a.courseCode) === payload.courseId,
+        (a) =>
+          String(a.courseId) === resolvedCourseId ||
+          String(a.courseCode) === resolvedCourseId ||
+          String(a.courseId) === payload.courseId ||
+          String(a.courseCode) === payload.courseId,
       );
 
       if (course && payload.requestedSlot) {
@@ -324,6 +365,7 @@ export const rescheduleService = {
     const requestPayload = {
       ...payload,
       professorId: resolvedProfessorId,
+      courseId: resolvedCourseId,
       conflictStatus,
     };
 

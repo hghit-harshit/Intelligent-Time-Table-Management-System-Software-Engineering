@@ -236,6 +236,7 @@ const buildDashboardPayload = (
       statusColor,
       dotColor: statusColor,
       isLive,
+      isRescheduled: Boolean(assignment.isRescheduled),
     };
   });
 
@@ -353,7 +354,7 @@ const buildDashboardPayload = (
         if (!baseByDay.has(d)) baseByDay.set(d, []);
         baseByDay.get(d)?.push(a);
       }
-      const baseTimeslots = Array.from(new Set(base.map((a) => a.startTime).filter(Boolean)))
+      const baseTimeslots = Array.from(new Set(base.map((a) => (a as AssignmentRecord).startTime).filter(Boolean)))
         .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
       return baseTimeslots.map((time) => ({
         time: formatTime24(time),
@@ -467,8 +468,8 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
         status: "approved",
         courseId: { $in: enrolledCourseIds.map((id) => new mongoose.Types.ObjectId(id)) },
         $or: [
-          { currentDate: { $exists: true, $ne: "", $ne: null } },
-          { requestedDate: { $exists: true, $ne: "", $ne: null } },
+          { currentDate: { $exists: true, $nin: [null, ""] } },
+          { requestedDate: { $exists: true, $nin: [null, ""] } },
         ],
       }).lean();
 
