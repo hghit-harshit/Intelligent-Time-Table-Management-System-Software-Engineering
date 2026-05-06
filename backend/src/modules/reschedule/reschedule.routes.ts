@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware, requireRole } from "../../middlewares/auth.middleware.js";
 import {
   approveRequest,
   createRequest,
@@ -12,13 +13,13 @@ import {
 
 const rescheduleRouter = Router();
 
-rescheduleRouter.get("/", getRequests);
-rescheduleRouter.get("/pending-count", getPendingCount);
-rescheduleRouter.get("/professor-courses", getProfessorCourses);
-rescheduleRouter.get("/slot-conflicts", getSlotConflicts);
-rescheduleRouter.get("/:id", getRequestById);
-rescheduleRouter.post("/", createRequest);
-rescheduleRouter.patch("/:id/approve", approveRequest);
-rescheduleRouter.patch("/:id/reject", rejectRequest);
+rescheduleRouter.get("/", authMiddleware, getRequests);
+rescheduleRouter.get("/pending-count", requireRole("admin"), getPendingCount);
+rescheduleRouter.get("/professor-courses", requireRole("professor"), getProfessorCourses);
+rescheduleRouter.get("/slot-conflicts", requireRole("professor"), getSlotConflicts);
+rescheduleRouter.get("/:id", authMiddleware, getRequestById);
+rescheduleRouter.post("/", requireRole("professor"), createRequest);
+rescheduleRouter.patch("/:id/approve", requireRole("admin"), approveRequest);
+rescheduleRouter.patch("/:id/reject", requireRole("admin"), rejectRequest);
 
 export default rescheduleRouter;
