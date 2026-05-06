@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireRole } from "../../middlewares/auth.middleware.js";
 import {
   deleteNotification,
+  getBatchEnrollments,
   getNotificationUnreadCount,
   getStudentCourses,
   getStudentDashboard,
@@ -35,5 +36,8 @@ studentRouter.get("/tasks", requireRole("student"), getTasks);
 studentRouter.post("/tasks", requireRole("student"), createTask);
 studentRouter.patch("/tasks/:id", requireRole("student"), updateTask);
 studentRouter.delete("/tasks/:id", requireRole("student"), deleteTask);
+
+// ── Enrollments ───────────────────────────────────────────────────────
+studentRouter.get("/enrollments", requireRole("student"), getBatchEnrollments);
 
 export default studentRouter;

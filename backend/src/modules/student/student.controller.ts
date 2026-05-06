@@ -842,3 +842,46 @@ export const getNotificationUnreadCount = async (req: Request, res: Response) =>
     );
   }
 };
+
+export const getBatchEnrollments = async (req: Request, res: Response) => {
+  try {
+    const batchId = typeof req.query.batchId === "string" ? req.query.batchId : undefined;
+    if (!batchId) {
+      return fail(res, "batchId query parameter is required", 400);
+    }
+
+    const enrollments = await StudentEnrollmentModel.find({
+      batchId: batchId.toUpperCase(),
+    })
+      .populate("studentId", "firstName lastName email")
+      .populate("enrolledCourseIds", "code name")
+      .lean();
+
+    const students = enrollments.map((enrollment: any) => ({
+      id: String(enrollment._id),
+      student: enrollment.studentId
+        ? {
+            firstName: enrollment.studentId.firstName,
+            lastName: enrollment.studentId.lastName,
+            email: enrollment.studentId.email,
+          }
+        : null,
+      enrolledCourseIds: (enrollment.enrolledCourseIds || []).map((c: any) => ({
+        id: String(c._id),
+        code: c.code,
+        name: c.name,
+      })),
+      academicYear: enrollment.academicYear,
+      semester: enrollment.semester,
+    }));
+
+    return ok(res, students);
+  } catch (error) {
+    return fail(
+      res,
+      "Failed to fetch batch enrollments",
+      500,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
