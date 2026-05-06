@@ -74,6 +74,22 @@ const validateSlotBusinessRules = async (
     throw new AppError("At least one occurrence is required", 400);
   }
 
+  for (const occ of payload.occurrences) {
+    if (timeToMinutes(occ.endTime) <= timeToMinutes(occ.startTime)) {
+      throw new AppError("End time must be after start time", 400);
+    }
+  }
+
+  for (let i = 0; i < payload.occurrences.length; i++) {
+    for (let j = i + 1; j < payload.occurrences.length; j++) {
+      const a = payload.occurrences[i];
+      const b = payload.occurrences[j];
+      if (a.day === b.day && hasTimeOverlap(a.startTime, a.endTime, b.startTime, b.endTime)) {
+        throw new AppError("Occurrences within the same slot must not overlap", 400);
+      }
+    }
+  }
+
   const duplicate = await slotRepository.findByLabel(
     normalizedLabel,
     excludeId,

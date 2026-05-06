@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { authMiddleware, requireRole } from "../../middlewares/auth.middleware.js";
 import { TimetableResultModel } from "../../database/models/timetableResultModel.js";
 import { NotificationModel } from "../../database/models/notificationModel.js";
 import { ok, fail } from "../../shared/response.js";
@@ -49,7 +50,7 @@ const publishSchema = z.object({
 });
 
 // Save draft timetable
-router.post("/save-draft", async (req, res) => {
+router.post("/save-draft", requireRole("admin"), async (req, res) => {
   try {
     const payload = saveDraftSchema.parse(req.body);
     
@@ -78,7 +79,7 @@ router.post("/save-draft", async (req, res) => {
 });
 
 // Publish timetable (marks as latest)
-router.post("/publish", async (req, res) => {
+router.post("/publish", requireRole("admin"), async (req, res) => {
   try {
     const payload = publishSchema.parse(req.body);
 
@@ -133,7 +134,7 @@ router.post("/publish", async (req, res) => {
 });
 
 // Lightweight version-check endpoint — clients poll this to detect new publishes
-router.get("/published-at", async (req, res) => {
+router.get("/published-at", authMiddleware, async (req, res) => {
   try {
     const result = await TimetableResultModel.findOne({ isLatest: true })
       .select("version publishedAt generatedAt")
@@ -145,7 +146,7 @@ router.get("/published-at", async (req, res) => {
 });
 
 // Get most recently saved timetable (draft or published) — restores state on page refresh
-router.get("/latest-draft", async (req, res) => {
+router.get("/latest-draft", authMiddleware, async (req, res) => {
   try {
     const result = await TimetableResultModel.findOne().sort({ generatedAt: -1 });
     return ok(res, result);
@@ -155,7 +156,7 @@ router.get("/latest-draft", async (req, res) => {
 });
 
 // Get latest published timetable
-router.get("/latest", async (req, res) => {
+router.get("/latest", authMiddleware, async (req, res) => {
   try {
     const result = await TimetableResultModel.findOne({ isLatest: true });
 
@@ -170,7 +171,7 @@ router.get("/latest", async (req, res) => {
 });
 
 // Get timetable by version
-router.get("/version/:version", async (req, res) => {
+router.get("/version/:version", authMiddleware, async (req, res) => {
   try {
     const result = await TimetableResultModel.findOne({ version: req.params.version });
 
@@ -185,7 +186,7 @@ router.get("/version/:version", async (req, res) => {
 });
 
 // Get all versions
-router.get("/versions", async (req, res) => {
+router.get("/versions", authMiddleware, async (req, res) => {
   try {
     const results = await TimetableResultModel.find()
       .sort({ generatedAt: -1 })
@@ -198,7 +199,7 @@ router.get("/versions", async (req, res) => {
 });
 
 // Delete a version (cannot delete the currently published/latest)
-router.delete("/version/:version", async (req, res) => {
+router.delete("/version/:version", requireRole("admin"), async (req, res) => {
   try {
     const doc = await TimetableResultModel.findOne({ version: req.params.version });
     if (!doc) return fail(res, "Timetable version not found", 404);
@@ -213,7 +214,7 @@ router.delete("/version/:version", async (req, res) => {
 // ─── Bulk Reschedule: Available Rooms Helper ─────────────────────────────────
 // Returns rooms free at ALL time slots a given course occupies.
 // Used by the BR-1 form to populate the room picker.
-router.get("/bulk-reschedule/available-rooms", async (req, res) => {
+router.get("/bulk-reschedule/available-rooms", requireRole("admin"), async (req, res) => {
   try {
     const courseCode = req.query.courseCode as string;
     if (!courseCode) return fail(res, "courseCode query param is required", 400);
@@ -283,7 +284,7 @@ router.get("/bulk-reschedule/available-rooms", async (req, res) => {
 // ─── Bulk Reschedule: Room Courses Helper ────────────────────────────────────
 // Returns all assignments currently in a given room.
 // Used by the BR-2 form to show what will be evacuated.
-router.get("/bulk-reschedule/room-courses", async (req, res) => {
+router.get("/bulk-reschedule/room-courses", requireRole("admin"), async (req, res) => {
   try {
     const roomName = req.query.roomName as string;
     if (!roomName) return fail(res, "roomName query param is required", 400);
@@ -406,7 +407,7 @@ function detectConflict(
   return null;
 }
 
-router.post("/bulk-reschedule", async (req, res) => {
+router.post("/bulk-reschedule", requireRole("admin"), async (req, res) => {
   try {
     const body = bulkRescheduleBodySchema.parse(req.body ?? {});
     const { operationType, sourceVersion, dryRun, reason, parameters } = body;
@@ -802,6 +803,67 @@ router.post("/bulk-reschedule", async (req, res) => {
       500,
       error instanceof Error ? error.message : error
     );
+  }
+});
+
+// ─── Conflict Monitor ────────────────────────────────────────────
+// Returns conflicts from the latest timetable in a shape the frontend expects.
+
+const typeDisplayMap: Record<string, string> = {
+  room_conflict: "Room Conflict",
+  faculty_conflict: "Faculty Conflict",
+  student_conflict: "Student Conflict",
+};
+
+const severityMap: Record<string, string> = {
+  error: "critical",
+  warning: "warning",
+};
+
+router.get("/conflicts", authMiddleware, async (req, res) => {
+  try {
+    const timetable = await TimetableResultModel.findOne({ isLatest: true }).lean();
+    if (!timetable) return ok(res, []);
+
+    const rawConflicts: any[] = (timetable as any).conflicts ?? [];
+    const conflicts = rawConflicts.map((c, i) => ({
+      id: `conflict-${i}`,
+      type: typeDisplayMap[c.type] || c.type || "Unknown",
+      course1: c.conflictingCourseCodes?.join(", ") || c.courseCode || "",
+      room: c.affectedRooms?.join(", ") || "",
+      slot: c.day && c.startTime ? `${c.day} ${c.startTime}–${c.endTime}` : "",
+      severity: severityMap[c.severity] || "warning",
+      suggestedFix: c.description || "",
+      status: (c as any).status || "unresolved",
+    }));
+
+    return ok(res, conflicts);
+  } catch (error) {
+    return fail(res, "Failed to fetch conflicts", 500, error instanceof Error ? error.message : error);
+  }
+});
+
+// Resolve or override a conflict by updating its status in the timetable doc.
+router.patch("/conflicts/:id/resolve", requireRole("admin"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body as { action?: string };
+    const index = parseInt(id.replace("conflict-", ""), 10);
+    if (Number.isNaN(index)) return fail(res, "Invalid conflict id", 400);
+
+    const timetable = await TimetableResultModel.findOne({ isLatest: true });
+    if (!timetable) return fail(res, "No timetable found", 404);
+
+    const conflicts: any[] = (timetable as any).conflicts ?? [];
+    if (index < 0 || index >= conflicts.length) return fail(res, "Conflict not found", 404);
+
+    conflicts[index].status = action === "override" ? "overridden" : "resolved";
+
+    await timetable.save();
+
+    return ok(res, { success: true, id, action, status: conflicts[index].status });
+  } catch (error) {
+    return fail(res, "Failed to resolve conflict", 500, error instanceof Error ? error.message : error);
   }
 });
 
